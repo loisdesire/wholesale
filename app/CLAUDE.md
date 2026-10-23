@@ -8,14 +8,13 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
 
 - **Next.js 16 (App Router) + TypeScript**, single deployable app — frontend, auth, and data access
   together, matches the "modular, not microservices" guidance in VISION.md for this stage.
-- **Prisma + SQLite** for local dev (`prisma/dev.db`, zero setup). **Switch to Postgres before any
-  real concurrency or production use** — SQLite serializes writes, which is unsafe for the
-  overselling-prevention and transactional-stock requirements in VISION.md once there's real
-  traffic. Swapping the datasource provider in `prisma/schema.prisma` is the only change needed;
-  the schema itself was written to be Postgres-compatible (money as integer cents rather than
-  `Decimal`, since Prisma's `Decimal` type isn't available on SQLite).
-- Pinned to **Prisma 6**, not 7 — Prisma 7 requires driver adapters even for SQLite, which adds
-  setup complexity with no benefit at this stage.
+- **Prisma + PostgreSQL** (`docker compose up -d db` for local dev; see `.env.example`). Moved off
+  SQLite because SQLite's single writer had been *hiding* a real overselling race — see "Stock
+  figures" below. Money is integer cents rather than `Decimal` (a choice that predates the move and
+  keeps arithmetic simple). Postgres-specific behaviour to remember: Prisma's `contains` is
+  case-sensitive here (unlike SQLite) — user-facing text search must pass `mode: "insensitive"`.
+- Pinned to **Prisma 6**, not 7 — Prisma 7 requires driver adapters, which adds setup complexity
+  with no benefit at this stage.
 - **Auth.js (next-auth v5)**, Credentials provider, JWT sessions — no separate Account/Session
   tables needed. Route protection is in `src/proxy.ts` (Next 16 renamed the `middleware.ts`
   convention to `proxy.ts`; same API).
@@ -30,8 +29,29 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
 - Every tenant-owned table carries `organizationId`, even though only one org exists right now —
   this is load-bearing for Phase 3 multi-tenancy per VISION.md. All queries must filter by the
   signed-in user's `organizationId` from the session; there is no DB-level tenant isolation yet.
-- **Stock is a ledger.** `StockMovement` rows are the only source of truth for inventory; current
-  stock = `SUM(quantityDelta)`. Never add an editable quantity column to `Product`.
+- **Stock is a ledger.** `StockMovement` rows are the only source of truth for inventory. Never add
+  an editable quantity column to `Product`.
+- **Stock figures** — each movement stores `physicalDelta` / `reservedDelta` / `damagedDelta`;
+  `available = physical - reserved - damaged` is derived. `src/lib/stock-effects.ts` is the single
+  table mapping each `StockMovementReason` to its effects (read its comment for the sign convention
+  of `quantityDelta`). Confirming an order *reserves* (available drops), fulfilling it *ships*
+  (physical and reserved drop), returns put units back as resellable or damaged. Customers can only
+  be promised `available`.
+- **Every stock write goes through `recordStockMovementTx`**, which locks the product row
+  (`SELECT … FOR UPDATE`) before reading the ledger. Without that lock Postgres' READ COMMITTED lets
+  parallel requests all see "3 left" and all succeed (the stress test in `tests/stock.test.ts`
+  sold 3 units 10–11 times). Multi-product transactions must lock in a stable order
+  (`sortByProductId`) to avoid deadlocks. Same pattern for returns: `lockRow` in `src/lib/returns.ts`.
+- **Order/return references** come from atomic counters on `Organization` (`orderSeq`, `returnSeq`),
+  not `count()+1` (which collided under concurrent creation).
+- **Returns & refunds** (`src/lib/returns.ts`): only FULFILLED orders; refund amount is fixed at
+  request time from the order lines' *locked* prices; cumulative returned quantity can never exceed
+  what was ordered. **Only an OWNER can approve/reject a return or record a refund paid** (VISION.md:
+  refunds need human approval) — enforced in the domain function, not just hidden in the UI. Goods
+  arriving writes real ledger movements (`RETURN` resellable / `RETURN_DAMAGED`).
+- **Customer balances are computed, never stored** (`src/lib/balances.ts`): owes-us = CONFIRMED
+  unpaid orders; we-owe = approved-unpaid refunds; cash received = paid orders minus refunds paid.
+  Revenue/cash/receivables stay separate — never label any of it profit.
 - **Money is integer cents** (`priceCents`, `totalCents`, `unitPriceCents`), never float/Decimal.
 - **Order item prices lock at creation** (`OrderItem.unitPriceCents`) and are never recalculated
   from a later `Product.priceCents` change.
@@ -47,8 +67,8 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   the server call is what's authoritative.
 - **Catalogue search is database-backed, never "load everything into memory."**
   `src/lib/ai/catalogue-search.ts` pulls a *bounded* candidate pool (SQL term-matches on name/SKU,
-  unioned with a capped recent-active-products scan for variant-attribute terms SQLite can't filter
-  in SQL) rather than fetching the whole catalogue — this was an actual bug fixed during the
+  unioned with a capped recent-active-products scan for variant-attribute terms that live in an unindexed JSON column and can't be
+  filtered in SQL) rather than fetching the whole catalogue — this was an actual bug fixed during the
   catalogue-depth build (see `docs/PROGRESS.md`'s Phase 2 section for what broke and why). Don't
   reintroduce an unbounded `product.findMany({ where: { organizationId, active: true } })` with no
   `take` in a search path.
@@ -76,7 +96,7 @@ npm run dev           # dev server
 npm run db:migrate    # prisma migrate dev
 npm run db:seed       # reset + reseed realistic fixture data
 npm run db:studio     # prisma studio
-npm run test          # vitest — runs against a throwaway prisma/test.db, never dev data
+npm run test          # vitest — runs against a throwaway Postgres database (TEST_DATABASE_URL), never dev data
 ```
 
 Dev login (from seed): owner `flomglobal@gmail.com` / `owner-dev-pass`,
@@ -104,9 +124,10 @@ customer-merge logic.
 Work from `app/` (this file lives here, not at the repo root).
 
 ```
+docker compose up -d db     # Postgres 16 on :5432 (or point DATABASE_URL at any Postgres)
 cp .env.example .env        # then set AUTH_SECRET: openssl rand -base64 32
 npm install
-npx prisma migrate dev
+npx prisma migrate deploy
 npm run db:seed
 npm run dev
 ```
@@ -117,7 +138,9 @@ npm run dev
   the old (deleted) organizationId/userId, so every page silently shows empty data. Sign out via
   `/api/auth/signout` and log back in. Navigating to `/login` while still signed in just bounces
   to `/` before any credentials can be submitted.
-- **Tests share one SQLite file** (`prisma/test.db`, `fileParallelism: false`). Code that depends
+- **Tests share one Postgres test database** (`TEST_DATABASE_URL`; the name must end in `_test` —
+  setup refuses anything else — and it is wiped and re-migrated each run; `fileParallelism: false`).
+  Code that depends
   on "the one organization" (the WhatsApp webhook resolves its org via `organization.findFirst()`)
   needs its test to wipe all data in `beforeAll` first — see `tests/end-to-end-flow.test.ts`.
 - **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
@@ -130,5 +153,13 @@ npm run dev
   (`node -e` with Prisma). That combination caught real bugs.
 - **Don't submit Chrome-autofilled credentials** when testing login; clear the fields and type the
   seeded dev credentials explicitly.
-- **Prisma is pinned to v6** (v7 needs driver adapters even for SQLite). Stopping the dev server
-  before `prisma generate` avoids an EPERM file-lock on Windows.
+- **Prisma is pinned to v6** (v7 needs driver adapters). Stopping the dev server before
+  `prisma generate` avoids an EPERM file-lock on Windows.
+- **Migrations are hand-edited when data must move.** `prisma migrate dev` is interactive and refuses
+  to run from an agent; generate SQL with `prisma migrate diff --from-migrations prisma/migrations
+  --to-schema-datamodel prisma/schema.prisma --shadow-database-url <scratch db> --script`, put it in
+  a new `prisma/migrations/<timestamp>_name/migration.sql`, and add backfill SQL for existing rows
+  (see `…_stock_figures`). Migration folders sort lexically — a timestamp earlier than the baseline
+  runs first and fails on a fresh database. Test a backfill on a legacy-shaped scratch DB.
+- **`prisma migrate reset` is blocked for agents** (needs the user's consent), and the test harness
+  doesn't use it — it drops and recreates the `_test` schema itself.

@@ -2,13 +2,13 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMoney, formatRelativeTime } from "@/lib/format";
-import { ConversationStatusBadge, OrderStatusBadge } from "@/components/status-badge";
+import { ConversationStatusBadge, OrderStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
 
 export default async function DashboardPage() {
   const session = await auth();
   const organizationId = session!.user.organizationId;
 
-  const [attentionConversations, attentionOrders, pipelineCounts, recentOrders, recentMessages] =
+  const [attentionConversations, attentionOrders, attentionReturns, pipelineCounts, recentOrders, recentMessages] =
     await Promise.all([
       prisma.conversation.findMany({
         where: { organizationId, status: { in: ["AWAITING_STAFF", "NEW"] } },
@@ -19,6 +19,16 @@ export default async function DashboardPage() {
       prisma.order.findMany({
         where: { organizationId, status: { in: ["DRAFT", "CONFIRMED"] } },
         include: { customer: true },
+        orderBy: { createdAt: "asc" },
+        take: 6,
+      }),
+      // Returns still needing someone: a decision, the goods booked in, or the refund paid.
+      prisma.orderReturn.findMany({
+        where: {
+          organizationId,
+          OR: [{ status: { in: ["REQUESTED", "APPROVED"] } }, { refundStatus: "PENDING" }],
+        },
+        include: { customer: true, order: true },
         orderBy: { createdAt: "asc" },
         take: 6,
       }),
@@ -46,7 +56,8 @@ export default async function DashboardPage() {
     pipelineCounts.map((row) => [row.status, row._count._all])
   );
 
-  const needsAttentionCount = attentionConversations.length + attentionOrders.length;
+  const needsAttentionCount =
+    attentionConversations.length + attentionOrders.length + attentionReturns.length;
 
   return (
     <div className="flex flex-col gap-10">
@@ -107,6 +118,31 @@ export default async function DashboardPage() {
                 </div>
                 <span className="font-tabular text-xs text-text-muted">
                   {formatMoney(o.totalCents, o.currency)}
+                </span>
+              </Link>
+            ))}
+            {attentionReturns.map((r) => (
+              <Link
+                key={r.id}
+                href={`/orders/${r.orderId}`}
+                className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-paper"
+              >
+                <div className="flex items-center gap-3">
+                  <ReturnStatusBadge status={r.status} />
+                  <span className="font-tabular text-ink">{r.reference}</span>
+                  <span className="text-text-muted">
+                    {r.status === "REQUESTED"
+                      ? "return needs a decision"
+                      : r.refundStatus === "PENDING" && r.status === "RECEIVED"
+                        ? "refund to pay"
+                        : r.status === "APPROVED"
+                          ? "approved, awaiting goods"
+                          : "return open"}{" "}
+                    · {r.customer.name ?? r.customer.phone} · {r.order.reference}
+                  </span>
+                </div>
+                <span className="font-tabular text-xs text-text-muted">
+                  {formatMoney(r.refundCents, r.order.currency)}
                 </span>
               </Link>
             ))}

@@ -5,9 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { getStockByProduct } from "@/lib/stock";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStepper } from "@/components/order-stepper";
+import { RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
+import { getReturnableQuantities } from "@/lib/returns";
 import { removeOrderItemAction } from "../actions";
 import { OrderActions } from "./order-actions";
 import { AddItemForm } from "./add-item-form";
+import { RequestReturnForm, ReturnActions } from "./returns-ui";
 
 const AUDIT_ACTION_LABEL: Record<string, string> = {
   ORDER_DRAFTED: "Order drafted",
@@ -15,6 +18,11 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   PAYMENT_MARKED_PAID: "Marked as paid",
   ORDER_FULFILLED: "Marked as fulfilled",
   ORDER_CANCELLED: "Order cancelled",
+  RETURN_REQUESTED: "Return requested",
+  RETURN_APPROVED: "Return approved",
+  RETURN_REJECTED: "Return rejected",
+  RETURN_RECEIVED: "Returned goods received into stock",
+  REFUND_PAID: "Refund paid to customer",
 };
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,6 +39,28 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     },
   });
   if (!order) notFound();
+
+  const isOwner = session!.user.role === "OWNER";
+  const [returns, returnable] = await Promise.all([
+    prisma.orderReturn.findMany({
+      where: { orderId: order.id, organizationId },
+      include: {
+        requestedBy: true,
+        decidedBy: true,
+        items: { include: { orderItem: { include: { product: true } } } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    getReturnableQuantities(order.id),
+  ]);
+  const returnableLines = order.items.map((item) => ({
+    orderItemId: item.id,
+    label: `${item.product.name}${item.variantLabel ? ` (${item.variantLabel})` : ""}`,
+    sku: item.product.sku,
+    returnable: returnable.get(item.id) ?? 0,
+    unit: item.product.unit,
+  }));
+  const canRequestReturn = order.status === "FULFILLED" && returnableLines.some((l) => l.returnable > 0);
 
   const [auditLog, activeProducts, stockMap] = await Promise.all([
     prisma.auditLog.findMany({
@@ -144,6 +174,79 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <section>
           <h2 className="mb-3 text-sm font-medium text-ink">Add an item</h2>
           <AddItemForm orderId={order.id} products={productOptions} />
+        </section>
+      )}
+
+      {(returns.length > 0 || canRequestReturn) && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-ink">Returns &amp; refunds</h2>
+
+          {returns.map((ret) => (
+            <div key={ret.id} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-tabular text-sm font-medium text-ink">{ret.reference}</p>
+                  <p className="mt-1 text-sm text-text-muted">
+                    {ret.reason} · requested by {ret.requestedBy?.name ?? "—"} · {formatDateTime(ret.createdAt)}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <p className="font-tabular text-lg font-medium text-ink">
+                    {formatMoney(ret.refundCents, order.currency)}
+                  </p>
+                  <div className="flex gap-2">
+                    <ReturnStatusBadge status={ret.status} />
+                    {ret.status !== "REJECTED" && ret.status !== "REQUESTED" && (
+                      <RefundStatusBadge status={ret.refundStatus} />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <ul className="divide-y divide-line text-sm">
+                {ret.items.map((item) => (
+                  <li key={item.id} className="flex items-center justify-between py-2">
+                    <span className="text-ink">
+                      {item.quantity} × {item.orderItem.product.name}
+                      {item.orderItem.variantLabel ? ` (${item.orderItem.variantLabel})` : ""}
+                    </span>
+                    <span className="text-xs text-text-muted">
+                      {item.condition === "DAMAGED" ? "Damaged" : "Resellable"} ·{" "}
+                      {formatMoney(item.quantity * item.orderItem.unitPriceCents, order.currency)} at the order price
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              {ret.decidedAt && (
+                <p className="text-xs text-text-muted">
+                  {ret.status === "REJECTED" ? "Rejected" : "Approved"} by {ret.decidedBy?.name ?? "—"} ·{" "}
+                  {formatDateTime(ret.decidedAt)}
+                  {ret.decisionNote ? ` · “${ret.decisionNote}”` : ""}
+                </p>
+              )}
+              {ret.refundedAt && (
+                <p className="text-xs text-text-muted">
+                  Refund paid {formatDateTime(ret.refundedAt)}
+                  {ret.refundNote ? ` · ${ret.refundNote}` : ""}
+                </p>
+              )}
+
+              <ReturnActions
+                returnId={ret.id}
+                status={ret.status}
+                refundStatus={ret.refundStatus}
+                isOwner={isOwner}
+              />
+            </div>
+          ))}
+
+          {canRequestReturn && (
+            <div>
+              <h3 className="mb-2 text-sm text-text-muted">Request a return</h3>
+              <RequestReturnForm orderId={order.id} lines={returnableLines} />
+            </div>
+          )}
         </section>
       )}
 

@@ -18,6 +18,8 @@ function ledgerRow(
 
 async function main() {
   await prisma.auditLog.deleteMany();
+  await prisma.returnItem.deleteMany();
+  await prisma.orderReturn.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.message.deleteMany();
@@ -30,7 +32,7 @@ async function main() {
   await prisma.organization.deleteMany();
 
   const org = await prisma.organization.create({
-    data: { name: "Adaeze Fashion Wholesale", orderSeq: 1003 },
+    data: { name: "Adaeze Fashion Wholesale", orderSeq: 1003, returnSeq: 1001 },
   });
 
   const ownerPasswordHash = await bcrypt.hash("owner-dev-pass", 10);
@@ -285,6 +287,35 @@ async function main() {
       { organizationId: org.id, entity: "Order", entityId: order1.id, action: "PAYMENT_MARKED_PAID", actorId: staff.id, before: { status: "CONFIRMED" }, after: { status: "PAID" }, createdAt: hoursAgo(28) },
       { organizationId: org.id, entity: "Order", entityId: order3.id, action: "ORDER_CONFIRMED", actorId: staff.id, before: { status: "DRAFT" }, after: { status: "CONFIRMED" }, createdAt: hoursAgo(5) },
     ],
+  });
+
+  // A return waiting on the owner: two of Ngozi's black Ankara sets arrived with a split seam.
+  const order1BlackItem = await prisma.orderItem.findFirstOrThrow({
+    where: { orderId: order1.id, productId: bySku("ANK-2PC-BLK-M").id },
+  });
+  const seededReturn = await prisma.orderReturn.create({
+    data: {
+      organizationId: org.id,
+      reference: "RET-1001",
+      orderId: order1.id,
+      customerId: customers[0].id,
+      reason: "Seam came apart on two pieces",
+      refundCents: 2 * order1BlackItem.unitPriceCents,
+      requestedById: staff.id,
+      createdAt: hoursAgo(3),
+      items: { create: [{ orderItemId: order1BlackItem.id, quantity: 2, condition: "DAMAGED" }] },
+    },
+  });
+  await prisma.auditLog.create({
+    data: {
+      organizationId: org.id,
+      entity: "Order",
+      entityId: order1.id,
+      action: "RETURN_REQUESTED",
+      actorId: staff.id,
+      after: { return: seededReturn.reference, refundCents: seededReturn.refundCents, reason: seededReturn.reason },
+      createdAt: hoursAgo(3),
+    },
   });
 
   console.log("Seed complete.");

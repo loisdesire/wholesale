@@ -43,6 +43,29 @@ enum MessageSender {
   STAFF
 }
 
+// Return lifecycle: a request is approved or rejected by the owner (a human
+// decision, never automatic); an approved return is RECEIVED once the goods are
+// back and their stock has been recorded.
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  RECEIVED
+}
+
+enum ReturnItemCondition {
+  RESELLABLE
+  DAMAGED
+}
+
+// NONE until the owner approves; PENDING = money owed to the customer;
+// REFUNDED = the owner recorded that it was paid out.
+enum RefundStatus {
+  NONE
+  PENDING
+  REFUNDED
+}
+
 enum OrderStatus {
   DRAFT
   CONFIRMED
@@ -73,59 +96,63 @@ model Organization {
   // Last order number issued (ORD-<n>). Incremented atomically when a draft is
   // created, so concurrent drafts can never be given the same reference.
   orderSeq  Int      @default(1000)
+  returnSeq Int      @default(1000)
   createdAt DateTime @default(now())
 
-  users         User[]
-  products      Product[]
+  users          User[]
+  products       Product[]
   stockMovements StockMovement[]
-  customers     Customer[]
-  conversations Conversation[]
-  orders        Order[]
-  auditLogs     AuditLog[]
+  customers      Customer[]
+  conversations  Conversation[]
+  orders         Order[]
+  returns        OrderReturn[]
+  auditLogs      AuditLog[]
 }
 
 model User {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  email          String   @unique
+  email          String       @unique
   passwordHash   String
   name           String
-  role           UserRole @default(STAFF)
-  createdAt      DateTime @default(now())
+  role           UserRole     @default(STAFF)
+  createdAt      DateTime     @default(now())
 
   assignedConversations Conversation[]  @relation("AssignedStaff")
   createdStockMovements StockMovement[]
   createdOrders         Order[]
-  auditLogs              AuditLog[]
+  requestedReturns      OrderReturn[]   @relation("ReturnRequestedBy")
+  decidedReturns        OrderReturn[]   @relation("ReturnDecidedBy")
+  auditLogs             AuditLog[]
 }
 
 model Product {
-  id             String   @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  sku            String
-  name           String
+  id                String       @id @default(cuid())
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id])
+  sku               String
+  name              String
   // Variant attributes, e.g. {"size":"M","colour":"Black"}. Kept flexible per
   // product category — business-specific attributes (material, model,
   // packaging, ...) are just extra keys, not new columns.
   variantAttributes Json?
-  priceCents     Int
+  priceCents        Int
   // Cost price, when known — nullable because many businesses won't have it
   // for every SKU from day one. Never used to compute profit until real cost
   // data exists everywhere it's needed (per VISION.md).
-  costCents      Int?
-  currency       String   @default("NGN")
+  costCents         Int?
+  currency          String       @default("NGN")
   // Minimum order quantity — enforced when an order item is added.
-  moq            Int      @default(1)
+  moq               Int          @default(1)
   // Display/stock unit label (e.g. "piece", "carton", "dozen"). Stock
   // movements and order quantities for a product are always in this same
   // unit — this makes the unit explicit per VISION.md rather than silently
   // mixing pieces and cartons; it is not a multi-unit conversion system.
-  unit           String   @default("piece")
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  unit              String       @default("piece")
+  active            Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   stockMovements StockMovement[]
   orderItems     OrderItem[]
@@ -151,54 +178,55 @@ model PriceTier {
 }
 
 model StockMovement {
-  id             String   @id @default(cuid())
+  id             String              @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization        @relation(fields: [organizationId], references: [id])
   productId      String
-  product        Product  @relation(fields: [productId], references: [id])
+  product        Product             @relation(fields: [productId], references: [id])
   // Effect on each stock figure (see src/lib/stock-effects.ts). available =
   // physical - reserved - damaged, so it is derived, never stored.
-  physicalDelta  Int      @default(0)
-  reservedDelta  Int      @default(0)
-  damagedDelta   Int      @default(0)
+  physicalDelta  Int                 @default(0)
+  reservedDelta  Int                 @default(0)
+  damagedDelta   Int                 @default(0)
   reason         StockMovementReason
   // Free-form pointer to the causing record, e.g. an order reference or PO number.
   reference      String?
   note           String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime            @default(now())
   createdById    String?
-  createdBy      User?    @relation(fields: [createdById], references: [id])
+  createdBy      User?               @relation(fields: [createdById], references: [id])
 
   @@index([organizationId, productId])
 }
 
 model Customer {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   phone          String
   name           String?
   notes          String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime     @default(now())
 
   conversations Conversation[]
   orders        Order[]
+  returns       OrderReturn[]
 
   @@unique([organizationId, phone])
 }
 
 model Conversation {
-  id             String   @id @default(cuid())
+  id             String              @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization        @relation(fields: [organizationId], references: [id])
   customerId     String
-  customer       Customer @relation(fields: [customerId], references: [id])
+  customer       Customer            @relation(fields: [customerId], references: [id])
   channel        ConversationChannel @default(WHATSAPP)
   status         ConversationStatus  @default(NEW)
   assignedToId   String?
-  assignedTo     User?    @relation("AssignedStaff", fields: [assignedToId], references: [id])
-  lastMessageAt  DateTime @default(now())
-  createdAt      DateTime @default(now())
+  assignedTo     User?               @relation("AssignedStaff", fields: [assignedToId], references: [id])
+  lastMessageAt  DateTime            @default(now())
+  createdAt      DateTime            @default(now())
 
   messages Message[]
   orders   Order[]
@@ -207,42 +235,43 @@ model Conversation {
 }
 
 model Message {
-  id             String   @id @default(cuid())
+  id             String           @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversation   Conversation     @relation(fields: [conversationId], references: [id])
   direction      MessageDirection
   sender         MessageSender
   body           String
   // WhatsApp message id — unique when present, so a re-delivered webhook event
   // can be detected and ignored instead of creating a duplicate message.
-  externalId     String?  @unique
-  createdAt      DateTime @default(now())
+  externalId     String?          @unique
+  createdAt      DateTime         @default(now())
 
   @@index([conversationId])
 }
 
 model Order {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
   reference      String
   customerId     String
-  customer       Customer @relation(fields: [customerId], references: [id])
+  customer       Customer      @relation(fields: [customerId], references: [id])
   conversationId String?
   conversation   Conversation? @relation(fields: [conversationId], references: [id])
-  status         OrderStatus @default(DRAFT)
-  totalCents     Int      @default(0)
-  currency       String   @default("NGN")
+  status         OrderStatus   @default(DRAFT)
+  totalCents     Int           @default(0)
+  currency       String        @default("NGN")
   createdById    String?
-  createdBy      User?    @relation(fields: [createdById], references: [id])
+  createdBy      User?         @relation(fields: [createdById], references: [id])
   confirmedAt    DateTime?
   paidAt         DateTime?
   fulfilledAt    DateTime?
   cancelledAt    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  items OrderItem[]
+  items   OrderItem[]
+  returns OrderReturn[]
 
   @@unique([organizationId, reference])
   @@index([organizationId, status])
@@ -260,20 +289,72 @@ model OrderItem {
   quantity       Int
   unitPriceCents Int
   createdAt      DateTime @default(now())
+
+  returnItems ReturnItem[]
+}
+
+// A customer sending goods back from a fulfilled order. refundCents is fixed
+// when the return is requested, from the order items' *locked* prices — never
+// from today's catalogue price.
+model OrderReturn {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  reference      String
+  orderId        String
+  order          Order        @relation(fields: [orderId], references: [id])
+  // Denormalized from the order so balances can be summed per customer.
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id])
+  status         ReturnStatus @default(REQUESTED)
+  reason         String
+  refundCents    Int
+  refundStatus   RefundStatus @default(NONE)
+  refundNote     String?
+  requestedById  String?
+  requestedBy    User?        @relation("ReturnRequestedBy", fields: [requestedById], references: [id])
+  decidedById    String?
+  decidedBy      User?        @relation("ReturnDecidedBy", fields: [decidedById], references: [id])
+  decisionNote   String?
+  decidedAt      DateTime?
+  receivedAt     DateTime?
+  refundedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  items ReturnItem[]
+
+  @@unique([organizationId, reference])
+  @@index([organizationId, status])
+  @@index([orderId])
+  @@index([customerId])
+}
+
+model ReturnItem {
+  id          String              @id @default(cuid())
+  returnId    String
+  return      OrderReturn         @relation(fields: [returnId], references: [id])
+  orderItemId String
+  orderItem   OrderItem           @relation(fields: [orderItemId], references: [id])
+  quantity    Int
+  condition   ReturnItemCondition
+
+  @@index([returnId])
+  @@index([orderItemId])
 }
 
 model AuditLog {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   entity         String
   entityId       String
   action         String
   actorId        String?
-  actor          User?    @relation(fields: [actorId], references: [id])
+  actor          User?        @relation(fields: [actorId], references: [id])
   before         Json?
   after          Json?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime     @default(now())
 
   @@index([organizationId, entity, entityId])
 }

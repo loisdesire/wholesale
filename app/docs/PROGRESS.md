@@ -281,30 +281,95 @@ scoped in the offer, and better done as its own deliberate piece of work.
   (₦17,000, not the ₦18,500 base) both in the live cart display and in the persisted order row.
 - `npm run build`, `npm run lint`, and `npm run test` (55 tests, 10 files) all pass clean.
 
+## Done (2026-10-23 — Postgres, stock figures, returns/refunds/balances)
+
+Three pieces of work picked up from the "suggested next steps" list, done in order because each
+changed the schema the next one builds on.
+
+### 1. PostgreSQL (replaces SQLite)
+
+- Provider switched; SQLite migrations replaced by one fresh Postgres baseline (nothing but seed data
+  existed, so no data migration). `docker-compose.yml` runs Postgres 16 locally. `.env.example` is
+  now actually committed — it never had been (`.gitignore`'s `.env*` swallowed it), so the
+  first-time-setup steps in CLAUDE.md couldn't have worked from a clean checkout.
+- **Found and fixed a real overselling race that SQLite had been hiding.** On Postgres' default
+  READ COMMITTED isolation the old read-then-write stock check let 12 parallel reservations against
+  3 units all succeed (10–11 got through). `recordStockMovementTx` now locks the product row
+  (`SELECT … FOR UPDATE`) first; the stress test in `tests/stock.test.ts` failed before the lock and
+  passes after. Multi-item operations lock in sorted product order (a concurrency test confirms
+  opposite-order orders don't deadlock). The row lock also doubles as a tenant check: moving stock
+  for another organization's product is refused.
+- **Order references** came from `count()+1`, which collided under concurrent draft creation
+  (the old code comment predicted this). Now an atomic counter on `Organization.orderSeq`.
+- **Case-insensitive search**: Prisma's `contains` is case-sensitive on Postgres, silently
+  regressing catalogue search and the AI's `search_catalogue`; both now pass `mode: "insensitive"`
+  (verified in a browser: `?q=ankara` and `?q=ANKARA` both return the 5 matches).
+- Test database is a separate Postgres DB (`TEST_DATABASE_URL`); setup refuses any name not ending
+  `_test` because the suite wipes it.
+
+### 2. Physical / reserved / available / damaged stock
+
+- `StockMovement` now stores `physicalDelta` / `reservedDelta` / `damagedDelta` (replacing
+  `quantityDelta`); available is derived. `src/lib/stock-effects.ts` maps every reason to its effects
+  and validates sign. New reasons `RETURN_DAMAGED` and `DAMAGE_WRITTEN_OFF`; `DAMAGE` now means
+  "set aside as damaged" (stays on hand, leaves availability) instead of "discarded".
+- **Fulfilment now records the shipment** (physical and reserved drop; available unchanged) — before,
+  fulfilling an order wrote no ledger movement, so reserved units would never have been released.
+- Catalogue detail shows On hand / Reserved / Damaged / Available with per-figure history; the
+  manual-movement form fixes the direction per reason; list and search show *available*.
+- Migration backfills legacy rows and inserts the missing shipments for already-fulfilled orders.
+  Written, then **tested on a legacy-shaped scratch database** — that caught a bug in the first
+  draft (the backfill insert violated the old NOT NULL column). Available stock is preserved for
+  every legacy case checked.
+- Seed fix: confirmed order ORD-1003 now actually reserves its stock (it never had).
+
+### 3. Returns, refunds and customer balances
+
+- `src/lib/returns.ts`: request (fulfilled orders only; refund = quantity × the order line's
+  *locked* price; cumulative returned quantity capped at what was ordered, race-safe) → owner
+  approves/rejects → goods received (resellable back to available, damaged to the damaged figure) →
+  owner records the refund as paid. **Owner-only steps are enforced in the domain layer**, not just
+  hidden in the UI, per VISION.md's "refunds require human approval". Every step writes the order's
+  audit history.
+- `src/lib/balances.ts`: owes-us (confirmed unpaid), we-owe (approved refunds unpaid), cash received
+  (paid less refunded), refunded — all summed from records on demand, never stored.
+- UI: a Returns & refunds section on the order page (request form, per-state actions, role-aware),
+  balance columns on `/customers`, a new `/customers/[id]` page (balance, order history, returns),
+  and returns/refunds in the dashboard's needs-attention queue.
+- **Tests**: 18 in `tests/returns.test.ts` and 13 in `tests/stock-figures.test.ts`, including
+  concurrent cases (4 parallel return requests for the last units → one wins; 4 parallel "goods
+  received" → stock added once; 3 parallel refund payouts → paid once). Verified these tests are
+  meaningful by disabling the row locks: 3 of them fail.
+- **Verified live in a browser** (Playwright, 16 checks, with screenshots — they work in this
+  environment): staff see the return but no approve control; owner approves → receives → refunds;
+  history lists all four events; the customer page nets ₦277,500 paid − ₦37,000 refunded = ₦240,500;
+  a customer with a confirmed unpaid order shows ₦159,000 owed; stock figures on the product page.
+- `npm run lint`, `npm run build`, `npm run test` (87 tests, 12 files) all pass clean.
+
 ## Known gaps / flagged decisions
 
-- **SQLite is dev-only.** Must move to Postgres before production — see CLAUDE.md stack section.
-  Docker Desktop wasn't running in this environment, so Postgres-via-Docker wasn't set up; revisit
-  when ready to deploy or when concurrent-write testing is needed.
+- **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
+  managed/production instance — deployment, backups and connection pooling are still undecided.
+  Note `Order.orderSeq`/`returnSeq` counters serialize order creation per organization on one row
+  lock; fine at this volume, revisit if that ever becomes a hotspot.
 - **No real WhatsApp or Anthropic credentials in this environment.** Webhook ingestion, reply
   sending, and AI product-matching are all built and tested against synthetic-but-realistic signed
   payloads and a mocked model client (see the step 4/5/6 "Done" sections) — correct by construction
   and by test, but not yet run against Meta's or Anthropic's actual infrastructure. Nothing in the
   app pretends otherwise: every screen shows a clear "not configured" state instead of failing
   silently or faking success.
-- Vitest is configured (`npm run test`, 55 tests / 10 files) — now including a stock import with
-  duplicate/invalid SKUs (`tests/csv-import.test.ts`). VISION.md's remaining testing-discipline
+- Vitest is configured (`npm run test`, 87 tests / 12 files). VISION.md's remaining testing-discipline
   scenarios not yet covered (a duplicate payment webhook — no payment gateway exists yet to have
   webhooks from, per "explicitly deferred"; a cross-tenant access attempt, which needs Phase 3's
   real tenant isolation to be meaningful) apply once their underlying features exist.
-- **The Chrome browser extension's screenshot capture (`Page.captureScreenshot`) hung for the
-  entire catalogue-depth session**, on a freshly created tab too — a local Chrome/GPU issue, not
-  an app issue (DOM reads and all interactions worked throughout, and every new feature was still
-  verified live via accessibility-tree inspection plus direct database checks, not skipped). Worth
-  a visual pass with screenshots next session once that's resolved, just to see the actual styling
-  rendered rather than only structural correctness.
-- Git repo initialized but nothing has been committed yet — working tree has the full Phase 1 +
-  Phase 2 catalogue-depth build, uncommitted, pending the user's go-ahead.
+- **Returns/refunds scope limits (deliberate):** one refund per return, always the full value of the
+  returned lines at their locked prices — no partial refunds, restocking fees or credit notes; no
+  payment-gateway integration (the owner records that a refund was paid, by hand, like marking an
+  order paid); a return is only possible after fulfilment (cancelling a paid-but-unfulfilled order is
+  still out of scope). The balance is "orders vs refunds" only — there are no partial/instalment
+  payments yet, so "owes us" means a whole confirmed order awaiting payment.
+- **`DAMAGE` meaning changed.** Pre-existing `DAMAGE` rows (which meant "written off") were converted
+  to `MANUAL_ADJUSTMENT` with an explanatory note by the migration so history keeps its meaning.
 
 ## Suggested next steps (not started)
 
@@ -312,11 +377,11 @@ These are natural follow-ons, flagged here rather than started unprompted:
 
 - Get real WhatsApp Business + Anthropic credentials into `.env` and do a live smoke test of
   webhook ingestion, reply sending, and AI product-matching against actual traffic.
-- Move to Postgres before any real/concurrent usage (see above).
-- Decide on and set up deployment (hosting, env vars, migrations in CI/CD).
-- The physical/reserved/available/damaged stock split VISION.md describes for Phase 2 — explicitly
-  deferred this round (see the Phase 2 "Done" section) since it reworks the already-tested order
-  lifecycle; worth its own dedicated pass rather than folding into unrelated work.
-- The rest of VISION.md Part 1's phases (3: orders & customers depth — returns/refunds, customer
-  balances; 4: operations control room; 6: payments & delivery; 7: commercial launch), once there's
-  enough real usage to know what to prioritize.
+- Decide on and set up deployment (hosting, managed Postgres, env vars, running `prisma migrate
+  deploy` in CI/CD).
+- Phase 3 remainder (VISION.md): partial refunds / credit notes, order amendments and
+  cancel-after-payment, duplicate-order investigation, customer duplicate detection.
+- Phase 4 (operations control room): operational metrics — return/refund rate, overdue orders —
+  now that there are real records to compute them from.
+- Phase 6 (payments & delivery): automated payment verification would let "mark paid" and "refund
+  paid" rest on evidence instead of a manual click.

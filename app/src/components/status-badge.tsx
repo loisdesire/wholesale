@@ -22,6 +22,19 @@ const ORDER_STATUS: Record<string, { label: string; tone: Tone }> = {
   CANCELLED: { label: "Cancelled", tone: "attention" },
 };
 
+const RETURN_STATUS: Record<string, { label: string; tone: Tone }> = {
+  REQUESTED: { label: "Awaiting decision", tone: "attention" },
+  APPROVED: { label: "Approved", tone: "progress" },
+  REJECTED: { label: "Rejected", tone: "neutral" },
+  RECEIVED: { label: "Goods received", tone: "success" },
+};
+
+const REFUND_STATUS: Record<string, { label: string; tone: Tone }> = {
+  NONE: { label: "No refund due", tone: "neutral" },
+  PENDING: { label: "Refund to pay", tone: "attention" },
+  REFUNDED: { label: "Refunded", tone: "success" },
+};
+
 function Badge({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
@@ -39,5 +52,15 @@ export function ConversationStatusBadge({ status }: { status: string }) {
 
 export function OrderStatusBadge({ status }: { status: string }) {
   const entry = ORDER_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge {...entry} />;
+}
+
+export function ReturnStatusBadge({ status }: { status: string }) {
+  const entry = RETURN_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge {...entry} />;
+}
+
+export function RefundStatusBadge({ status }: { status: string }) {
+  const entry = REFUND_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
   return <Badge {...entry} />;
 }
