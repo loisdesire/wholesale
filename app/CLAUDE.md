@@ -98,3 +98,37 @@ See VISION.md Part 2 "Explicitly deferred": multi-tenant isolation enforcement, 
 platform super-admin, automated payment verification, the automation/notification engine,
 non-WhatsApp channels, a formal AI eval harness, advanced reporting, bulk operations,
 customer-merge logic.
+
+## First-time setup (new machine or cloud session)
+
+Work from `app/` (this file lives here, not at the repo root).
+
+```
+cp .env.example .env        # then set AUTH_SECRET: openssl rand -base64 32
+npm install
+npx prisma migrate dev
+npm run db:seed
+npm run dev
+```
+
+## Gotchas learned the hard way
+
+- **Reseeding makes browser sessions stale.** After `npm run db:seed`, the JWT cookie still holds
+  the old (deleted) organizationId/userId, so every page silently shows empty data. Sign out via
+  `/api/auth/signout` and log back in. Navigating to `/login` while still signed in just bounces
+  to `/` before any credentials can be submitted.
+- **Tests share one SQLite file** (`prisma/test.db`, `fileParallelism: false`). Code that depends
+  on "the one organization" (the WhatsApp webhook resolves its org via `organization.findFirst()`)
+  needs its test to wipe all data in `beforeAll` first — see `tests/end-to-end-flow.test.ts`.
+- **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
+  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. Missing this once caused an FK failure
+  that only appeared when the full suite ran, not in isolation.
+- **Stale Turbopack cache** can produce phantom runtime errors ("X is not a function") for exports
+  that are correct and pass tests. Kill the dev server, delete `.next/`, restart.
+- **Chrome extension screenshots** (`Page.captureScreenshot`) can hang for a whole session while
+  `read_page` keeps working. Don't skip verification: use DOM inspection plus direct DB checks
+  (`node -e` with Prisma). That combination caught real bugs.
+- **Don't submit Chrome-autofilled credentials** when testing login; clear the fields and type the
+  seeded dev credentials explicitly.
+- **Prisma is pinned to v6** (v7 needs driver adapters even for SQLite). Stopping the dev server
+  before `prisma generate` avoids an EPERM file-lock on Windows.
