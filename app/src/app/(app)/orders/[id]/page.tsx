@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { getStockByProduct } from "@/lib/stock";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStepper } from "@/components/order-stepper";
@@ -38,8 +38,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
-  const order = await prisma.order.findFirst({
+  const order = await db.order.findFirst({
     where: { id, organizationId },
     include: {
       customer: { include: { addresses: { orderBy: { createdAt: "asc" } } } },
@@ -51,9 +52,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const isOwner = session!.user.role === "OWNER";
   const duplicates =
-    order.status === "DRAFT" ? await findDuplicateOrders(organizationId, order.id) : [];
+    order.status === "DRAFT" ? await findDuplicateOrders(organizationId, order.id, db) : [];
   const [returns, returnable] = await Promise.all([
-    prisma.orderReturn.findMany({
+    db.orderReturn.findMany({
       where: { orderId: order.id, organizationId },
       include: {
         requestedBy: true,
@@ -62,7 +63,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       },
       orderBy: { createdAt: "asc" },
     }),
-    getReturnableQuantities(order.id),
+    getReturnableQuantities(order.id, db),
   ]);
   const returnableLines = order.items.map((item) => ({
     orderItemId: item.id,
@@ -75,7 +76,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     (order.status === "FULFILLED" || order.status === "PARTIALLY_FULFILLED") &&
     returnableLines.some((l) => l.returnable > 0);
 
-  const shipments = await prisma.shipment.findMany({
+  const shipments = await db.shipment.findMany({
     where: { orderId: order.id, organizationId },
     include: { items: { include: { orderItem: { include: { product: true } } } } },
     orderBy: { createdAt: "asc" },
@@ -98,15 +99,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const canShip = order.status === "PAID" || order.status === "PARTIALLY_FULFILLED";
 
   const [auditLog, activeProducts, stockMap] = await Promise.all([
-    prisma.auditLog.findMany({
+    db.auditLog.findMany({
       where: { organizationId, entity: "Order", entityId: order.id },
       include: { actor: true },
       orderBy: { createdAt: "asc" },
     }),
     order.status === "DRAFT" || order.status === "CONFIRMED"
-      ? prisma.product.findMany({ where: { organizationId, active: true }, orderBy: { name: "asc" } })
+      ? db.product.findMany({ where: { organizationId, active: true }, orderBy: { name: "asc" } })
       : Promise.resolve([]),
-    order.status === "DRAFT" ? getStockByProduct(organizationId) : Promise.resolve(new Map()),
+    order.status === "DRAFT" ? getStockByProduct(organizationId, db) : Promise.resolve(new Map()),
   ]);
 
   const productOptions = activeProducts.map((p) => {

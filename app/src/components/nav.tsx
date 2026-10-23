@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOutAction } from "@/app/(app)/actions";
+import { signOutAction, switchOrganizationAction } from "@/app/(app)/actions";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
@@ -17,10 +17,14 @@ export function Nav({
   orgName,
   userName,
   userRole,
+  organizations,
+  activeOrganizationId,
 }: {
   orgName: string;
   userName: string;
   userRole: string;
+  organizations: { id: string; name: string; role: string }[];
+  activeOrganizationId: string;
 }) {
   const pathname = usePathname();
 
@@ -28,6 +32,26 @@ export function Nav({
     <aside className="flex h-screen w-56 flex-none flex-col bg-ink text-paper">
       <div className="px-5 py-5">
         <span className="text-sm font-medium tracking-tight">{orgName}</span>
+        {organizations.length > 1 && (
+          <form action={(formData) => switchOrganizationAction(String(formData.get("organizationId")))} className="mt-2">
+            <label htmlFor="organization-switch" className="sr-only">
+              Switch organization
+            </label>
+            <select
+              id="organization-switch"
+              name="organizationId"
+              defaultValue={activeOrganizationId}
+              onChange={(e) => e.currentTarget.form?.requestSubmit()}
+              className="w-full rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs text-white outline-none focus:border-white/50"
+            >
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id} className="text-ink">
+                  {o.name} · {o.role === "OWNER" ? "Owner" : "Staff"}
+                </option>
+              ))}
+            </select>
+          </form>
+        )}
       </div>
 
       <nav className="flex-1 px-3">

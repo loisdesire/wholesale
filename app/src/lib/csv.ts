@@ -1,7 +1,7 @@
 import Papa from "papaparse";
 import { z } from "zod";
 import { StockMovementReason } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { tenantDb, transaction } from "@/lib/db";
 import { recordStockMovementTx } from "@/lib/stock";
 
 const CSV_COLUMNS = [
@@ -79,7 +79,7 @@ export async function parseProductsCsv(
     return { rows: [], fileError: "The file has no data rows." };
   }
 
-  const existingProducts = await prisma.product.findMany({
+  const existingProducts = await tenantDb(organizationId).product.findMany({
     where: { organizationId },
     select: { sku: true },
   });
@@ -169,7 +169,7 @@ export async function commitProductsImport(params: {
   let created = 0;
   let updated = 0;
 
-  await prisma.$transaction(async (tx) => {
+  await transaction(params.organizationId, async (tx) => {
     for (const row of toCommit) {
       if (row.action === "create") {
         const product = await tx.product.create({

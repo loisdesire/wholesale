@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { ConversationStatusBadge, OrderStatusBadge } from "@/components/status-badge";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
@@ -20,8 +20,9 @@ export default async function ConversationDetailPage({ params }: { params: Promi
   const { id } = await params;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
-  const conversation = await prisma.conversation.findFirst({
+  const conversation = await db.conversation.findFirst({
     where: { id, organizationId },
     include: {
       customer: true,

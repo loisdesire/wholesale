@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { getStockByProduct } from "@/lib/stock";
 import { NewOrderForm } from "./new-order-form";
 
@@ -12,16 +12,17 @@ export default async function NewOrderPage({
   const { customerId, conversationId } = await searchParams;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
   const [customers, products, stockMap, agreedRows] = await Promise.all([
-    prisma.customer.findMany({ where: { organizationId, mergedIntoId: null }, orderBy: { name: "asc" } }),
-    prisma.product.findMany({
+    db.customer.findMany({ where: { organizationId, mergedIntoId: null }, orderBy: { name: "asc" } }),
+    db.product.findMany({
       where: { organizationId, active: true },
       include: { priceTiers: { orderBy: { minQuantity: "asc" } } },
       orderBy: { name: "asc" },
     }),
-    getStockByProduct(organizationId),
-    prisma.customerPrice.findMany({ where: { organizationId } }),
+    getStockByProduct(organizationId, db),
+    db.customerPrice.findMany({ where: { organizationId } }),
   ]);
   const agreedPrices: Record<string, Record<string, number>> = {};
   for (const row of agreedRows) (agreedPrices[row.customerId] ??= {})[row.productId] = row.priceCents;

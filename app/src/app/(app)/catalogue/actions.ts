@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma, StockMovementReason } from "@prisma/client";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getProductStock, recordStockMovement, InsufficientStockError, StockInvariantError } from "@/lib/stock";
+import { tenantDb, transaction } from "@/lib/db";
+import { recordStockMovement, InsufficientStockError, StockInvariantError } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
 import { parseProductsCsv, commitProductsImport, type ImportRowResult } from "@/lib/csv";
 
@@ -105,7 +105,7 @@ export async function createProductAction(
 
   let productId: string;
   try {
-    const product = await prisma.product.create({
+    const product = await tenantDb(session.user.organizationId).product.create({
       data: {
         organizationId: session.user.organizationId,
         sku,
@@ -134,7 +134,7 @@ export async function createProductAction(
     action: "PRODUCT_CREATED",
     actorId: session.user.id,
     after: { sku, name, priceCents, active, openingStock },
-  });
+  }, tenantDb(session.user.organizationId));
 
   if (openingStock > 0) {
     await recordStockMovement({
@@ -176,7 +176,7 @@ export async function updateProductAction(
   const priceCents = Math.round(priceNaira * 100);
   const costCents = costNaira === "" || costNaira === undefined ? null : Math.round(costNaira * 100);
 
-  const existing = await prisma.product.findFirst({
+  const existing = await tenantDb(session.user.organizationId).product.findFirst({
     where: { id: productId, organizationId: session.user.organizationId },
   });
   if (!existing) {
@@ -184,7 +184,7 @@ export async function updateProductAction(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await transaction(session.user.organizationId, async (tx) => {
       await tx.product.update({
         where: { id: productId },
         data: {
@@ -220,7 +220,7 @@ export async function updateProductAction(
     actorId: session.user.id,
     before: { sku: existing.sku, name: existing.name, priceCents: existing.priceCents, active: existing.active },
     after: { sku, name, priceCents, active },
-  });
+  }, tenantDb(session.user.organizationId));
 
   revalidatePath("/catalogue");
   revalidatePath(`/catalogue/${productId}`);
@@ -259,7 +259,7 @@ export async function recordStockMovementAction(
     return { error: "Quantity must be greater than zero." };
   }
 
-  const product = await prisma.product.findFirst({
+  const product = await tenantDb(session.user.organizationId).product.findFirst({
     where: { id: productId, organizationId: session.user.organizationId },
   });
   if (!product) {
@@ -289,10 +289,6 @@ export async function recordStockMovementAction(
   revalidatePath(`/catalogue/${productId}`);
   revalidatePath("/catalogue");
   return { error: null };
-}
-
-export async function getCurrentStock(productId: string) {
-  return getProductStock(productId);
 }
 
 export type ImportPreviewState = {
@@ -350,7 +346,7 @@ export async function commitImportAction(
     action: "CATALOGUE_IMPORTED",
     actorId: session.user.id,
     after: { created: result.created, updated: result.updated },
-  });
+  }, tenantDb(session.user.organizationId));
 
   revalidatePath("/catalogue");
   return { error: null, created: result.created, updated: result.updated };

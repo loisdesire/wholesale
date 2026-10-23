@@ -10,5 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Creates the restricted role the app connects as (see docs/ISOLATION.md).
+      - ./docker/init-app-role.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
 volumes:
   pgdata:

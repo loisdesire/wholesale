@@ -18,8 +18,27 @@ export function testDatabaseUrl() {
   return url;
 }
 
+const APP_ROLE = "wholesale_app";
+const APP_PASSWORD = "wholesale_app";
+
+/**
+ * The restricted role (not a superuser, no BYPASSRLS) the application's queries
+ * run as during tests, so every domain test also exercises row-level security.
+ * Fixtures are written as the owner (testDatabaseUrl); only the code under test
+ * uses this.
+ */
+export function testAppDatabaseUrl() {
+  const env = loadEnv("test", APP_ROOT, "");
+  const explicit = process.env.TEST_APP_DATABASE_URL ?? env.TEST_APP_DATABASE_URL;
+  if (explicit) return explicit;
+  const url = new URL(testDatabaseUrl());
+  url.username = APP_ROLE;
+  url.password = APP_PASSWORD;
+  return url.toString();
+}
+
 export default function setup() {
-  const env = { ...process.env, DATABASE_URL: testDatabaseUrl() };
+  const env = { ...process.env, DATABASE_URL: testDatabaseUrl(), DIRECT_URL: testDatabaseUrl() };
   // Start every run from an empty schema, then apply the real migrations (so
   // they're exercised too). Safe only because testDatabaseUrl() has verified
   // this is a "_test" database.
@@ -30,4 +49,11 @@ export default function setup() {
     stdio: ["pipe", "inherit", "inherit"],
   });
   execSync("npx prisma migrate deploy", { cwd: APP_ROOT, env, stdio: "inherit" });
+  // The migration creates the role without a login; give it one for the tests.
+  execSync("npx prisma db execute --stdin --schema prisma/schema.prisma", {
+    cwd: APP_ROOT,
+    env,
+    input: `ALTER ROLE ${APP_ROLE} WITH LOGIN PASSWORD '${APP_PASSWORD}'`,
+    stdio: ["pipe", "inherit", "inherit"],
+  });
 }

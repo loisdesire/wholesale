@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
 import { previewMerge } from "@/lib/customer-merge";
 import { MergeForm } from "./merge-form";
@@ -17,6 +17,7 @@ export default async function MergePage({
   const { with: otherId, keep } = await searchParams;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
   const back = (
     <Link href={`/customers/${id}`} className="text-sm text-text-muted hover:text-ink">
@@ -34,8 +35,8 @@ export default async function MergePage({
   }
 
   const [thisCustomer, otherCustomer] = await Promise.all([
-    prisma.customer.findFirst({ where: { id, organizationId } }),
-    otherId ? prisma.customer.findFirst({ where: { id: otherId, organizationId } }) : null,
+    db.customer.findFirst({ where: { id, organizationId } }),
+    otherId ? db.customer.findFirst({ where: { id: otherId, organizationId } }) : null,
   ]);
   if (!thisCustomer || !otherCustomer) notFound();
 

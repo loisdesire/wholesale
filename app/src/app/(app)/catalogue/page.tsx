@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
 import { getStockBreakdownByProduct } from "@/lib/stock";
 import { ci } from "@/lib/search";
@@ -15,6 +15,7 @@ export default async function CataloguePage({
   const { q, page: pageParam } = await searchParams;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
   const query = q?.trim() ?? "";
   const page = Math.max(1, Number(pageParam) || 1);
@@ -32,18 +33,18 @@ export default async function CataloguePage({
   };
 
   const [products, totalCount] = await Promise.all([
-    prisma.product.findMany({
+    db.product.findMany({
       where,
       orderBy: { name: "asc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.product.count({ where }),
+    db.product.count({ where }),
   ]);
   // Only this page's products, not the whole catalogue's ledger.
   const stockMap = await getStockBreakdownByProduct(organizationId, {
     productIds: products.map((p) => p.id),
-  });
+  }, db);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const pageLink = (p: number) =>

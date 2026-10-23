@@ -12,8 +12,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // The application connects as a restricted role (no superuser, no BYPASSRLS) so
+  // row-level security is actually enforced; migrations run as the owner.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -102,15 +105,18 @@ enum StockMovementReason {
 }
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
+  id                    String   @id @default(cuid())
+  name                  String
   // Last order number issued (ORD-<n>). Incremented atomically when a draft is
   // created, so concurrent drafts can never be given the same reference.
-  orderSeq  Int      @default(1000)
-  returnSeq Int      @default(1000)
-  createdAt DateTime @default(now())
+  orderSeq              Int      @default(1000)
+  returnSeq             Int      @default(1000)
+  // The WhatsApp Cloud API phone number id this organization receives messages on,
+  // so an inbound webhook can be routed to the right tenant.
+  whatsappPhoneNumberId String?  @unique
+  createdAt             DateTime @default(now())
 
-  users          User[]
+  memberships    Membership[]
   products       Product[]
   stockMovements StockMovement[]
   customers      Customer[]
@@ -121,15 +127,27 @@ model Organization {
   shipments      Shipment[]
 }
 
-model User {
+// A user belongs to one or more organizations, with a role in each. The session
+// carries the active one; it is re-checked against this table on every request.
+model Membership {
   id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  email          String       @unique
-  passwordHash   String
-  name           String
   role           UserRole     @default(STAFF)
   createdAt      DateTime     @default(now())
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
 
   assignedConversations Conversation[]  @relation("AssignedStaff")
   createdStockMovements StockMovement[]
@@ -137,6 +155,7 @@ model User {
   requestedReturns      OrderReturn[]   @relation("ReturnRequestedBy")
   decidedReturns        OrderReturn[]   @relation("ReturnDecidedBy")
   auditLogs             AuditLog[]
+  memberships           Membership[]
 }
 
 model Product {

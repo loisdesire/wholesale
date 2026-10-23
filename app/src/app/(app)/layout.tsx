@@ -4,18 +4,24 @@ import { Nav } from "@/components/nav";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const session = await auth();
-  const organization = session?.user.organizationId
-    ? await prisma.organization.findUnique({
-        where: { id: session.user.organizationId },
+  // The organizations this user belongs to (identity data, not tenant data).
+  const memberships = session
+    ? await prisma.membership.findMany({
+        where: { userId: session.user.id },
+        include: { organization: true },
+        orderBy: { createdAt: "asc" },
       })
-    : null;
+    : [];
+  const active = memberships.find((m) => m.organizationId === session?.user.organizationId);
 
   return (
     <div className="flex min-h-screen">
       <Nav
-        orgName={organization?.name ?? "Adaeze Wholesale"}
+        orgName={active?.organization.name ?? "Wholesale"}
         userName={session?.user.name ?? ""}
         userRole={session?.user.role ?? "STAFF"}
+        organizations={memberships.map((m) => ({ id: m.organizationId, name: m.organization.name, role: m.role }))}
+        activeOrganizationId={session?.user.organizationId ?? ""}
       />
       <main className="flex-1 overflow-y-auto px-10 py-8">{children}</main>
     </div>

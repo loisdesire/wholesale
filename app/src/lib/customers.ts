@@ -1,5 +1,5 @@
 import { Prisma, UserRole } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { tenantDb, transaction, type DbClient } from "@/lib/db";
 import { recordAudit } from "@/lib/audit";
 import { displayPhone, phoneKeyOf, phonesLookRelated } from "@/lib/phone";
 
@@ -31,7 +31,7 @@ const MAX_MERGE_CHAIN = 10;
  * Lets a message from a merged-away number land on the right person.
  */
 export async function resolveSurvivor(
-  client: TxClient | typeof prisma,
+  client: DbClient,
   customer: Prisma.CustomerGetPayload<object>
 ): Promise<Prisma.CustomerGetPayload<object>> {
   let current = customer;
@@ -58,16 +58,16 @@ export async function createCustomer(params: {
   const key = phoneKeyOf(params.phone);
   if (!key) throw new CustomerError("Enter a valid phone number, including the country code if it isn't Nigerian.");
 
-  const existing = await prisma.customer.findUnique({
+  const existing = await tenantDb(params.organizationId).customer.findUnique({
     where: { organizationId_phoneKey: { organizationId: params.organizationId, phoneKey: key } },
   });
   if (existing) {
-    const survivor = await resolveSurvivor(prisma, existing);
+    const survivor = await resolveSurvivor(tenantDb(params.organizationId), existing);
     throw new DuplicateCustomerError(survivor.id, survivor.name);
   }
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    return await transaction(params.organizationId, async (tx) => {
       const customer = await tx.customer.create({
         data: {
           organizationId: params.organizationId,
@@ -94,11 +94,11 @@ export async function createCustomer(params: {
   } catch (err) {
     // Lost a race with a concurrent create of the same number.
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      const winner = await prisma.customer.findUnique({
+      const winner = await tenantDb(params.organizationId).customer.findUnique({
         where: { organizationId_phoneKey: { organizationId: params.organizationId, phoneKey: key } },
       });
       if (winner) {
-        const survivor = await resolveSurvivor(prisma, winner);
+        const survivor = await resolveSurvivor(tenantDb(params.organizationId), winner);
         throw new DuplicateCustomerError(survivor.id, survivor.name);
       }
     }
@@ -146,7 +146,7 @@ export async function updateCustomer(params: {
   email: string | null;
   notes: string | null;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const before = await loadCustomer(tx, params.organizationId, params.customerId);
     const next = {
       name: cleanText(params.name),
@@ -181,7 +181,7 @@ export async function addCustomerAddress(params: {
 }) {
   const text = params.text.trim();
   if (!text) throw new CustomerError("Enter the address.");
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const customer = await loadCustomer(tx, params.organizationId, params.customerId);
     const hasAny = (await tx.customerAddress.count({ where: { customerId: customer.id } })) > 0;
     const address = await tx.customerAddress.create({
@@ -214,7 +214,7 @@ export async function setDefaultAddress(params: {
   addressId: string;
   actorId: string;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const customer = await loadCustomer(tx, params.organizationId, params.customerId);
     const address = await tx.customerAddress.findFirst({ where: { id: params.addressId, customerId: customer.id } });
     if (!address) throw new CustomerError("Address not found.");
@@ -240,7 +240,7 @@ export async function removeCustomerAddress(params: {
   addressId: string;
   actorId: string;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const customer = await loadCustomer(tx, params.organizationId, params.customerId);
     const address = await tx.customerAddress.findFirst({ where: { id: params.addressId, customerId: customer.id } });
     if (!address) throw new CustomerError("Address not found.");
@@ -276,7 +276,7 @@ export async function setCustomerPrice(params: {
   if (!Number.isInteger(params.priceCents) || params.priceCents <= 0) {
     throw new CustomerError("The agreed price must be greater than zero.");
   }
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const customer = await loadCustomer(tx, params.organizationId, params.customerId);
     const product = await tx.product.findFirst({ where: { id: params.productId, organizationId: params.organizationId } });
     if (!product) throw new CustomerError("Product not found.");
@@ -318,7 +318,7 @@ export async function removeCustomerPrice(params: {
   actorRole: UserRole;
 }) {
   requireOwner(params.actorRole, "remove an agreed price");
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const customer = await loadCustomer(tx, params.organizationId, params.customerId);
     const existing = await tx.customerPrice.findUnique({
       where: { customerId_productId: { customerId: customer.id, productId: params.productId } },
@@ -345,7 +345,7 @@ export async function getCustomerPriceMap(
   organizationId: string,
   customerId: string,
   productIds: string[],
-  client: TxClient | typeof prisma = prisma
+  client: DbClient
 ) {
   const rows = await client.customerPrice.findMany({
     where: { organizationId, customerId, productId: { in: productIds } },
@@ -364,7 +364,8 @@ export type DuplicateCandidate = {
  * deliberately labelled weak because different people share names.
  */
 export async function findPossibleDuplicates(organizationId: string, customerId: string): Promise<DuplicateCandidate[]> {
-  const customer = await prisma.customer.findFirst({ where: { id: customerId, organizationId } });
+  const db = tenantDb(organizationId);
+  const customer = await db.customer.findFirst({ where: { id: customerId, organizationId } });
   if (!customer) throw new CustomerError("Customer not found.");
 
   const conditions: Prisma.CustomerWhereInput[] = [];
@@ -373,7 +374,7 @@ export async function findPossibleDuplicates(organizationId: string, customerId:
   if (customer.name) conditions.push({ name: { equals: customer.name.trim(), mode: "insensitive" } });
   if (conditions.length === 0) return [];
 
-  const others = await prisma.customer.findMany({
+  const others = await db.customer.findMany({
     where: { organizationId, id: { not: customer.id }, mergedIntoId: null, OR: conditions },
     take: 20,
   });

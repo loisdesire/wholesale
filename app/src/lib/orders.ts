@@ -1,6 +1,5 @@
 import { OrderStatus, StockMovementReason, UserRole, type Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import { transaction } from "@/lib/db";
+import { transaction, type DbClient } from "@/lib/db";
 import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
 import { resolveUnitPriceCents } from "@/lib/pricing";
@@ -321,7 +320,7 @@ function itemSignature(items: { productId: string; quantity: number }[]) {
 export async function findDuplicateOrders(
   organizationId: string,
   orderId: string,
-  client: TxClient | typeof prisma = prisma
+  client: DbClient
 ) {
   const order = await client.order.findFirst({
     where: { id: orderId, organizationId },

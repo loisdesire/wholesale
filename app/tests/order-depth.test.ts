@@ -30,12 +30,12 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
     otherOrganizationId = (await prisma.organization.create({ data: { name: "Other Depth Org" } })).id;
     ownerId = (
       await prisma.user.create({
-        data: { organizationId, email: "depth-owner@example.com", passwordHash: "x", name: "Owner", role: "OWNER" },
+        data: { memberships: { create: { organizationId, role: "OWNER" } }, email: "depth-owner@example.com", passwordHash: "x", name: "Owner" },
       })
     ).id;
     staffId = (
       await prisma.user.create({
-        data: { organizationId, email: "depth-staff@example.com", passwordHash: "x", name: "Staff", role: "STAFF" },
+        data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "depth-staff@example.com", passwordHash: "x", name: "Staff" },
       })
     ).id;
   });
@@ -171,13 +171,13 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       const first = await draft(buyer, [{ productId: a, quantity: 3 }, { productId: b, quantity: 2 }]);
       const repeat = await draft(buyer, [{ productId: b, quantity: 2 }, { productId: a, quantity: 3 }]); // order of lines doesn't matter
 
-      expect((await findDuplicateOrders(organizationId, repeat.id)).map((d) => d.reference)).toEqual([first.reference]);
+      expect((await findDuplicateOrders(organizationId, repeat.id, prisma)).map((d) => d.reference)).toEqual([first.reference]);
 
       const differentQty = await draft(buyer, [{ productId: a, quantity: 4 }, { productId: b, quantity: 2 }]);
       const differentItems = await draft(buyer, [{ productId: a, quantity: 3 }]);
       const otherBuyer = await draft(await customer(), [{ productId: a, quantity: 3 }, { productId: b, quantity: 2 }]);
       for (const o of [differentQty, differentItems, otherBuyer]) {
-        expect(await findDuplicateOrders(organizationId, o.id), o.reference).toEqual([]);
+        expect(await findDuplicateOrders(organizationId, o.id, prisma), o.reference).toEqual([]);
       }
     });
 
@@ -190,7 +190,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       await cancelOrder(args(cancelled.id));
 
       const fresh = await draft(buyer, [{ productId: p, quantity: 1 }]);
-      expect(await findDuplicateOrders(organizationId, fresh.id)).toEqual([]);
+      expect(await findDuplicateOrders(organizationId, fresh.id, prisma)).toEqual([]);
     });
 
     it("blocks confirming a repeat until a person says it's intended, and records that they did", async () => {
@@ -205,7 +205,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       expect(error.references).toEqual([first.reference]);
       // Nothing happened: still a draft, nothing reserved.
       expect((await prisma.order.findUniqueOrThrow({ where: { id: repeat.id } })).status).toBe("DRAFT");
-      expect(await getStockBreakdown(p)).toMatchObject({ reserved: 0 });
+      expect(await getStockBreakdown(p, prisma)).toMatchObject({ reserved: 0 });
 
       await confirmOrder({ ...args(repeat.id), allowDuplicate: true });
       expect((await prisma.order.findUniqueOrThrow({ where: { id: repeat.id } })).status).toBe("CONFIRMED");
@@ -231,7 +231,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       for (const r of results.filter((r) => r.status === "rejected")) {
         expect((r as PromiseRejectedResult).reason).toBeInstanceOf(OrderStateError);
       }
-      expect(await getStockBreakdown(p)).toEqual({ physical: 10, reserved: 4, damaged: 0, available: 6 });
+      expect(await getStockBreakdown(p, prisma)).toEqual({ physical: 10, reserved: 4, damaged: 0, available: 6 });
     });
 
     it("marking one order paid twice at once only happens once", async () => {
@@ -260,7 +260,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       await expect(cancelOrder(args(order.id, staffId))).rejects.toBeInstanceOf(ReturnPermissionError); // no role = not an owner
 
       expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe("PAID");
-      expect(await getStockBreakdown(productId)).toMatchObject({ reserved: 3 });
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ reserved: 3 });
       expect(await prisma.orderReturn.count({ where: { orderId: order.id } })).toBe(0);
     });
 
@@ -269,7 +269,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       await cancelOrder({ ...args(order.id), actorRole: "OWNER" });
 
       expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe("CANCELLED");
-      expect(await getStockBreakdown(productId)).toEqual({ physical: 20, reserved: 0, damaged: 0, available: 20 });
+      expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 20, reserved: 0, damaged: 0, available: 20 });
 
       const refund = await prisma.orderReturn.findFirstOrThrow({ where: { orderId: order.id } });
       expect(refund).toMatchObject({
@@ -326,7 +326,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
           items: [{ orderItemId: (await prisma.orderItem.findFirstOrThrow({ where: { orderId: order.id } })).id, quantity: 1, condition: "RESELLABLE" }],
         })
       ).rejects.toThrow(/orders that have shipped/);
-      expect(await getStockBreakdown(productId)).toMatchObject({ physical: 20, available: 20 });
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ physical: 20, available: 20 });
     });
 
     it("cancelling the same paid order from several places at once creates one refund", async () => {
@@ -336,7 +336,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       );
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
       expect(await prisma.orderReturn.count({ where: { orderId: order.id } })).toBe(1);
-      expect(await getStockBreakdown(productId)).toMatchObject({ reserved: 0, available: 20 }); // released once, not four times
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ reserved: 0, available: 20 }); // released once, not four times
     });
 
     it("a fulfilled order can't be cancelled — it goes through a return — and a cancelled one stays cancelled", async () => {
@@ -356,9 +356,9 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
       await cancelOrder(args(d.id, staffId)); // staff may cancel an unpaid order
       const c = await draft(buyer, [{ productId, quantity: 3 }]);
       await confirmOrder(args(c.id));
-      expect(await getStockBreakdown(productId)).toMatchObject({ reserved: 3 });
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ reserved: 3 });
       await cancelOrder(args(c.id, staffId));
-      expect(await getStockBreakdown(productId)).toMatchObject({ reserved: 0, available: 10 });
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ reserved: 0, available: 10 });
       expect(await prisma.orderReturn.count({ where: { orderId: { in: [d.id, c.id] } } })).toBe(0);
     });
   });

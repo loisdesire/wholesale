@@ -34,6 +34,8 @@ export type InboundWhatsAppMessage = {
   from: string;
   contactName?: string;
   timestamp: Date;
+  /** The business phone number the message was sent to (Meta's metadata.phone_number_id) — identifies the tenant. */
+  phoneNumberId?: string;
   /** Human-readable body. Non-text message types get a bracketed placeholder — never fabricated content. */
   body: string;
 };
@@ -61,6 +63,7 @@ export function parseWebhookPayload(body: unknown): InboundWhatsAppMessage[] {
       const value = (change as { field?: string; value?: Record<string, unknown> })?.value;
       if (!value || (change as { field?: string }).field !== "messages") continue;
 
+      const phoneNumberId = (value.metadata as { phone_number_id?: string } | undefined)?.phone_number_id;
       const contacts = (value.contacts as { profile?: { name?: string }; wa_id?: string }[]) ?? [];
       const nameByWaId = new Map(contacts.map((c) => [c.wa_id, c.profile?.name]));
 
@@ -85,6 +88,7 @@ export function parseWebhookPayload(body: unknown): InboundWhatsAppMessage[] {
           from,
           contactName: nameByWaId.get(from),
           timestamp,
+          phoneNumberId: phoneNumberId ? String(phoneNumberId) : undefined,
           body,
         });
       }
@@ -101,9 +105,14 @@ export class WhatsAppSendError extends Error {}
  * callers must not record a message as sent unless this resolves, per the
  * principle that the app never claims an action it hasn't confirmed.
  */
-export async function sendWhatsAppTextMessage(to: string, body: string): Promise<{ messageId: string }> {
+export async function sendWhatsAppTextMessage(
+  to: string,
+  body: string,
+  /** The organization's own registered number; falls back to the single-tenant env setting. */
+  organizationPhoneNumberId?: string | null
+): Promise<{ messageId: string }> {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const phoneNumberId = organizationPhoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!accessToken || !phoneNumberId) {
     throw new WhatsAppSendError(
       "WhatsApp isn't configured (missing WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)."

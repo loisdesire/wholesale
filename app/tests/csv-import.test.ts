@@ -11,7 +11,7 @@ describe("CSV catalogue import/export", () => {
     const org = await prisma.organization.create({ data: { name: "CSV Test Org" } });
     organizationId = org.id;
     const user = await prisma.user.create({
-      data: { organizationId, email: "csv-test@example.com", passwordHash: "x", name: "CSV Tester" },
+      data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "csv-test@example.com", passwordHash: "x", name: "CSV Tester" },
     });
     userId = user.id;
 
@@ -83,7 +83,7 @@ describe("CSV catalogue import/export", () => {
       where: { organizationId, sku: "CSV-COMMIT-1" },
     });
     expect(product.priceCents).toBe(9999);
-    expect(await getProductStock(product.id)).toBe(7);
+    expect(await getProductStock(product.id, prisma)).toBe(7);
 
     const badProduct = await prisma.product.findFirst({ where: { organizationId, sku: "" } });
     expect(badProduct).toBeNull();
@@ -92,7 +92,7 @@ describe("CSV catalogue import/export", () => {
   it("never touches stock on an update row, even if the file carries an opening_stock column", async () => {
     const before = await getProductStock(
       (await prisma.product.findFirstOrThrow({ where: { organizationId, sku: "CSV-EXISTING" } })).id
-    );
+    , prisma);
 
     const csv = "sku,name,price,opening_stock\nCSV-EXISTING,Existing Product Updated,60,999";
     const { rows } = await parseProductsCsv(organizationId, csv);
@@ -100,7 +100,7 @@ describe("CSV catalogue import/export", () => {
 
     const product = await prisma.product.findFirstOrThrow({ where: { organizationId, sku: "CSV-EXISTING" } });
     expect(product.name).toBe("Existing Product Updated");
-    expect(await getProductStock(product.id)).toBe(before); // unchanged
+    expect(await getProductStock(product.id, prisma)).toBe(before); // unchanged
   });
 
   it("round-trips through export and re-import without data loss", async () => {

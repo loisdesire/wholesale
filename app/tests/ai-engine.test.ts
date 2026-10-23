@@ -28,7 +28,7 @@ describe("runAIAssist", () => {
     organizationId = org.id;
 
     const user = await prisma.user.create({
-      data: { organizationId, email: "ai-engine-test@example.com", passwordHash: "x", name: "Test Staff" },
+      data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "ai-engine-test@example.com", passwordHash: "x", name: "Test Staff" },
     });
     userId = user.id;
 

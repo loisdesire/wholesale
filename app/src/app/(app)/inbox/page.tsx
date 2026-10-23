@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { formatRelativeTime } from "@/lib/format";
 import { ConversationStatusBadge } from "@/components/status-badge";
 
 export default async function InboxPage() {
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
-  const conversations = await prisma.conversation.findMany({
+  const conversations = await db.conversation.findMany({
     where: { organizationId },
     include: {
       customer: true,

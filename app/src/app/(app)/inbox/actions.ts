@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { tenantDb, transaction } from "@/lib/db";
 import { sendStaffReply, markConversationResolved, WhatsAppSendError } from "@/lib/inbox";
 import { sendWhatsAppTextMessage } from "@/lib/whatsapp";
 import { runAIAssist, isAIConfigured } from "@/lib/ai/engine";
@@ -39,7 +40,7 @@ export async function sendReplyAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid message." };
   }
 
-  const conversation = await prisma.conversation.findFirst({
+  const conversation = await tenantDb(session.user.organizationId).conversation.findFirst({
     where: { id: conversationId, organizationId: session.user.organizationId },
     include: { customer: true },
   });
@@ -86,7 +87,7 @@ export async function runAIAssistAction(conversationId: string): Promise<AIAssis
     return { error: "AI assist isn't configured (missing ANTHROPIC_API_KEY)." };
   }
 
-  const conversation = await prisma.conversation.findFirst({
+  const conversation = await tenantDb(session.user.organizationId).conversation.findFirst({
     where: { id: conversationId, organizationId: session.user.organizationId },
     include: { customer: true },
   });
@@ -106,8 +107,13 @@ export async function runAIAssistAction(conversationId: string): Promise<AIAssis
 
   let sent = false;
   try {
-    const { messageId } = await sendWhatsAppTextMessage(conversation.customer.phone, result.replyText);
-    await prisma.$transaction(async (tx) => {
+    const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
+    const { messageId } = await sendWhatsAppTextMessage(
+      conversation.customer.phone,
+      result.replyText,
+      organization?.whatsappPhoneNumberId
+    );
+    await transaction(session.user.organizationId, async (tx) => {
       await tx.message.create({
         data: {
           conversationId,

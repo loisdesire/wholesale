@@ -1,5 +1,5 @@
 import { OrderStatus, type Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 
 /**
  * Prisma's `contains` becomes LIKE '%…%' without escaping, so a user typing "%"
@@ -86,24 +86,25 @@ export async function searchEverything(organizationId: string, query: string, li
   const q = query.trim();
   if (q.length < 2) return { orders: [], customers: [], products: [], returns: [] };
 
+  const db = tenantDb(organizationId);
   const [orders, customers, products, returns] = await Promise.all([
-    prisma.order.findMany({
+    db.order.findMany({
       where: buildOrderWhere(organizationId, { q }),
       include: { customer: true },
       orderBy: { createdAt: "desc" },
       take: limit,
     }),
-    prisma.customer.findMany({
+    db.customer.findMany({
       where: { organizationId, mergedIntoId: null, ...customerMatch(q) },
       orderBy: { name: "asc" },
       take: limit,
     }),
-    prisma.product.findMany({
+    db.product.findMany({
       where: { organizationId, OR: [{ name: ci(q) }, { sku: ci(q) }] },
       orderBy: { name: "asc" },
       take: limit,
     }),
-    prisma.orderReturn.findMany({
+    db.orderReturn.findMany({
       where: { organizationId, OR: [{ reference: ci(q) }, { reason: ci(q) }, { customer: customerMatch(q) }] },
       include: { customer: true, order: true },
       orderBy: { createdAt: "desc" },

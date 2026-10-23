@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { buildOrderWhere, parseOrderStatus } from "@/lib/search";
@@ -24,6 +24,7 @@ export default async function OrdersPage({
   const params = await searchParams;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
   const filters = {
     q: params.q?.trim() || undefined,
@@ -36,14 +37,14 @@ export default async function OrdersPage({
   const filtered = Boolean(filters.q || filters.status || filters.from || filters.to);
 
   const [orders, totalCount] = await Promise.all([
-    prisma.order.findMany({
+    db.order.findMany({
       where,
       include: { customer: true, items: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.order.count({ where }),
+    db.order.count({ where }),
   ]);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const link = (overrides: Record<string, string | undefined>) => {

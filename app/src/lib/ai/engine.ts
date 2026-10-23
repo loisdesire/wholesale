@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { createDraftOrder, OrderStateError } from "@/lib/orders";
 import { searchCatalogue } from "./catalogue-search";
 
@@ -82,7 +82,7 @@ export async function runAIAssist(params: {
     throw new Error("AI assist isn't configured (missing ANTHROPIC_API_KEY).");
   }
 
-  const conversation = await prisma.conversation.findFirstOrThrow({
+  const conversation = await tenantDb(params.organizationId).conversation.findFirstOrThrow({
     where: { id: params.conversationId, organizationId: params.organizationId },
     include: { messages: { orderBy: { createdAt: "desc" }, take: 10 }, customer: true },
   });

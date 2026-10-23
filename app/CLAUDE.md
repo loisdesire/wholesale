@@ -29,6 +29,25 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
 - Every tenant-owned table carries `organizationId`, even though only one org exists right now —
   this is load-bearing for Phase 3 multi-tenancy per VISION.md. All queries must filter by the
   signed-in user's `organizationId` from the session; there is no DB-level tenant isolation yet.
+- **Tenant isolation is enforced by Postgres row-level security — read `docs/ISOLATION.md`.**
+  Tenant data is reached ONLY through `tenantDb(organizationId)` (single queries) or
+  `transaction(organizationId, fn)` (interactive transactions) from `src/lib/db.ts`; they set the
+  `app.organization_id` the RLS policies check. The bare `prisma` export is the root client for
+  identity tables only (`User`, `Membership`, `Organization`) — through it a tenant table looks empty.
+  `tests/isolation.test.ts` scans `src/` and fails if `prisma.<tenant model>` appears. Helpers that
+  take a `client` (`recordAudit`, `getStockBreakdown`, `getReturnableQuantities`, …) have no default
+  on purpose: pass the tenant client or a transaction. **A new table needs `organizationId` + an RLS
+  migration** (the coverage test fails until it has one).
+- **The app connects as `wholesale_app`** (`DATABASE_URL`), a role with no superuser/BYPASSRLS —
+  those skip RLS silently. Migrations and the seed use `DIRECT_URL` (the owner). The test suite runs
+  application queries as the restricted role (`TENANT_DATABASE_URL`) and fixtures as the owner.
+  `npm run db:check-isolation` verifies the connection; production startup refuses to run without it.
+- **Users belong to organizations through `Membership`** (role per organization). The session's
+  organization + role are re-read from it on every request; never trust them from the token.
+- **WhatsApp webhooks route by `Organization.whatsappPhoneNumberId`**, never "the first organization".
+- **Forms use `useSubmitAction`** (`src/lib/use-submit-action.ts`), not `useActionState` + `<form
+  action>`: React 19 clears every uncontrolled input after a failed submit, and a retry then submits
+  blanks. If you put your own `onSubmit` on such a form, call `formProps.onSubmit(e)` from it.
 - **Stock is a ledger.** `StockMovement` rows are the only source of truth for inventory. Never add
   an editable quantity column to `Product`.
 - **Stock figures** — each movement stores `physicalDelta` / `reservedDelta` / `damagedDelta`;
@@ -123,8 +142,9 @@ npm run db:studio     # prisma studio
 npm run test          # vitest — runs against a throwaway Postgres database (TEST_DATABASE_URL), never dev data
 ```
 
-Dev login (from seed): owner `flomglobal@gmail.com` / `owner-dev-pass`,
-staff `chidinma@adaezewholesale.ng` / `staff-dev-pass`.
+Dev login (from seed): owner `flomglobal@gmail.com` / `owner-dev-pass` (also STAFF in the second
+organization, Lagos Spice Traders), staff `chidinma@adaezewholesale.ng` / `staff-dev-pass`, and
+`ife@spicetraders.ng` / `spice-dev-pass` (owner of Lagos Spice only — can't see Adaeze's data).
 
 ## External integrations (not configured in this environment)
 
@@ -148,8 +168,9 @@ customer-merge logic.
 Work from `app/` (this file lives here, not at the repo root).
 
 ```
-docker compose up -d db     # Postgres 16 on :5432 (or point DATABASE_URL at any Postgres)
+docker compose up -d db     # Postgres 16 on :5432, plus the restricted `wholesale_app` role
 cp .env.example .env        # then set AUTH_SECRET: openssl rand -base64 32
+                            # (DATABASE_URL = restricted app role, DIRECT_URL = owner; see docs/ISOLATION.md)
 npm install
 npx prisma migrate deploy
 npm run db:seed

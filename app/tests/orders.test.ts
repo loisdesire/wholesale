@@ -26,7 +26,7 @@ describe("order lifecycle", () => {
     organizationId = org.id;
 
     const user = await prisma.user.create({
-      data: { organizationId, email: "order-test@example.com", passwordHash: "x", name: "Test Staff" },
+      data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "order-test@example.com", passwordHash: "x", name: "Test Staff" },
     });
     userId = user.id;
 
@@ -103,14 +103,14 @@ describe("order lifecycle", () => {
   });
 
   it("does not touch stock while an order is still a draft", async () => {
-    const before = await getProductStock(productA);
+    const before = await getProductStock(productA, prisma);
     await createDraftOrder({
       organizationId,
       customerId,
       createdById: userId,
       items: [{ productId: productA, quantity: 3 }],
     });
-    expect(await getProductStock(productA)).toBe(before);
+    expect(await getProductStock(productA, prisma)).toBe(before);
   });
 
   it("reserves stock atomically on confirm — all items or none", async () => {
@@ -126,22 +126,22 @@ describe("order lifecycle", () => {
       ],
     });
 
-    const stockABefore = await getProductStock(productA);
-    const stockBBefore = await getProductStock(productB);
+    const stockABefore = await getProductStock(productA, prisma);
+    const stockBBefore = await getProductStock(productB, prisma);
 
     await expect(
       confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true })
     ).rejects.toBeInstanceOf(InsufficientStockError);
 
-    expect(await getProductStock(productA)).toBe(stockABefore);
-    expect(await getProductStock(productB)).toBe(stockBBefore);
+    expect(await getProductStock(productA, prisma)).toBe(stockABefore);
+    expect(await getProductStock(productB, prisma)).toBe(stockBBefore);
 
     const reloaded = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
     expect(reloaded.status).toBe("DRAFT");
   });
 
   it("moves draft -> confirmed -> paid -> fulfilled, reserving and never releasing stock along the way", async () => {
-    const stockBefore = await getProductStock(productA);
+    const stockBefore = await getProductStock(productA, prisma);
     const order = await createDraftOrder({
       organizationId,
       customerId,
@@ -150,7 +150,7 @@ describe("order lifecycle", () => {
     });
 
     await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
-    expect(await getProductStock(productA)).toBe(stockBefore - 1);
+    expect(await getProductStock(productA, prisma)).toBe(stockBefore - 1);
 
     await markOrderPaid({ organizationId, orderId: order.id, actorId: userId });
     await markOrderFulfilled({ organizationId, orderId: order.id, actorId: userId });
@@ -161,7 +161,7 @@ describe("order lifecycle", () => {
     expect(reloaded.paidAt).not.toBeNull();
     expect(reloaded.fulfilledAt).not.toBeNull();
     // Stock was only ever decremented once, at confirmation.
-    expect(await getProductStock(productA)).toBe(stockBefore - 1);
+    expect(await getProductStock(productA, prisma)).toBe(stockBefore - 1);
   });
 
   it("rejects out-of-order transitions", async () => {
@@ -181,7 +181,7 @@ describe("order lifecycle", () => {
   });
 
   it("releases reserved stock when a confirmed order is cancelled", async () => {
-    const stockBefore = await getProductStock(productA);
+    const stockBefore = await getProductStock(productA, prisma);
     const order = await createDraftOrder({
       organizationId,
       customerId,
@@ -190,10 +190,10 @@ describe("order lifecycle", () => {
     });
 
     await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
-    expect(await getProductStock(productA)).toBe(stockBefore - 1);
+    expect(await getProductStock(productA, prisma)).toBe(stockBefore - 1);
 
     await cancelOrder({ organizationId, orderId: order.id, actorId: userId });
-    expect(await getProductStock(productA)).toBe(stockBefore);
+    expect(await getProductStock(productA, prisma)).toBe(stockBefore);
 
     const reloaded = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
     expect(reloaded.status).toBe("CANCELLED");

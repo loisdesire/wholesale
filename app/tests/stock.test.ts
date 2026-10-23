@@ -29,11 +29,11 @@ describe("stock ledger", () => {
       reason: StockMovementReason.PURCHASE_RECEIVED,
     });
 
-    expect(await getProductStock(productId)).toBe(10);
+    expect(await getProductStock(productId, prisma)).toBe(10);
   });
 
   it("rejects a movement that would drive stock negative, and records nothing", async () => {
-    const before = await getProductStock(productId);
+    const before = await getProductStock(productId, prisma);
 
     await expect(
       recordStockMovement({
@@ -44,7 +44,7 @@ describe("stock ledger", () => {
       })
     ).rejects.toBeInstanceOf(InsufficientStockError);
 
-    expect(await getProductStock(productId)).toBe(before);
+    expect(await getProductStock(productId, prisma)).toBe(before);
   });
 
   it("current stock always equals the sum of recorded movements", async () => {
@@ -63,7 +63,7 @@ describe("stock ledger", () => {
 
     const movements = await prisma.stockMovement.findMany({ where: { productId } });
     const sum = movements.reduce((total, m) => total + m.physicalDelta - m.reservedDelta - m.damagedDelta, 0);
-    expect(await getProductStock(productId)).toBe(sum);
+    expect(await getProductStock(productId, prisma)).toBe(sum);
   });
 
   it("never oversells under concurrent fulfilment of the last unit", async () => {
@@ -105,7 +105,7 @@ describe("stock ledger", () => {
     expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(InsufficientStockError);
 
     // Never negative — exactly one sale went through against the one unit.
-    expect(await getProductStock(lastUnitProduct.id)).toBe(0);
+    expect(await getProductStock(lastUnitProduct.id, prisma)).toBe(0);
   });
 
   it("admits exactly as many concurrent reservations as there is stock for (real Postgres connections)", async () => {
@@ -134,6 +134,6 @@ describe("stock ledger", () => {
     for (const a of attempts.filter((a) => a.status === "rejected")) {
       expect((a as PromiseRejectedResult).reason).toBeInstanceOf(InsufficientStockError);
     }
-    expect(await getProductStock(product.id)).toBe(0);
+    expect(await getProductStock(product.id, prisma)).toBe(0);
   });
 });

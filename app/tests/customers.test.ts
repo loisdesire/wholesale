@@ -64,11 +64,11 @@ describe("customer records", () => {
     organizationId = (await prisma.organization.create({ data: { name: "Customers Org" } })).id;
     otherOrganizationId = (await prisma.organization.create({ data: { name: "Other Customers Org" } })).id;
     owner = await prisma.user.create({
-      data: { organizationId, email: "cust-owner@example.com", passwordHash: "x", name: "Owner", role: "OWNER" },
+      data: { memberships: { create: { organizationId, role: "OWNER" } }, email: "cust-owner@example.com", passwordHash: "x", name: "Owner" },
     });
     staffId = (
       await prisma.user.create({
-        data: { organizationId, email: "cust-staff@example.com", passwordHash: "x", name: "Staff", role: "STAFF" },
+        data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "cust-staff@example.com", passwordHash: "x", name: "Staff" },
       })
     ).id;
   });

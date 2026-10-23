@@ -3,7 +3,9 @@ import bcrypt from "bcryptjs";
 import { movementEffects } from "../src/lib/stock-effects";
 import { phoneKeyOf } from "../src/lib/phone";
 
-const prisma = new PrismaClient();
+// The seed writes tenant tables directly, with no tenant context, so it must connect as
+// the database owner (DIRECT_URL) — the application's restricted role can't, by design.
+const prisma = new PrismaClient({ datasources: { db: { url: process.env.DIRECT_URL ?? process.env.DATABASE_URL } } });
 
 // Builds a ledger row the same way the app does, so seeded stock figures
 // (physical / reserved / damaged) obey the same rules as real movements.
@@ -34,11 +36,18 @@ async function main() {
   await prisma.priceTier.deleteMany();
   await prisma.product.deleteMany();
   await prisma.customer.deleteMany();
+  await prisma.membership.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
 
   const org = await prisma.organization.create({
-    data: { name: "Adaeze Fashion Wholesale", orderSeq: 1003, returnSeq: 1001 },
+    data: {
+      name: "Adaeze Fashion Wholesale",
+      orderSeq: 1003,
+      returnSeq: 1001,
+      // The WhatsApp business number this organization receives on (Meta's phone_number_id).
+      whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "100000000000001",
+    },
   });
 
   const ownerPasswordHash = await bcrypt.hash("owner-dev-pass", 10);
@@ -46,21 +55,19 @@ async function main() {
 
   const owner = await prisma.user.create({
     data: {
-      organizationId: org.id,
       email: "flomglobal@gmail.com",
       passwordHash: ownerPasswordHash,
       name: "Lois Flomo",
-      role: "OWNER",
+      memberships: { create: { organizationId: org.id, role: "OWNER" } },
     },
   });
 
   const staff = await prisma.user.create({
     data: {
-      organizationId: org.id,
       email: "chidinma@adaezewholesale.ng",
       passwordHash: staffPasswordHash,
       name: "Chidinma Okafor",
-      role: "STAFF",
+      memberships: { create: { organizationId: org.id, role: "STAFF" } },
     },
   });
 
@@ -357,9 +364,78 @@ async function main() {
     },
   });
 
+  // A second organization, to show tenants are isolated: its own catalogue, customers and
+  // order. Lois belongs to it too — as STAFF, so switching organizations also changes what
+  // she may do — and Ife owns it and can't see anything of Adaeze's.
+  const spice = await prisma.organization.create({
+    data: { name: "Lagos Spice Traders", orderSeq: 1001, whatsappPhoneNumberId: "100000000000002" },
+  });
+  const ife = await prisma.user.create({
+    data: {
+      email: "ife@spicetraders.ng",
+      passwordHash: await bcrypt.hash("spice-dev-pass", 10),
+      name: "Ife Bello",
+      memberships: { create: { organizationId: spice.id, role: "OWNER" } },
+    },
+  });
+  await prisma.membership.create({ data: { userId: owner.id, organizationId: spice.id, role: "STAFF" } });
+
+  const spiceProducts = await Promise.all(
+    [
+      { sku: "SPC-PEPPER-1KG", name: "Ground Pepper 1kg", priceCents: 650000, stock: 120, unit: "bag" },
+      { sku: "SPC-GINGER-1KG", name: "Dried Ginger 1kg", priceCents: 480000, stock: 80, unit: "bag" },
+      { sku: "SPC-CURRY-500G", name: "Curry Powder 500g", priceCents: 310000, stock: 200, unit: "pack" },
+      { sku: "SPC-TURMERIC-1KG", name: "Turmeric 1kg", priceCents: 520000, stock: 0, unit: "bag" },
+    ].map(async (p) => {
+      const product = await prisma.product.create({
+        data: { organizationId: spice.id, sku: p.sku, name: p.name, priceCents: p.priceCents, unit: p.unit, moq: 5 },
+      });
+      if (p.stock > 0) {
+        await prisma.stockMovement.create({
+          data: ledgerRow(spice.id, product.id, StockMovementReason.INITIAL_STOCK, p.stock, {
+            reference: "SEED-OPENING-BALANCE",
+            createdById: ife.id,
+          }),
+        });
+      }
+      return product;
+    })
+  );
+  const spiceCustomer = await prisma.customer.create({
+    data: {
+      organizationId: spice.id,
+      phone: "+2348020001111",
+      phoneKey: phoneKeyOf("+2348020001111")!,
+      name: "Mama Tunde Provisions",
+      notes: "Buys pepper and curry weekly.",
+    },
+  });
+  await prisma.customer.create({
+    data: { organizationId: spice.id, phone: "+2348020002222", phoneKey: phoneKeyOf("+2348020002222")!, name: "Okoro Stores" },
+  });
+  const spiceOrder = await prisma.order.create({
+    data: {
+      organizationId: spice.id,
+      reference: "ORD-1001",
+      customerId: spiceCustomer.id,
+      status: "CONFIRMED",
+      totalCents: 20 * 650000,
+      createdById: ife.id,
+      confirmedAt: new Date(),
+      items: { create: [{ productId: spiceProducts[0].id, variantLabel: null, quantity: 20, unitPriceCents: 650000 }] },
+    },
+  });
+  await prisma.stockMovement.create({
+    data: ledgerRow(spice.id, spiceProducts[0].id, StockMovementReason.SALE_RESERVED, -20, {
+      reference: spiceOrder.reference,
+      createdById: ife.id,
+    }),
+  });
+
   console.log("Seed complete.");
   console.log(`Owner login: ${owner.email} / owner-dev-pass`);
   console.log(`Staff login: ${staff.email} / staff-dev-pass`);
+  console.log(`Second organization (owner): ife@spicetraders.ng / spice-dev-pass`);
 }
 
 main()

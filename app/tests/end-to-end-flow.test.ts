@@ -65,6 +65,7 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     await prisma.priceTier.deleteMany();
     await prisma.product.deleteMany();
     await prisma.customer.deleteMany();
+    await prisma.membership.deleteMany();
     await prisma.user.deleteMany();
     await prisma.organization.deleteMany();
 
@@ -72,7 +73,7 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     organizationId = org.id;
 
     const user = await prisma.user.create({
-      data: { organizationId, email: "e2e-test@example.com", passwordHash: "x", name: "E2E Staff" },
+      data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "e2e-test@example.com", passwordHash: "x", name: "E2E Staff" },
     });
     userId = user.id;
 
@@ -171,14 +172,14 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     });
     expect(aiResult.draftOrder).toBeDefined();
 
-    const stockAfterDraft = await getProductStock(productId);
+    const stockAfterDraft = await getProductStock(productId, prisma);
     expect(stockAfterDraft).toBe(5); // drafting never touches stock
 
     // 3. Staff takes the AI-drafted order through the same lifecycle a
     // manually-created order would go through.
     await confirmOrder({ organizationId, orderId: aiResult.draftOrder!.id, actorId: userId });
-    expect(await getProductStock(productId)).toBe(3); // reserved exactly once, at confirm
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 5, reserved: 2, damaged: 0, available: 3 });
+    expect(await getProductStock(productId, prisma)).toBe(3); // reserved exactly once, at confirm
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 5, reserved: 2, damaged: 0, available: 3 });
 
     await markOrderPaid({ organizationId, orderId: aiResult.draftOrder!.id, actorId: userId });
     await markOrderFulfilled({ organizationId, orderId: aiResult.draftOrder!.id, actorId: userId });
@@ -190,9 +191,9 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     expect(finalOrder.status).toBe("FULFILLED");
     expect(finalOrder.conversationId).toBe(conversation.id);
     expect(finalOrder.totalCents).toBe(2 * 1850000);
-    expect(await getProductStock(productId)).toBe(3); // still correct — nothing double-counted
+    expect(await getProductStock(productId, prisma)).toBe(3); // still correct — nothing double-counted
     // Shipping moved the 2 units out of physical and reserved together.
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 3, reserved: 0, damaged: 0, available: 3 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 3, reserved: 0, damaged: 0, available: 3 });
 
     // 4. The audit trail reconciles with the ledger: one reservation
     // movement, matching exactly the order's confirmed quantity.

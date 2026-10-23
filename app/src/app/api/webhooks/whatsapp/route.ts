@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { resolveOrganizationForWhatsApp } from "@/lib/whatsapp-routing";
 import { verifyWebhookSignature, parseWebhookPayload } from "@/lib/whatsapp";
 import { ingestInboundMessage } from "@/lib/inbox";
 
@@ -42,17 +42,28 @@ export async function POST(req: NextRequest) {
     return new Response("OK", { status: 200 });
   }
 
-  // Phase 1 is single-tenant: every inbound message belongs to the one
-  // organization. Multi-tenant routing (matching on phone_number_id) is a
-  // Phase 3 concern.
-  const organization = await prisma.organization.findFirst();
-  if (!organization) {
-    return new Response("No organization configured", { status: 500 });
-  }
-
+  // Route each message to the organization that owns the WhatsApp number it was
+  // sent to. A message we can't attribute to exactly one organization is not stored
+  // (filing it under a guess would leak one tenant's customer into another's inbox);
+  // it is logged loudly, and acknowledged so Meta doesn't retry it forever.
+  const organizationCache = new Map<string, string | null>();
+  let unrouted = 0;
   for (const message of messages) {
-    await ingestInboundMessage(organization.id, message);
+    const key = message.phoneNumberId ?? "";
+    if (!organizationCache.has(key)) {
+      organizationCache.set(key, (await resolveOrganizationForWhatsApp(message.phoneNumberId))?.id ?? null);
+    }
+    const organizationId = organizationCache.get(key);
+    if (!organizationId) {
+      unrouted += 1;
+      console.error(
+        `WhatsApp webhook: message ${message.externalId} for phone number id "${key || "(none)"}" matches no organization — not stored.`
+      );
+      continue;
+    }
+    await ingestInboundMessage(organizationId, message);
   }
+  if (unrouted > 0) return new Response(`OK (${unrouted} unrouted message(s) not stored)`, { status: 200 });
 
   return new Response("OK", { status: 200 });
 }

@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { getStockByProduct } from "@/lib/stock";
 import { serializeProductsCsv } from "@/lib/csv";
 
@@ -10,9 +10,10 @@ export async function GET() {
   }
 
   const organizationId = session.user.organizationId;
+  const db = tenantDb(organizationId);
   const [products, stockMap] = await Promise.all([
-    prisma.product.findMany({ where: { organizationId }, orderBy: { name: "asc" } }),
-    getStockByProduct(organizationId),
+    db.product.findMany({ where: { organizationId }, orderBy: { name: "asc" } }),
+    getStockByProduct(organizationId, db),
   ]);
 
   const csv = serializeProductsCsv(

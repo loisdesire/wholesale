@@ -1,6 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
-import { testDatabaseUrl } from "./tests/global-setup";
+import { testAppDatabaseUrl, testDatabaseUrl } from "./tests/global-setup";
 
 export default defineConfig({
   resolve: {
@@ -15,7 +15,11 @@ export default defineConfig({
     // global-setup). Test files run one after another so they don't race on it.
     fileParallelism: false,
     env: {
+      // Fixtures and the root client: the database owner.
       DATABASE_URL: testDatabaseUrl(),
+      DIRECT_URL: testDatabaseUrl(),
+      // The code under test: the restricted role, so row-level security is enforced.
+      TENANT_DATABASE_URL: testAppDatabaseUrl(),
     },
   },
 });

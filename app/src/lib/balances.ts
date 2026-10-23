@@ -1,5 +1,5 @@
 import { OrderStatus, RefundStatus, ReturnKind, ReturnStatus } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 
 /**
  * What a customer owes us and what we owe them, summed from orders and returns.
@@ -39,13 +39,14 @@ export const EMPTY_BALANCE: CustomerBalance = {
 export async function getCustomerBalances(organizationId: string, customerIds?: string[]) {
   const customerFilter = customerIds ? { customerId: { in: customerIds } } : {};
 
+  const db = tenantDb(organizationId);
   const [orderRows, returnRows] = await Promise.all([
-    prisma.order.groupBy({
+    db.order.groupBy({
       by: ["customerId", "status"],
       where: { organizationId, ...customerFilter, status: { in: [OrderStatus.CONFIRMED, OrderStatus.PAID, OrderStatus.PARTIALLY_FULFILLED, OrderStatus.FULFILLED] } },
       _sum: { totalCents: true },
     }),
-    prisma.orderReturn.groupBy({
+    db.orderReturn.groupBy({
       by: ["customerId", "kind", "status", "refundStatus"],
       where: { organizationId, ...customerFilter, status: { not: ReturnStatus.REJECTED } },
       _sum: { refundCents: true },

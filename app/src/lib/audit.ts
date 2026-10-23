@@ -1,7 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-
-type TxClient = Prisma.TransactionClient;
+import type { DbClient } from "@/lib/db";
 
 type AuditParams = {
   organizationId: string;
@@ -13,7 +11,7 @@ type AuditParams = {
   after?: Prisma.InputJsonValue | null;
 };
 
-export async function recordAudit(params: AuditParams, client: TxClient | typeof prisma = prisma) {
+export async function recordAudit(params: AuditParams, client: DbClient) {
   return client.auditLog.create({
     data: {
       organizationId: params.organizationId,

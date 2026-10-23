@@ -58,7 +58,7 @@ describe("physical / reserved / available / damaged stock", () => {
     otherOrganizationId = (await prisma.organization.create({ data: { name: "Other Org" } })).id;
     userId = (
       await prisma.user.create({
-        data: { organizationId, email: "figures@example.com", passwordHash: "x", name: "Figures Staff" },
+        data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "figures@example.com", passwordHash: "x", name: "Figures Staff" },
       })
     ).id;
     customerId = (await prisma.customer.create({ data: { organizationId, phone: "+19990000001", phoneKey: "19990000001" } })).id;
@@ -89,7 +89,7 @@ describe("physical / reserved / available / damaged stock", () => {
 
   it("walks a unit through reserve -> ship, keeping the four figures consistent", async () => {
     const productId = await productWithStock(10);
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 10, reserved: 0, damaged: 0, available: 10 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 10, reserved: 0, damaged: 0, available: 10 });
 
     const order = await createDraftOrder({
       organizationId,
@@ -98,14 +98,14 @@ describe("physical / reserved / available / damaged stock", () => {
       items: [{ productId, quantity: 4 }],
     });
     // A draft is a non-binding quote: nothing moves.
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 10, reserved: 0, damaged: 0, available: 10 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 10, reserved: 0, damaged: 0, available: 10 });
 
     await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 10, reserved: 4, damaged: 0, available: 6 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 10, reserved: 4, damaged: 0, available: 6 });
 
     await markOrderPaid({ organizationId, orderId: order.id, actorId: userId });
     await markOrderFulfilled({ organizationId, orderId: order.id, actorId: userId });
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 6, reserved: 0, damaged: 0, available: 6 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 6, reserved: 0, damaged: 0, available: 6 });
   });
 
   it("cancelling a confirmed order returns the units to available without touching physical", async () => {
@@ -118,7 +118,7 @@ describe("physical / reserved / available / damaged stock", () => {
     });
     await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
     await cancelOrder({ organizationId, orderId: order.id, actorId: userId });
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 5, reserved: 0, damaged: 0, available: 5 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 5, reserved: 0, damaged: 0, available: 5 });
   });
 
   it("a manual removal cannot eat into stock that is reserved for a confirmed order", async () => {
@@ -134,23 +134,23 @@ describe("physical / reserved / available / damaged stock", () => {
     // 5 on the shelf, but only 1 is actually available to take out.
     await expect(move(productId, "MANUAL_ADJUSTMENT", -2)).rejects.toBeInstanceOf(InsufficientStockError);
     await move(productId, "MANUAL_ADJUSTMENT", -1);
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 4, reserved: 4, damaged: 0, available: 0 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 4, reserved: 4, damaged: 0, available: 0 });
   });
 
   it("damaged stock leaves availability, stays on hand, and can then be written off", async () => {
     const productId = await productWithStock(10);
     await move(productId, "DAMAGE", -3);
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 10, reserved: 0, damaged: 3, available: 7 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 10, reserved: 0, damaged: 3, available: 7 });
 
     await move(productId, "DAMAGE_WRITTEN_OFF", -2);
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 8, reserved: 0, damaged: 1, available: 7 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 8, reserved: 0, damaged: 1, available: 7 });
   });
 
   it("cannot write off more damaged units than are on record, or set aside more than is available", async () => {
     const productId = await productWithStock(4);
     await expect(move(productId, "DAMAGE_WRITTEN_OFF", -1)).rejects.toBeInstanceOf(StockInvariantError);
     await expect(move(productId, "DAMAGE", -5)).rejects.toBeInstanceOf(InsufficientStockError);
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 4, reserved: 0, damaged: 0, available: 4 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 4, reserved: 0, damaged: 0, available: 4 });
   });
 
   it("cannot ship or release more than is reserved", async () => {
@@ -162,7 +162,7 @@ describe("physical / reserved / available / damaged stock", () => {
   it("a damaged return goes on hand but never into available", async () => {
     const productId = await productWithStock(2);
     await move(productId, "RETURN_DAMAGED", 3);
-    expect(await getStockBreakdown(productId)).toEqual({ physical: 5, reserved: 0, damaged: 3, available: 2 });
+    expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 5, reserved: 0, damaged: 3, available: 2 });
   });
 
   it("refuses to move stock for a product that belongs to another organization", async () => {
@@ -175,7 +175,7 @@ describe("physical / reserved / available / damaged stock", () => {
         reason: StockMovementReason.MANUAL_ADJUSTMENT,
       })
     ).rejects.toBeInstanceOf(StockInvariantError);
-    expect(await getStockBreakdown(productId)).toMatchObject({ physical: 5 });
+    expect(await getStockBreakdown(productId, prisma)).toMatchObject({ physical: 5 });
   });
 
   it("two orders confirming the same products in opposite item order do not deadlock", async () => {
@@ -193,8 +193,8 @@ describe("physical / reserved / available / damaged stock", () => {
       orders.map((o) => confirmOrder({ organizationId, orderId: o.id, actorId: userId, allowDuplicate: true }))
     );
     expect(results.map((r) => r.status)).toEqual(Array(6).fill("fulfilled"));
-    expect(await getStockBreakdown(a)).toMatchObject({ reserved: 6, available: 44 });
-    expect(await getStockBreakdown(b)).toMatchObject({ reserved: 6, available: 44 });
+    expect(await getStockBreakdown(a, prisma)).toMatchObject({ reserved: 6, available: 44 });
+    expect(await getStockBreakdown(b, prisma)).toMatchObject({ reserved: 6, available: 44 });
   });
 
   it("concurrent confirmations never reserve more than is available across a multi-item order", async () => {
@@ -218,7 +218,7 @@ describe("physical / reserved / available / damaged stock", () => {
     );
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(2);
     // All-or-nothing: the rejected orders reserved none of the plentiful item either.
-    expect(await getStockBreakdown(scarce)).toMatchObject({ reserved: 2, available: 0 });
-    expect(await getStockBreakdown(plenty)).toMatchObject({ reserved: 2, available: 98 });
+    expect(await getStockBreakdown(scarce, prisma)).toMatchObject({ reserved: 2, available: 0 });
+    expect(await getStockBreakdown(plenty, prisma)).toMatchObject({ reserved: 2, available: 98 });
   });
 });

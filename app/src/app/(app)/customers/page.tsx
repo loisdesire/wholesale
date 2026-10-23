@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { getCustomerBalances } from "@/lib/balances";
 import { customerMatch } from "@/lib/search";
 import { formatMoney } from "@/lib/format";
@@ -20,6 +20,7 @@ export default async function CustomersPage({
   const params = await searchParams;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
   const q = params.q?.trim() || undefined;
   const filter = params.filter === "owes" || params.filter === "owed" ? params.filter : undefined;
@@ -42,14 +43,14 @@ export default async function CustomersPage({
     ...(q ? customerMatch(q) : {}),
   };
   const [customers, totalCount] = await Promise.all([
-    prisma.customer.findMany({
+    db.customer.findMany({
       where,
       include: { _count: { select: { orders: true, conversations: true } } },
       orderBy: { name: "asc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.customer.count({ where }),
+    db.customer.count({ where }),
   ]);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const link = (overrides: Record<string, string | undefined>) => {

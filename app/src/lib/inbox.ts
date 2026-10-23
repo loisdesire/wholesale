@@ -1,5 +1,6 @@
 import { ConversationStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { tenantDb, transaction } from "@/lib/db";
 import { findOrCreateCustomerByPhoneTx } from "@/lib/customers";
 import type { InboundWhatsAppMessage } from "@/lib/whatsapp";
 import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
@@ -14,7 +15,7 @@ import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
  * Returns null when the message was already recorded (duplicate delivery).
  */
 export async function ingestInboundMessage(organizationId: string, message: InboundWhatsAppMessage) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(organizationId, async (tx) => {
     // Matched on the normalized phone, so WhatsApp's "2348031234567" finds the
     // customer staff entered as "0803 123 4567" instead of creating a second one.
     const customer = await findOrCreateCustomerByPhoneTx(tx, organizationId, message.from, message.contactName);
@@ -85,9 +86,10 @@ export async function sendStaffReply(params: {
   to: string;
   body: string;
 }) {
-  const { messageId } = await sendWhatsAppTextMessage(params.to, params.body);
+  const organization = await prisma.organization.findUnique({ where: { id: params.organizationId } });
+  const { messageId } = await sendWhatsAppTextMessage(params.to, params.body, organization?.whatsappPhoneNumberId);
 
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const message = await tx.message.create({
       data: {
         conversationId: params.conversationId,
@@ -109,12 +111,13 @@ export async function sendStaffReply(params: {
 }
 
 export async function markConversationResolved(params: { conversationId: string; organizationId: string }) {
-  const conversation = await prisma.conversation.findFirst({
+  const db = tenantDb(params.organizationId);
+  const conversation = await db.conversation.findFirst({
     where: { id: params.conversationId, organizationId: params.organizationId },
   });
   if (!conversation) throw new Error("Conversation not found.");
 
-  return prisma.conversation.update({
+  return db.conversation.update({
     where: { id: conversation.id },
     data: { status: ConversationStatus.RESOLVED },
   });

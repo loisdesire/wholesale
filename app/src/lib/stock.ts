@@ -1,5 +1,5 @@
 import type { Prisma, StockMovementReason } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { transaction, type DbClient } from "@/lib/db";
 import { EMPTY_FIGURES, movementEffects, toFigures, type StockFigures } from "@/lib/stock-effects";
 
 export type { StockFigures } from "@/lib/stock-effects";
@@ -28,7 +28,7 @@ export class StockInvariantError extends Error {
 }
 
 type TxClient = Prisma.TransactionClient;
-type Client = TxClient | typeof prisma;
+type Client = DbClient;
 
 const SUMS = { physicalDelta: true, reservedDelta: true, damagedDelta: true } as const;
 
@@ -44,13 +44,13 @@ function figuresFrom(sum: DeltaSums | null | undefined): StockFigures {
 }
 
 /** Physical / reserved / damaged / available for one product, summed from the ledger. */
-export async function getStockBreakdown(productId: string, client: Client = prisma): Promise<StockFigures> {
+export async function getStockBreakdown(productId: string, client: Client): Promise<StockFigures> {
   const result = await client.stockMovement.aggregate({ where: { productId }, _sum: SUMS });
   return figuresFrom(result._sum);
 }
 
 /** Units that can still be promised to a customer (physical - reserved - damaged). */
-export async function getProductStock(productId: string, client: Client = prisma) {
+export async function getProductStock(productId: string, client: Client) {
   return (await getStockBreakdown(productId, client)).available;
 }
 
@@ -58,7 +58,7 @@ export async function getProductStock(productId: string, client: Client = prisma
 export async function getStockBreakdownByProduct(
   organizationId: string,
   options: { productIds?: string[] } = {},
-  client: Client = prisma
+  client: Client
 ) {
   const rows = await client.stockMovement.groupBy({
     by: ["productId"],
@@ -72,7 +72,7 @@ export async function getStockBreakdownByProduct(
 }
 
 /** Available stock per product (what can still be sold). */
-export async function getStockByProduct(organizationId: string, client: Client = prisma) {
+export async function getStockByProduct(organizationId: string, client: Client) {
   const breakdown = await getStockBreakdownByProduct(organizationId, {}, client);
   return new Map([...breakdown].map(([productId, figures]) => [productId, figures.available]));
 }
@@ -150,7 +150,7 @@ export async function recordStockMovementTx(tx: TxClient, params: RecordMovement
  * inside one transaction; see recordStockMovementTx for why the lock matters.
  */
 export async function recordStockMovement(params: RecordMovementParams) {
-  return prisma.$transaction((tx) => recordStockMovementTx(tx, params));
+  return transaction(params.organizationId, (tx) => recordStockMovementTx(tx, params));
 }
 
 /** Stable lock order for multi-product transactions (prevents deadlocks). */

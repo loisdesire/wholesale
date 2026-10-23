@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { getStockBreakdown } from "@/lib/stock";
 import { formatDateTime } from "@/lib/format";
 import { EditProductForm } from "./edit-product-form";
@@ -28,16 +28,17 @@ export default async function ProductDetailPage({
   const { id } = await params;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
-  const product = await prisma.product.findFirst({
+  const product = await db.product.findFirst({
     where: { id, organizationId },
     include: { priceTiers: { orderBy: { minQuantity: "asc" } } },
   });
   if (!product) notFound();
 
   const [figures, movements] = await Promise.all([
-    getStockBreakdown(product.id),
-    prisma.stockMovement.findMany({
+    getStockBreakdown(product.id, db),
+    db.stockMovement.findMany({
       where: { productId: product.id },
       include: { createdBy: true },
       orderBy: { createdAt: "desc" },

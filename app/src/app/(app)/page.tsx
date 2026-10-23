@@ -1,29 +1,30 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { formatMoney, formatRelativeTime } from "@/lib/format";
 import { ConversationStatusBadge, OrderStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
 
 export default async function DashboardPage() {
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
   const [attentionConversations, attentionOrders, attentionReturns, pipelineCounts, recentOrders, recentMessages] =
     await Promise.all([
-      prisma.conversation.findMany({
+      db.conversation.findMany({
         where: { organizationId, status: { in: ["AWAITING_STAFF", "NEW"] } },
         include: { customer: true },
         orderBy: { lastMessageAt: "asc" },
         take: 6,
       }),
-      prisma.order.findMany({
+      db.order.findMany({
         where: { organizationId, status: { in: ["DRAFT", "CONFIRMED"] } },
         include: { customer: true },
         orderBy: { createdAt: "asc" },
         take: 6,
       }),
       // Returns still needing someone: a decision, the goods booked in, or the refund paid.
-      prisma.orderReturn.findMany({
+      db.orderReturn.findMany({
         where: {
           organizationId,
           OR: [{ status: { in: ["REQUESTED", "APPROVED"] } }, { refundStatus: "PENDING" }],
@@ -32,18 +33,18 @@ export default async function DashboardPage() {
         orderBy: { createdAt: "asc" },
         take: 6,
       }),
-      prisma.order.groupBy({
+      db.order.groupBy({
         by: ["status"],
         where: { organizationId },
         _count: { _all: true },
       }),
-      prisma.order.findMany({
+      db.order.findMany({
         where: { organizationId },
         include: { customer: true },
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
-      prisma.message.findMany({
+      db.message.findMany({
         where: { conversation: { organizationId } },
         include: { conversation: { include: { customer: true } } },
         orderBy: { createdAt: "desc" },

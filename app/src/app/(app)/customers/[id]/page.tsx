@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { EMPTY_BALANCE, getCustomerBalances } from "@/lib/balances";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStatusBadge, RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
@@ -26,44 +26,45 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const { id } = await params;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const db = tenantDb(organizationId);
 
-  const customer = await prisma.customer.findFirst({ where: { id, organizationId } });
+  const customer = await db.customer.findFirst({ where: { id, organizationId } });
   if (!customer) notFound();
 
   const isOwner = session!.user.role === "OWNER";
   const [merges, mergedInto] = await Promise.all([
-    prisma.customerMerge.findMany({
+    db.customerMerge.findMany({
       where: { organizationId, targetId: customer.id },
       include: { source: true },
       orderBy: { performedAt: "desc" },
     }),
-    customer.mergedIntoId ? prisma.customer.findUnique({ where: { id: customer.mergedIntoId } }) : null,
+    customer.mergedIntoId ? db.customer.findUnique({ where: { id: customer.mergedIntoId } }) : null,
   ]);
   const archivedBy = mergedInto
-    ? await prisma.customerMerge.findFirst({ where: { organizationId, sourceId: customer.id, undoneAt: null } })
+    ? await db.customerMerge.findFirst({ where: { organizationId, sourceId: customer.id, undoneAt: null } })
     : null;
   const [balances, orders, returns, addresses, agreedPrices, products, duplicates, activity] = await Promise.all([
     getCustomerBalances(organizationId, [customer.id]),
-    prisma.order.findMany({
+    db.order.findMany({
       where: { organizationId, customerId: customer.id },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.orderReturn.findMany({
+    db.orderReturn.findMany({
       where: { organizationId, customerId: customer.id },
       include: { order: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.customerAddress.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: "asc" } }),
-    prisma.customerPrice.findMany({
+    db.customerAddress.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: "asc" } }),
+    db.customerPrice.findMany({
       where: { customerId: customer.id },
       include: { product: true },
       orderBy: { createdAt: "asc" },
     }),
     isOwner
-      ? prisma.product.findMany({ where: { organizationId, active: true }, orderBy: { name: "asc" } })
+      ? db.product.findMany({ where: { organizationId, active: true }, orderBy: { name: "asc" } })
       : Promise.resolve([]),
     findPossibleDuplicates(organizationId, customer.id),
-    prisma.auditLog.findMany({
+    db.auditLog.findMany({
       where: { organizationId, entity: "Customer", entityId: customer.id },
       include: { actor: true },
       orderBy: { createdAt: "desc" },

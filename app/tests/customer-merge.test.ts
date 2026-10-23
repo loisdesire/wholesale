@@ -32,10 +32,10 @@ describe("customer merge", () => {
     organizationId = (await prisma.organization.create({ data: { name: "Merge Org" } })).id;
     otherOrganizationId = (await prisma.organization.create({ data: { name: "Other Merge Org" } })).id;
     const o = await prisma.user.create({
-      data: { organizationId, email: "merge-owner@example.com", passwordHash: "x", name: "Owner", role: "OWNER" },
+      data: { memberships: { create: { organizationId, role: "OWNER" } }, email: "merge-owner@example.com", passwordHash: "x", name: "Owner" },
     });
     const s = await prisma.user.create({
-      data: { organizationId, email: "merge-staff@example.com", passwordHash: "x", name: "Staff", role: "STAFF" },
+      data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "merge-staff@example.com", passwordHash: "x", name: "Staff" },
     });
     owner = { id: o.id, role: "OWNER" };
     staff = { id: s.id, role: "STAFF" };

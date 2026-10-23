@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import {
   createDraftOrder,
   addOrderItem,
@@ -91,7 +91,7 @@ export async function createOrderAction(
   let customerId: string;
   if (data.customerMode === "existing") {
     if (!data.customerId) return { error: "Choose a customer." };
-    const customer = await prisma.customer.findFirst({
+    const customer = await tenantDb(session.user.organizationId).customer.findFirst({
       where: { id: data.customerId, organizationId: session.user.organizationId },
     });
     if (!customer) return { error: "Customer not found." };

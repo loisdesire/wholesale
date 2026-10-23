@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { tenantDb } from "@/lib/db";
 import { getStockBreakdownByProduct } from "@/lib/stock";
 import { ci } from "@/lib/search";
 
@@ -39,8 +39,9 @@ export async function searchCatalogue(
   const terms = normalizedQuery.split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
 
+  const db = tenantDb(organizationId);
   const [termMatches, recentPool] = await Promise.all([
-    prisma.product.findMany({
+    db.product.findMany({
       where: {
         organizationId,
         active: true,
@@ -49,7 +50,7 @@ export async function searchCatalogue(
       include: { priceTiers: true },
       take: CANDIDATE_POOL_LIMIT,
     }),
-    prisma.product.findMany({
+    db.product.findMany({
       where: { organizationId, active: true },
       include: { priceTiers: true },
       orderBy: { name: "asc" },
@@ -61,7 +62,7 @@ export async function searchCatalogue(
   if (candidates.size === 0) return [];
 
   // Available stock only: reserved and damaged units can't be promised to a customer.
-  const stockMap = await getStockBreakdownByProduct(organizationId, { productIds: [...candidates.keys()] });
+  const stockMap = await getStockBreakdownByProduct(organizationId, { productIds: [...candidates.keys()] }, db);
 
   const scored = [...candidates.values()].map((product) => {
     const variant = product.variantAttributes as Record<string, string> | null;

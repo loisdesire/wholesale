@@ -42,7 +42,7 @@ describe("search", () => {
     organizationId = (await prisma.organization.create({ data: { name: "Search Org" } })).id;
     otherOrganizationId = (await prisma.organization.create({ data: { name: "Other Search Org" } })).id;
     userId = (
-      await prisma.user.create({ data: { organizationId, email: "search@example.com", passwordHash: "x", name: "S", role: "OWNER" } })
+      await prisma.user.create({ data: { memberships: { create: { organizationId, role: "OWNER" } }, email: "search@example.com", passwordHash: "x", name: "S" } })
     ).id;
 
     ankaraId = (await prisma.product.create({ data: { organizationId, sku: "SRCH-ANK-1", name: "Ankara Wrapper", priceCents: 1000 } })).id;

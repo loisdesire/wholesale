@@ -8,7 +8,7 @@ import {
   UserRole,
   type Prisma,
 } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { transaction, type DbClient } from "@/lib/db";
 import { recordAudit } from "@/lib/audit";
 import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
 import { lockRow } from "@/lib/locks";
@@ -39,7 +39,7 @@ const COUNTING_STATUSES = [ReturnStatus.REQUESTED, ReturnStatus.APPROVED, Return
  * shipped, minus what is already being returned. (Ordered-but-unshipped units
  * can't come back — they never left.)
  */
-export async function getReturnableQuantities(orderId: string, client: TxClient | typeof prisma = prisma) {
+export async function getReturnableQuantities(orderId: string, client: DbClient) {
   const [items, shipped, returned] = await Promise.all([
     client.orderItem.findMany({ where: { orderId }, select: { id: true } }),
     client.shipmentItem.groupBy({
@@ -85,7 +85,7 @@ export async function requestReturn(params: {
     requested.set(item.orderItemId, item);
   }
 
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     await lockRow(tx, "Order", params.orderId);
     const order = await tx.order.findFirst({
       where: { id: params.orderId, organizationId: params.organizationId },
@@ -180,7 +180,7 @@ export async function decideReturn(params: {
 }) {
   requireOwner(params.actor, "approve or reject a return");
 
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const ret = await loadReturn(tx, params.organizationId, params.returnId);
     if (ret.status !== ReturnStatus.REQUESTED) {
       throw new ReturnStateError("This return has already been decided.");
@@ -233,7 +233,7 @@ export async function decideReturn(params: {
  * available stock, damaged ones go on hand but into the damaged figure.
  */
 export async function receiveReturn(params: { organizationId: string; returnId: string; actor: Actor }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const ret = await loadReturn(tx, params.organizationId, params.returnId);
     if (ret.status !== ReturnStatus.APPROVED) {
       throw new ReturnStateError(
@@ -294,7 +294,7 @@ export async function markRefunded(params: {
 }) {
   requireOwner(params.actor, "record a refund");
 
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const ret = await loadReturn(tx, params.organizationId, params.returnId);
     if (ret.refundStatus === RefundStatus.REFUNDED) {
       throw new ReturnStateError("This refund has already been recorded.");

@@ -35,10 +35,10 @@ describe("partial fulfilment, partial refunds and amendments", () => {
   beforeAll(async () => {
     organizationId = (await prisma.organization.create({ data: { name: "Fulfilment Org" } })).id;
     const o = await prisma.user.create({
-      data: { organizationId, email: "ful-owner@example.com", passwordHash: "x", name: "Owner", role: "OWNER" },
+      data: { memberships: { create: { organizationId, role: "OWNER" } }, email: "ful-owner@example.com", passwordHash: "x", name: "Owner" },
     });
     const s = await prisma.user.create({
-      data: { organizationId, email: "ful-staff@example.com", passwordHash: "x", name: "Staff", role: "STAFF" },
+      data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "ful-staff@example.com", passwordHash: "x", name: "Staff" },
     });
     owner = { id: o.id, role: "OWNER" };
     staff = { id: s.id, role: "STAFF" };
@@ -102,8 +102,8 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       });
       expect(first.order.status).toBe("PARTIALLY_FULFILLED");
       expect(first.shipment).toMatchObject({ reference: `${o.reference}/1`, carrier: "GIG", trackingReference: "TRK-1" });
-      expect(await getStockBreakdown(pa)).toEqual({ physical: 94, reserved: 4, damaged: 0, available: 90 });
-      expect(await getStockBreakdown(pb)).toEqual({ physical: 50, reserved: 4, damaged: 0, available: 46 });
+      expect(await getStockBreakdown(pa, prisma)).toEqual({ physical: 94, reserved: 4, damaged: 0, available: 90 });
+      expect(await getStockBreakdown(pb, prisma)).toEqual({ physical: 50, reserved: 4, damaged: 0, available: 46 });
 
       const second = await shipOrderItems({
         ...a(o.id),
@@ -112,8 +112,8 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       expect(second.order.status).toBe("FULFILLED");
       expect(second.order.fulfilledAt).not.toBeNull();
       expect(second.shipment.reference).toBe(`${o.reference}/2`);
-      expect(await getStockBreakdown(pa)).toEqual({ physical: 90, reserved: 0, damaged: 0, available: 90 });
-      expect(await getStockBreakdown(pb)).toEqual({ physical: 46, reserved: 0, damaged: 0, available: 46 });
+      expect(await getStockBreakdown(pa, prisma)).toEqual({ physical: 90, reserved: 0, damaged: 0, available: 90 });
+      expect(await getStockBreakdown(pb, prisma)).toEqual({ physical: 46, reserved: 0, damaged: 0, available: 46 });
 
       const audit = await prisma.auditLog.findMany({ where: { entityId: o.id, action: { startsWith: "ORDER_" } }, orderBy: { createdAt: "asc" } });
       expect(audit.map((x) => x.action)).toEqual([
@@ -132,7 +132,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       expect(done.status).toBe("FULFILLED");
       const shipped = await prisma.shipmentItem.aggregate({ where: { shipment: { orderId: o.id } }, _sum: { quantity: true } });
       expect(shipped._sum.quantity).toBe(8);
-      expect(await getStockBreakdown(p)).toEqual({ physical: 12, reserved: 0, damaged: 0, available: 12 });
+      expect(await getStockBreakdown(p, prisma)).toEqual({ physical: 12, reserved: 0, damaged: 0, available: 12 });
     });
 
     it("rejects over-shipping and malformed lines, recording nothing", async () => {
@@ -152,7 +152,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       await expect(shipOrderItems({ ...a(o.id), items: [] })).rejects.toThrow(/at least one item/);
 
       expect(await prisma.shipment.count({ where: { orderId: o.id } })).toBe(0);
-      expect(await getStockBreakdown(p)).toMatchObject({ physical: 20, reserved: 5 });
+      expect(await getStockBreakdown(p, prisma)).toMatchObject({ physical: 20, reserved: 5 });
       expect((await prisma.order.findUniqueOrThrow({ where: { id: o.id } })).status).toBe("PAID");
     });
 
@@ -177,7 +177,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       for (const r of results.filter((r) => r.status === "rejected")) {
         expect((r as PromiseRejectedResult).reason).toBeInstanceOf(OrderStateError);
       }
-      expect(await getStockBreakdown(p)).toEqual({ physical: 16, reserved: 2, damaged: 0, available: 14 });
+      expect(await getStockBreakdown(p, prisma)).toEqual({ physical: 16, reserved: 2, damaged: 0, available: 14 });
     });
 
     it("can't be cancelled once part has shipped", async () => {
@@ -195,12 +195,12 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       const itemId = o.items[0].id;
       await shipOrderItems({ ...a(o.id), items: [{ orderItemId: itemId, quantity: 6 }] });
 
-      expect((await getReturnableQuantities(o.id)).get(itemId)).toBe(6);
+      expect((await getReturnableQuantities(o.id, prisma)).get(itemId)).toBe(6);
       const request = (quantity: number) =>
         requestReturn({ organizationId, orderId: o.id, actor: staff, reason: "faulty", items: [{ orderItemId: itemId, quantity, condition: "RESELLABLE" }] });
       await expect(request(7)).rejects.toThrow("Only 6 of that item can still be returned.");
       await request(4);
-      expect((await getReturnableQuantities(o.id)).get(itemId)).toBe(2);
+      expect((await getReturnableQuantities(o.id, prisma)).get(itemId)).toBe(2);
     });
 
     it("an order with nothing shipped has nothing to return", async () => {
@@ -233,7 +233,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       const { order: closed, refund } = await closeOrderShort({ ...a(o.id), actorRole: "OWNER", reason: "Supplier couldn't deliver" });
 
       expect(closed.status).toBe("FULFILLED");
-      expect(await getStockBreakdown(productId)).toEqual({ physical: 44, reserved: 0, damaged: 0, available: 44 });
+      expect(await getStockBreakdown(productId, prisma)).toEqual({ physical: 44, reserved: 0, damaged: 0, available: 44 });
       expect(refund).toMatchObject({ kind: "UNSHIPPED", status: "RECEIVED", refundStatus: "PENDING", valueCents: 40000, refundCents: 40000 });
       const entry = await prisma.auditLog.findFirstOrThrow({ where: { entityId: o.id, action: "ORDER_CLOSED_SHORT" } });
       expect(entry.after).toMatchObject({ unitsNotShipped: 4, refundCents: 40000, reason: "Supplier couldn't deliver" });
@@ -270,7 +270,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
     it("what did ship can still be returned after closing short, but not the unshipped units", async () => {
       const { o } = await partShipped(6, 10);
       await closeOrderShort({ ...a(o.id), actorRole: "OWNER", reason: "Supplier issue" });
-      expect((await getReturnableQuantities(o.id)).get(o.items[0].id)).toBe(6);
+      expect((await getReturnableQuantities(o.id, prisma)).get(o.items[0].id)).toBe(6);
     });
 
     it("the 'goods received' step can't restock an UNSHIPPED refund", async () => {
@@ -278,7 +278,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       await closeOrderShort({ ...a(o.id), actorRole: "OWNER", reason: "Supplier issue" });
       const refund = await prisma.orderReturn.findFirstOrThrow({ where: { orderId: o.id } });
       await expect(receiveReturn({ organizationId, returnId: refund.id, actor: staff })).rejects.toBeInstanceOf(ReturnStateError);
-      expect(await getStockBreakdown(productId)).toMatchObject({ physical: 44, available: 44 });
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ physical: 44, available: 44 });
     });
   });
 
@@ -368,7 +368,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       const updated = await amend(o.id, { changes: [{ orderItemId: o.items[0].id, quantity: 12 }] });
       expect(updated.totalCents).toBe(12 * 8000);
       expect(await prisma.orderItem.findUniqueOrThrow({ where: { id: o.items[0].id } })).toMatchObject({ quantity: 12, unitPriceCents: 8000 });
-      expect(await getStockBreakdown(p)).toEqual({ physical: 100, reserved: 12, damaged: 0, available: 88 });
+      expect(await getStockBreakdown(p, prisma)).toEqual({ physical: 100, reserved: 12, damaged: 0, available: 88 });
       await expectReservedMatchesLines(o, p);
     });
 
@@ -378,8 +378,8 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       const o = await order("CONFIRMED", [{ productId: pa, quantity: 10 }, { productId: pb, quantity: 5 }]);
 
       await amend(o.id, { changes: [{ orderItemId: lineFor(o, pa).id, quantity: 7 }, { orderItemId: lineFor(o, pb).id, quantity: 0 }] });
-      expect(await getStockBreakdown(pa)).toMatchObject({ reserved: 7, available: 93 });
-      expect(await getStockBreakdown(pb)).toMatchObject({ reserved: 0, available: 100 });
+      expect(await getStockBreakdown(pa, prisma)).toMatchObject({ reserved: 7, available: 93 });
+      expect(await getStockBreakdown(pb, prisma)).toMatchObject({ reserved: 0, available: 100 });
       expect(await prisma.orderItem.count({ where: { orderId: o.id } })).toBe(1);
       expect((await prisma.order.findUniqueOrThrow({ where: { id: o.id } })).totalCents).toBe(70000);
     });
@@ -392,8 +392,8 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       await amend(o.id, { additions: [{ productId: pb, quantity: 2 }, { productId: pa, quantity: 2 }] });
       const items = await prisma.orderItem.findMany({ where: { orderId: o.id }, orderBy: { createdAt: "asc" } });
       expect(items.map((i) => [i.productId, i.quantity])).toEqual([[pa, 5], [pb, 2]]);
-      expect(await getStockBreakdown(pa)).toMatchObject({ reserved: 5 });
-      expect(await getStockBreakdown(pb)).toMatchObject({ reserved: 2 });
+      expect(await getStockBreakdown(pa, prisma)).toMatchObject({ reserved: 5 });
+      expect(await getStockBreakdown(pb, prisma)).toMatchObject({ reserved: 2 });
       expect((await prisma.order.findUniqueOrThrow({ where: { id: o.id } })).totalCents).toBe(5 * 10000 + 2 * 25000);
     });
 
@@ -428,8 +428,8 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       ).rejects.toThrow(/available/);
       expect((await prisma.orderItem.findUniqueOrThrow({ where: { id: o.items[0].id } })).quantity).toBe(3);
       expect(await prisma.orderItem.count({ where: { orderId: o.id } })).toBe(1);
-      expect(await getStockBreakdown(pa)).toMatchObject({ reserved: 3 });
-      expect(await getStockBreakdown(scarce)).toMatchObject({ reserved: 0 });
+      expect(await getStockBreakdown(pa, prisma)).toMatchObject({ reserved: 3 });
+      expect(await getStockBreakdown(scarce, prisma)).toMatchObject({ reserved: 0 });
       expect((await prisma.order.findUniqueOrThrow({ where: { id: o.id } })).totalCents).toBe(30000);
     });
 
@@ -488,7 +488,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       await expect(amend(o.id, { changes: [{ orderItemId: other.items[0].id, quantity: 6 }] })).rejects.toThrow(/not on this order/);
       await expect(amend(o.id, { additions: [{ productId: p, quantity: 0 }] })).rejects.toThrow(/greater than zero/);
       await expect(amend(o.id, { additions: [{ productId: "nope", quantity: 5 }] })).rejects.toThrow(/could not be found/);
-      expect(await getStockBreakdown(p)).toMatchObject({ reserved: 10 }); // both orders, untouched
+      expect(await getStockBreakdown(p, prisma)).toMatchObject({ reserved: 10 }); // both orders, untouched
     });
 
     it("an amendment racing a payment ends consistent: either it landed before payment or was refused after", async () => {
@@ -512,7 +512,7 @@ describe("partial fulfilment, partial refunds and amendments", () => {
       const o = await order("CONFIRMED", [{ productId: p, quantity: 4 }]);
       await amend(o.id, { changes: [{ orderItemId: o.items[0].id, quantity: 9 }] });
       await cancelOrder({ ...a(o.id), actorRole: "OWNER" });
-      expect(await getStockBreakdown(p)).toEqual({ physical: 100, reserved: 0, damaged: 0, available: 100 });
+      expect(await getStockBreakdown(p, prisma)).toEqual({ physical: 100, reserved: 0, damaged: 0, available: 100 });
     });
   });
 });

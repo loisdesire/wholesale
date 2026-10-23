@@ -26,10 +26,10 @@ describe("returns, refunds and customer balances", () => {
     organizationId = (await prisma.organization.create({ data: { name: "Returns Org" } })).id;
     otherOrganizationId = (await prisma.organization.create({ data: { name: "Other Returns Org" } })).id;
     const o = await prisma.user.create({
-      data: { organizationId, email: "ret-owner@example.com", passwordHash: "x", name: "Owner", role: "OWNER" },
+      data: { memberships: { create: { organizationId, role: "OWNER" } }, email: "ret-owner@example.com", passwordHash: "x", name: "Owner" },
     });
     const s = await prisma.user.create({
-      data: { organizationId, email: "ret-staff@example.com", passwordHash: "x", name: "Staff", role: "STAFF" },
+      data: { memberships: { create: { organizationId, role: "STAFF" } }, email: "ret-staff@example.com", passwordHash: "x", name: "Staff" },
     });
     owner = { id: o.id, role: "OWNER" };
     staff = { id: s.id, role: "STAFF" };
@@ -111,9 +111,9 @@ describe("returns, refunds and customer balances", () => {
     it("requesting moves no stock", async () => {
       const productId = await newProduct(20);
       const order = await orderAt("FULFILLED", { items: [{ productId, quantity: 5 }] });
-      const before = await getStockBreakdown(productId);
+      const before = await getStockBreakdown(productId, prisma);
       await request(order.id, [{ orderItemId: order.items[0].id, quantity: 2 }]);
-      expect(await getStockBreakdown(productId)).toEqual(before);
+      expect(await getStockBreakdown(productId, prisma)).toEqual(before);
     });
 
     it("cannot return more than was ordered, across several returns", async () => {
@@ -126,7 +126,7 @@ describe("returns, refunds and customer balances", () => {
       );
       await request(order.id, [{ orderItemId: itemId, quantity: 2 }]);
       await expect(request(order.id, [{ orderItemId: itemId, quantity: 1 }])).rejects.toThrow(/Nothing of that item is left to return/);
-      expect((await getReturnableQuantities(order.id)).get(itemId)).toBe(0);
+      expect((await getReturnableQuantities(order.id, prisma)).get(itemId)).toBe(0);
     });
 
     it("two simultaneous requests for the last units: exactly one is accepted", async () => {
@@ -237,7 +237,7 @@ describe("returns, refunds and customer balances", () => {
       });
       const itemA = order.items.find((i) => i.productId === a)!;
       const itemB = order.items.find((i) => i.productId === b)!;
-      expect(await getStockBreakdown(a)).toEqual({ physical: 15, reserved: 0, damaged: 0, available: 15 });
+      expect(await getStockBreakdown(a, prisma)).toEqual({ physical: 15, reserved: 0, damaged: 0, available: 15 });
 
       const ret = await request(order.id, [
         { orderItemId: itemA.id, quantity: 2, condition: "RESELLABLE" },
@@ -246,8 +246,8 @@ describe("returns, refunds and customer balances", () => {
       await decideReturn({ organizationId, returnId: ret.id, actor: owner, approve: true });
       await receiveReturn({ organizationId, returnId: ret.id, actor: staff });
 
-      expect(await getStockBreakdown(a)).toEqual({ physical: 17, reserved: 0, damaged: 0, available: 17 });
-      expect(await getStockBreakdown(b)).toEqual({ physical: 18, reserved: 0, damaged: 3, available: 15 });
+      expect(await getStockBreakdown(a, prisma)).toEqual({ physical: 17, reserved: 0, damaged: 0, available: 17 });
+      expect(await getStockBreakdown(b, prisma)).toEqual({ physical: 18, reserved: 0, damaged: 3, available: 15 });
 
       const movements = await prisma.stockMovement.findMany({ where: { reference: ret.reference } });
       expect(movements.map((m) => m.reason).sort()).toEqual(["RETURN", "RETURN_DAMAGED"]);
@@ -260,14 +260,14 @@ describe("returns, refunds and customer balances", () => {
       const ret = await request(order.id, [{ orderItemId: order.items[0].id, quantity: 2 }]);
 
       await expect(receiveReturn({ organizationId, returnId: ret.id, actor: staff })).rejects.toThrow(/approved/);
-      expect(await getStockBreakdown(productId)).toMatchObject({ physical: 15 });
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ physical: 15 });
 
       await decideReturn({ organizationId, returnId: ret.id, actor: owner, approve: true });
       const results = await Promise.allSettled(
         Array.from({ length: 4 }, () => receiveReturn({ organizationId, returnId: ret.id, actor: staff }))
       );
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-      expect(await getStockBreakdown(productId)).toMatchObject({ physical: 17, available: 17 }); // +2, not +8
+      expect(await getStockBreakdown(productId, prisma)).toMatchObject({ physical: 17, available: 17 }); // +2, not +8
     });
   });
 
