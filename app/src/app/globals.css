@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #1b2340;
+  --ink-2: #2a3561;
+  --paper: #f7f5f1;
+  --surface: #ffffff;
+  --line: #e2dfd6;
+  --accent: #c8841e;
+  --accent-ink: #5c3c0f;
+  --text: #1b2340;
+  --text-muted: #686d7a;
+
+  --status-neutral-fg: #4b4f5b;
+  --status-neutral-bg: #eef0f3;
+  --status-progress-fg: #92620f;
+  --status-progress-bg: #fbf1e1;
+  --status-success-fg: #1f6b4e;
+  --status-success-bg: #e5f3ec;
+  --status-attention-fg: #a13f2b;
+  --status-attention-bg: #fbe9e4;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-status-neutral-fg: var(--status-neutral-fg);
+  --color-status-neutral-bg: var(--status-neutral-bg);
+  --color-status-progress-fg: var(--status-progress-fg);
+  --color-status-progress-bg: var(--status-progress-bg);
+  --color-status-success-fg: var(--status-success-fg);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-attention-fg: var(--status-attention-fg);
+  --color-status-attention-bg: var(--status-attention-bg);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-tabular {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-feature-settings: "tnum";
+}

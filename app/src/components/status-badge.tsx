@@ -1,0 +1,43 @@
+type Tone = "neutral" | "progress" | "success" | "attention";
+
+const TONE_CLASSES: Record<Tone, string> = {
+  neutral: "text-status-neutral-fg bg-status-neutral-bg",
+  progress: "text-status-progress-fg bg-status-progress-bg",
+  success: "text-status-success-fg bg-status-success-bg",
+  attention: "text-status-attention-fg bg-status-attention-bg",
+};
+
+const CONVERSATION_STATUS: Record<string, { label: string; tone: Tone }> = {
+  NEW: { label: "New", tone: "neutral" },
+  AI_HANDLING: { label: "AI handling", tone: "progress" },
+  AWAITING_STAFF: { label: "Awaiting staff", tone: "attention" },
+  RESOLVED: { label: "Resolved", tone: "success" },
+};
+
+const ORDER_STATUS: Record<string, { label: string; tone: Tone }> = {
+  DRAFT: { label: "Draft", tone: "neutral" },
+  CONFIRMED: { label: "Confirmed", tone: "progress" },
+  PAID: { label: "Paid", tone: "success" },
+  FULFILLED: { label: "Fulfilled", tone: "success" },
+  CANCELLED: { label: "Cancelled", tone: "attention" },
+};
+
+function Badge({ label, tone }: { label: string; tone: Tone }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_CLASSES[tone]}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+export function ConversationStatusBadge({ status }: { status: string }) {
+  const entry = CONVERSATION_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge {...entry} />;
+}
+
+export function OrderStatusBadge({ status }: { status: string }) {
+  const entry = ORDER_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge {...entry} />;
+}

@@ -1,0 +1,270 @@
+// Phase 1 data model.
+// Tenant boundary (Organization) is present from day one so Phase 3 multi-tenancy
+// doesn't require a schema rewrite, even though isolation is only enforced at the
+// application layer (single tenant) for now.
+//
+// Dev datasource is SQLite (zero local setup). Swap `provider`/`url` to Postgres
+// before any real concurrency or production use — SQLite serializes writes and
+// Prisma's `Decimal` type isn't available on it, which is why money is stored as
+// integer cents here rather than switched later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  STAFF
+}
+
+enum ConversationChannel {
+  WHATSAPP
+}
+
+enum ConversationStatus {
+  NEW
+  AI_HANDLING
+  AWAITING_STAFF
+  RESOLVED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageSender {
+  CUSTOMER
+  AI
+  STAFF
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+  FULFILLED
+  CANCELLED
+}
+
+// Reasons an inventory ledger entry exists. Current stock is always
+// SUM(quantityDelta) for a product — never a column that gets edited directly.
+enum StockMovementReason {
+  INITIAL_STOCK
+  PURCHASE_RECEIVED
+  SALE_RESERVED
+  SALE_FULFILLED
+  RESERVATION_RELEASED
+  RETURN
+  DAMAGE
+  MANUAL_ADJUSTMENT
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users         User[]
+  products      Product[]
+  stockMovements StockMovement[]
+  customers     Customer[]
+  conversations Conversation[]
+  orders        Order[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  email          String   @unique
+  passwordHash   String
+  name           String
+  role           UserRole @default(STAFF)
+  createdAt      DateTime @default(now())
+
+  assignedConversations Conversation[]  @relation("AssignedStaff")
+  createdStockMovements StockMovement[]
+  createdOrders         Order[]
+  auditLogs              AuditLog[]
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  sku            String
+  name           String
+  // Variant attributes, e.g. {"size":"M","colour":"Black"}. Kept flexible per
+  // product category — business-specific attributes (material, model,
+  // packaging, ...) are just extra keys, not new columns.
+  variantAttributes Json?
+  priceCents     Int
+  // Cost price, when known — nullable because many businesses won't have it
+  // for every SKU from day one. Never used to compute profit until real cost
+  // data exists everywhere it's needed (per VISION.md).
+  costCents      Int?
+  currency       String   @default("NGN")
+  // Minimum order quantity — enforced when an order item is added.
+  moq            Int      @default(1)
+  // Display/stock unit label (e.g. "piece", "carton", "dozen"). Stock
+  // movements and order quantities for a product are always in this same
+  // unit — this makes the unit explicit per VISION.md rather than silently
+  // mixing pieces and cartons; it is not a multi-unit conversion system.
+  unit           String   @default("piece")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  stockMovements StockMovement[]
+  orderItems     OrderItem[]
+  priceTiers     PriceTier[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId, active])
+  @@index([organizationId, name])
+}
+
+// Quantity-break wholesale pricing, e.g. 1-9 units at list price, 10-49 at a
+// discount, 50+ at a deeper discount. minQuantity: 1 tiers are equivalent to
+// (and should be kept in sync with the intent of) the product's base
+// priceCents — see src/lib/pricing.ts for resolution order.
+model PriceTier {
+  id          String  @id @default(cuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  minQuantity Int
+  priceCents  Int
+
+  @@unique([productId, minQuantity])
+}
+
+model StockMovement {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id])
+  quantityDelta  Int
+  reason         StockMovementReason
+  // Free-form pointer to the causing record, e.g. an order reference or PO number.
+  reference      String?
+  note           String?
+  createdAt      DateTime @default(now())
+  createdById    String?
+  createdBy      User?    @relation(fields: [createdById], references: [id])
+
+  @@index([organizationId, productId])
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  phone          String
+  name           String?
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  conversations Conversation[]
+  orders        Order[]
+
+  @@unique([organizationId, phone])
+}
+
+model Conversation {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  channel        ConversationChannel @default(WHATSAPP)
+  status         ConversationStatus  @default(NEW)
+  assignedToId   String?
+  assignedTo     User?    @relation("AssignedStaff", fields: [assignedToId], references: [id])
+  lastMessageAt  DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  messages Message[]
+  orders   Order[]
+
+  @@index([organizationId, status])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  direction      MessageDirection
+  sender         MessageSender
+  body           String
+  // WhatsApp message id — unique when present, so a re-delivered webhook event
+  // can be detected and ignored instead of creating a duplicate message.
+  externalId     String?  @unique
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model Order {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  reference      String
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  status         OrderStatus @default(DRAFT)
+  totalCents     Int      @default(0)
+  currency       String   @default("NGN")
+  createdById    String?
+  createdBy      User?    @relation(fields: [createdById], references: [id])
+  confirmedAt    DateTime?
+  paidAt         DateTime?
+  fulfilledAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@unique([organizationId, reference])
+  @@index([organizationId, status])
+}
+
+// unitPriceCents is locked at order-confirmation time — a later catalogue price
+// change must never silently alter an already-confirmed order's items.
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id])
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id])
+  variantLabel   String?
+  quantity       Int
+  unitPriceCents Int
+  createdAt      DateTime @default(now())
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  entity         String
+  entityId       String
+  action         String
+  actorId        String?
+  actor          User?    @relation(fields: [actorId], references: [id])
+  before         Json?
+  after          Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, entity, entityId])
+}
