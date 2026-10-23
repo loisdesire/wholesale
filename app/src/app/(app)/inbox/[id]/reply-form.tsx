@@ -1,23 +1,18 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { sendReplyAction } from "../actions";
 
 export function ReplyForm({ conversationId }: { conversationId: string }) {
-  const [state, formAction, pending] = useActionState(sendReplyAction.bind(null, conversationId), {
-    error: null,
-  });
-  const formRef = useRef<HTMLFormElement>(null);
+  // Clears the box only once a reply actually sends; a failed send keeps the text.
+  const { state, pending, formProps } = useSubmitAction(
+    sendReplyAction.bind(null, conversationId),
+    { error: null },
+    { resetOnSuccess: true }
+  );
 
   return (
-    <form
-      ref={formRef}
-      action={async (formData) => {
-        await formAction(formData);
-        formRef.current?.reset();
-      }}
-      className="flex flex-col gap-3"
-    >
+    <form {...formProps} className="flex flex-col gap-3">
       <textarea
         name="body"
         rows={3}

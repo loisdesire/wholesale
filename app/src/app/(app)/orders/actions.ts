@@ -15,6 +15,9 @@ import {
   cancelOrder,
   updateOrderItemQuantity,
   updateOrderDetails,
+  shipOrderItems,
+  closeOrderShort,
+  amendConfirmedOrder,
   OrderStateError,
 } from "@/lib/orders";
 import { InsufficientStockError } from "@/lib/stock";
@@ -287,5 +290,84 @@ export async function updateOrderDetailsAction(
     return { error: friendlyError(err) };
   }
   revalidatePath(`/orders/${orderId}`);
+  return { error: null };
+}
+
+/** Inputs are named qty_<orderItemId>; blank or 0 means "not in this shipment". */
+export async function shipItemsAction(orderId: string, _prevState: FormState, formData: FormData): Promise<FormState> {
+  const session = await requireSession();
+  const items: { orderItemId: string; quantity: number }[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("qty_") || !value || Number(value) === 0) continue;
+    items.push({ orderItemId: key.slice(4), quantity: Number(value) });
+  }
+  try {
+    await shipOrderItems({
+      organizationId: session.user.organizationId,
+      orderId,
+      actorId: session.user.id,
+      items,
+      carrier: String(formData.get("carrier") ?? ""),
+      trackingReference: String(formData.get("trackingReference") ?? ""),
+    });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/orders");
+  revalidatePath("/catalogue");
+  revalidatePath("/");
+  return { error: null };
+}
+
+export async function closeShortAction(orderId: string, _prevState: FormState, formData: FormData): Promise<FormState> {
+  const session = await requireSession();
+  try {
+    await closeOrderShort({
+      organizationId: session.user.organizationId,
+      orderId,
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      reason: String(formData.get("reason") ?? ""),
+    });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/orders");
+  revalidatePath("/catalogue");
+  revalidatePath("/customers");
+  revalidatePath("/");
+  return { error: null };
+}
+
+/** Inputs: qty_<orderItemId> (0 removes the line), addProductId + addQuantity, reason. */
+export async function amendOrderAction(orderId: string, _prevState: FormState, formData: FormData): Promise<FormState> {
+  const session = await requireSession();
+  const changes: { orderItemId: string; quantity: number }[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("qty_") || value === "") continue;
+    changes.push({ orderItemId: key.slice(4), quantity: Number(value) });
+  }
+  const addProductId = String(formData.get("addProductId") ?? "");
+  const addQuantity = Number(formData.get("addQuantity") ?? 0);
+  try {
+    await amendConfirmedOrder({
+      organizationId: session.user.organizationId,
+      orderId,
+      actorId: session.user.id,
+      reason: String(formData.get("reason") ?? ""),
+      amendment: {
+        changes,
+        additions: addProductId && addQuantity > 0 ? [{ productId: addProductId, quantity: addQuantity }] : [],
+      },
+    });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/orders");
+  revalidatePath("/catalogue");
+  revalidatePath("/");
   return { error: null };
 }

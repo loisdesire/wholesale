@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { addOrderItemAction } from "../actions";
 import { formatMoney } from "@/lib/format";
 
@@ -14,12 +15,12 @@ type ProductOption = {
 };
 
 export function AddItemForm({ orderId, products }: { orderId: string; products: ProductOption[] }) {
-  const [state, formAction, pending] = useActionState(addOrderItemAction.bind(null, orderId), {
+  const { state, pending, formProps } = useSubmitAction(addOrderItemAction.bind(null, orderId), {
     error: null,
-  });
+  }, { resetOnSuccess: true });
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
       <div className="flex items-end gap-3">
         <div className="flex flex-1 flex-col gap-1.5">
           <label htmlFor="productId" className="text-sm font-medium text-ink">

@@ -53,12 +53,14 @@ enum ReturnStatus {
   RECEIVED
 }
 
-// RETURN: goods coming back from a fulfilled order. CANCELLATION: an owner
+// RETURN: goods coming back from a shipped order. CANCELLATION: an owner
 // cancelled an order that was already paid — nothing ships back, but the
-// money is owed (same refund workflow).
+// money is owed (same refund workflow). UNSHIPPED: an owner closed a
+// part-shipped order short, so the value of what never shipped is owed back.
 enum ReturnKind {
   RETURN
   CANCELLATION
+  UNSHIPPED
 }
 
 enum ReturnItemCondition {
@@ -78,6 +80,7 @@ enum OrderStatus {
   DRAFT
   CONFIRMED
   PAID
+  PARTIALLY_FULFILLED
   FULFILLED
   CANCELLED
 }
@@ -115,6 +118,7 @@ model Organization {
   orders         Order[]
   returns        OrderReturn[]
   auditLogs      AuditLog[]
+  shipments      Shipment[]
 }
 
 model User {
@@ -321,8 +325,9 @@ model Order {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  items   OrderItem[]
-  returns OrderReturn[]
+  items     OrderItem[]
+  shipments Shipment[]
+  returns   OrderReturn[]
 
   @@unique([organizationId, reference])
   @@index([organizationId, status])
@@ -341,7 +346,43 @@ model OrderItem {
   unitPriceCents Int
   createdAt      DateTime @default(now())
 
-  returnItems ReturnItem[]
+  returnItems   ReturnItem[]
+  shipmentItems ShipmentItem[]
+}
+
+// One physical dispatch of (part of) an order. An order can ship in several
+// pieces; each piece is a Shipment and moves its units out of physical and
+// reserved stock. What has shipped — not what was ordered — is what can be
+// returned.
+model Shipment {
+  id                String       @id @default(cuid())
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id])
+  orderId           String
+  order             Order        @relation(fields: [orderId], references: [id])
+  reference         String
+  carrier           String?
+  trackingReference String?
+  notes             String?
+  createdById       String?
+  createdAt         DateTime     @default(now())
+
+  items ShipmentItem[]
+
+  @@unique([organizationId, reference])
+  @@index([orderId])
+}
+
+model ShipmentItem {
+  id          String    @id @default(cuid())
+  shipmentId  String
+  shipment    Shipment  @relation(fields: [shipmentId], references: [id])
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+  quantity    Int
+
+  @@index([shipmentId])
+  @@index([orderItemId])
 }
 
 // A customer sending goods back from a fulfilled order. refundCents is fixed
@@ -360,6 +401,9 @@ model OrderReturn {
   kind           ReturnKind   @default(RETURN)
   status         ReturnStatus @default(REQUESTED)
   reason         String
+  // Value of the goods at the order's locked prices; refundCents is what the owner
+  // actually approved paying back (equal, unless they approved a partial refund).
+  valueCents     Int
   refundCents    Int
   refundStatus   RefundStatus @default(NONE)
   refundNote     String?

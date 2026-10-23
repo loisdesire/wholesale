@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { createOrderAction } from "../actions";
 import { formatMoney } from "@/lib/format";
 import { resolveUnitPriceCents } from "@/lib/pricing";
@@ -33,7 +34,7 @@ export function NewOrderForm({
   /** customerId -> productId -> agreed price in cents (sparse; only customers who have any). */
   agreedPrices: Record<string, Record<string, number>>;
 }) {
-  const [state, formAction, pending] = useActionState(createOrderAction, { error: null });
+  const { state, pending, formProps } = useSubmitAction(createOrderAction, { error: null });
   const [customerMode, setCustomerMode] = useState<"existing" | "new">(
     defaultCustomerId ? "existing" : customers.length > 0 ? "existing" : "new"
   );
@@ -85,7 +86,7 @@ export function NewOrderForm({
   }
 
   return (
-    <form action={formAction} className="flex max-w-2xl flex-col gap-8">
+    <form {...formProps} className="flex max-w-2xl flex-col gap-8">
       <input type="hidden" name="itemsJson" value={JSON.stringify(cart)} />
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
 

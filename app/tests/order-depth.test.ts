@@ -325,7 +325,7 @@ describe("order depth: amendments, repeat protection, cancelling paid orders", (
           reason: "x",
           items: [{ orderItemId: (await prisma.orderItem.findFirstOrThrow({ where: { orderId: order.id } })).id, quantity: 1, condition: "RESELLABLE" }],
         })
-      ).rejects.toThrow(/fulfilled orders/);
+      ).rejects.toThrow(/orders that have shipped/);
       expect(await getStockBreakdown(productId)).toMatchObject({ physical: 20, available: 20 });
     });
 

@@ -21,6 +21,8 @@ async function main() {
   await prisma.customerPrice.deleteMany();
   await prisma.customerAddress.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.shipmentItem.deleteMany();
+  await prisma.shipment.deleteMany();
   await prisma.returnItem.deleteMany();
   await prisma.orderReturn.deleteMany();
   await prisma.orderItem.deleteMany();
@@ -184,6 +186,20 @@ async function main() {
       { orderId: order1.id, productId: bySku("ANK-2PC-RED-L").id, variantLabel: "Red / L", quantity: 5, unitPriceCents: 1850000 },
     ],
   });
+  // ORD-1001 shipped in one go.
+  const order1ItemRows = await prisma.orderItem.findMany({ where: { orderId: order1.id } });
+  await prisma.shipment.create({
+    data: {
+      organizationId: org.id,
+      orderId: order1.id,
+      reference: `${order1.reference}/1`,
+      carrier: "GIG Logistics",
+      trackingReference: "GIG-558210",
+      createdById: staff.id,
+      createdAt: hoursAgo(26),
+      items: { create: order1ItemRows.map((i) => ({ orderItemId: i.id, quantity: i.quantity })) },
+    },
+  });
   // ORD-1001 was reserved at confirmation, then shipped at fulfilment.
   const order1Lines = [
     { sku: "ANK-2PC-BLK-M", quantity: 10 },
@@ -303,6 +319,7 @@ async function main() {
       orderId: order1.id,
       customerId: customers[0].id,
       reason: "Seam came apart on two pieces",
+      valueCents: 2 * order1BlackItem.unitPriceCents,
       refundCents: 2 * order1BlackItem.unitPriceCents,
       requestedById: staff.id,
       createdAt: hoursAgo(3),

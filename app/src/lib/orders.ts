@@ -1,11 +1,12 @@
 import { OrderStatus, StockMovementReason, UserRole, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { transaction } from "@/lib/db";
 import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
 import { resolveUnitPriceCents } from "@/lib/pricing";
 import { getCustomerPriceMap } from "@/lib/customers";
 import { lockRow } from "@/lib/locks";
-import { ReturnPermissionError, createCancellationRefundTx } from "@/lib/returns";
+import { ReturnPermissionError, createOwnerRefundTx } from "@/lib/returns";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -44,7 +45,7 @@ export async function createDraftOrder(params: {
     throw new OrderStateError("An order needs at least one item.");
   }
 
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const customer = await tx.customer.findFirst({
       where: { id: params.customerId, organizationId: params.organizationId },
       include: { addresses: { where: { isDefault: true }, take: 1 } },
@@ -153,7 +154,7 @@ export async function addOrderItem(params: {
 }) {
   if (params.quantity <= 0) throw new OrderStateError("Quantity must be greater than zero.");
 
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     if (order.status !== OrderStatus.DRAFT) {
       throw new OrderStateError("Only draft orders can be changed.");
@@ -197,7 +198,7 @@ export async function removeOrderItem(params: {
   orderId: string;
   orderItemId: string;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     if (order.status !== OrderStatus.DRAFT) {
       throw new OrderStateError("Only draft orders can be changed.");
@@ -227,7 +228,7 @@ export async function updateOrderItemQuantity(params: {
   if (!Number.isInteger(params.quantity) || params.quantity <= 0) {
     throw new OrderStateError("Quantity must be a whole number greater than zero.");
   }
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     if (order.status !== OrderStatus.DRAFT) throw new OrderStateError("Only draft orders can be changed.");
     const item = order.items.find((i) => i.id === params.orderItemId);
@@ -277,7 +278,7 @@ export async function updateOrderDetails(params: {
   notes: string | null;
   deliveryAddress: string | null;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     if (order.status === OrderStatus.FULFILLED || order.status === OrderStatus.CANCELLED) {
       throw new OrderStateError("A fulfilled or cancelled order can no longer be changed.");
@@ -346,6 +347,170 @@ export async function findDuplicateOrders(
   return candidates.filter((c) => itemSignature(c.items) === signature).map((c) => ({ id: c.id, reference: c.reference, status: c.status }));
 }
 
+export type OrderAmendment = {
+  /** Existing lines to change; quantity 0 removes the line. */
+  changes?: { orderItemId: string; quantity: number }[];
+  /** Products to add (merged into an existing line for the same product). */
+  additions?: { productId: string; quantity: number }[];
+};
+
+/**
+ * Amends a CONFIRMED (not yet paid) order. Agreed terms are locked at
+ * confirmation, so this is a deliberate exception: a reason is required, only
+ * the lines that actually change are re-priced (at today's tiers/agreed prices —
+ * untouched lines keep their locked price), and stock is re-reserved by the
+ * difference, all-or-nothing, so an amendment that can't be covered by available
+ * stock changes nothing. Once paid, the amount is settled — cancel and refund
+ * instead.
+ */
+export async function amendConfirmedOrder(params: {
+  organizationId: string;
+  orderId: string;
+  actorId: string;
+  reason: string;
+  amendment: OrderAmendment;
+}) {
+  const reason = params.reason.trim();
+  if (!reason) throw new OrderStateError("Say why the order is being changed.");
+  const changes = params.amendment.changes ?? [];
+  const additions = params.amendment.additions ?? [];
+  if (changes.length === 0 && additions.length === 0) throw new OrderStateError("Nothing to change.");
+
+  return transaction(params.organizationId, async (tx) => {
+    const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
+    if (order.status !== OrderStatus.CONFIRMED) {
+      throw new OrderStateError(
+        order.status === OrderStatus.DRAFT
+          ? "A draft order can be edited directly."
+          : "Only a confirmed order that hasn't been paid can be amended."
+      );
+    }
+
+    // Desired quantity per existing line, then per product for added items.
+    const target = new Map(order.items.map((i) => [i.id, i.quantity]));
+    const touched = new Set<string>();
+    const seenChanges = new Set<string>();
+    for (const change of changes) {
+      if (!target.has(change.orderItemId)) throw new OrderStateError("One of the lines is not on this order.");
+      if (seenChanges.has(change.orderItemId)) throw new OrderStateError("Each line can only be changed once.");
+      seenChanges.add(change.orderItemId);
+      if (!Number.isInteger(change.quantity) || change.quantity < 0) {
+        throw new OrderStateError("Quantities must be whole numbers, or 0 to remove a line.");
+      }
+      if (change.quantity !== target.get(change.orderItemId)) {
+        target.set(change.orderItemId, change.quantity);
+        touched.add(change.orderItemId);
+      }
+    }
+
+    const newLines: { productId: string; quantity: number }[] = [];
+    for (const add of additions) {
+      if (!Number.isInteger(add.quantity) || add.quantity <= 0) {
+        throw new OrderStateError("Added quantities must be whole numbers greater than zero.");
+      }
+      const existing = order.items.find((i) => i.productId === add.productId && (target.get(i.id) ?? 0) > 0);
+      if (existing) {
+        target.set(existing.id, (target.get(existing.id) ?? 0) + add.quantity);
+        touched.add(existing.id);
+      } else {
+        const already = newLines.find((l) => l.productId === add.productId);
+        if (already) already.quantity += add.quantity;
+        else newLines.push({ productId: add.productId, quantity: add.quantity });
+      }
+    }
+
+    const remainingLines = [...target.values()].filter((q) => q > 0).length + newLines.length;
+    if (remainingLines === 0) throw new OrderStateError("An order needs at least one item — cancel the order instead.");
+
+    const productIds = [...new Set([...order.items.map((i) => i.productId), ...newLines.map((l) => l.productId)])];
+    const products = await tx.product.findMany({
+      where: { id: { in: productIds }, organizationId: params.organizationId },
+      include: { priceTiers: true },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    const agreedPrices = await getCustomerPriceMap(params.organizationId, order.customerId, productIds, tx);
+    const priceFor = (productId: string, quantity: number) => {
+      const product = productMap.get(productId)!;
+      if (quantity < product.moq) {
+        throw new OrderStateError(
+          `${product.name} has a minimum order quantity of ${product.moq}, but ${quantity} was requested.`
+        );
+      }
+      return resolveUnitPriceCents(product.priceCents, product.priceTiers, quantity, agreedPrices.get(productId));
+    };
+
+    const before = order.items.map((i) => ({ sku: i.product.sku, quantity: i.quantity, unitPriceCents: i.unitPriceCents }));
+
+    // Net change per product (two lines of one product are summed).
+    const delta = new Map<string, number>();
+    const bump = (productId: string, d: number) => delta.set(productId, (delta.get(productId) ?? 0) + d);
+
+    for (const item of order.items) {
+      const next = target.get(item.id) ?? 0;
+      if (next === item.quantity) continue;
+      bump(item.productId, next - item.quantity);
+      if (next === 0) {
+        await tx.orderItem.delete({ where: { id: item.id } });
+      } else {
+        await tx.orderItem.update({
+          where: { id: item.id },
+          data: { quantity: next, unitPriceCents: priceFor(item.productId, next) },
+        });
+      }
+    }
+    for (const line of newLines) {
+      const product = productMap.get(line.productId);
+      if (!product) throw new OrderStateError("One of the added products could not be found.");
+      const variant = product.variantAttributes as Record<string, string> | null;
+      bump(line.productId, line.quantity);
+      await tx.orderItem.create({
+        data: {
+          orderId: order.id,
+          productId: product.id,
+          variantLabel: variant ? Object.values(variant).join(" / ") : null,
+          quantity: line.quantity,
+          unitPriceCents: priceFor(line.productId, line.quantity),
+        },
+      });
+    }
+
+    for (const [productId, d] of [...delta].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+      if (d === 0) continue;
+      await recordStockMovementTx(tx, {
+        organizationId: params.organizationId,
+        productId,
+        quantityDelta: -d, // more units: reserve (negative); fewer: release (positive)
+        reason: d > 0 ? StockMovementReason.SALE_RESERVED : StockMovementReason.RESERVATION_RELEASED,
+        reference: order.reference,
+        note: `Order amended: ${reason}`,
+        createdById: params.actorId,
+      });
+    }
+
+    const items = await tx.orderItem.findMany({ where: { orderId: order.id }, include: { product: true } });
+    const totalCents = computeTotal(items);
+    const updated = await tx.order.update({ where: { id: order.id }, data: { totalCents } });
+
+    await recordAudit(
+      {
+        organizationId: params.organizationId,
+        entity: "Order",
+        entityId: order.id,
+        action: "ORDER_AMENDED",
+        actorId: params.actorId,
+        before: { totalCents: order.totalCents, lines: before },
+        after: {
+          totalCents,
+          reason,
+          lines: items.map((i) => ({ sku: i.product.sku, quantity: i.quantity, unitPriceCents: i.unitPriceCents })),
+        },
+      },
+      tx
+    );
+    return updated;
+  });
+}
+
 /**
  * Confirms a draft order: reserves stock for every line item atomically (all
  * items succeed or none do) and moves the order to CONFIRMED. This is the
@@ -361,7 +526,7 @@ export async function confirmOrder(params: {
   /** Set when a person has seen the repeat-order warning and wants to go ahead. */
   allowDuplicate?: boolean;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     if (order.status !== OrderStatus.DRAFT) {
       throw new OrderStateError("Only draft orders can be confirmed.");
@@ -412,7 +577,7 @@ export async function confirmOrder(params: {
 }
 
 export async function markOrderPaid(params: { organizationId: string; orderId: string; actorId: string }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     if (order.status !== OrderStatus.CONFIRMED) {
       throw new OrderStateError("Only confirmed orders can be marked as paid.");
@@ -440,29 +605,99 @@ export async function markOrderPaid(params: { organizationId: string; orderId: s
   });
 }
 
-export async function markOrderFulfilled(params: { organizationId: string; orderId: string; actorId: string }) {
-  return prisma.$transaction(async (tx) => {
+type ShipLine = { orderItemId: string; quantity: number };
+
+/** Units of each order line already shipped. */
+async function getShippedByItem(tx: TxClient, orderId: string) {
+  const rows = await tx.shipmentItem.groupBy({
+    by: ["orderItemId"],
+    where: { shipment: { orderId } },
+    _sum: { quantity: true },
+  });
+  return new Map(rows.map((r) => [r.orderItemId, r._sum.quantity ?? 0]));
+}
+
+/**
+ * Ships all or part of a paid order. Each call is one physical dispatch
+ * (a Shipment): its units leave physical and reserved stock together (available
+ * is unchanged — it already dropped at confirmation). The order becomes
+ * PARTIALLY_FULFILLED until every unit has shipped, then FULFILLED. Omit `items`
+ * to ship everything still outstanding.
+ */
+export async function shipOrderItems(params: {
+  organizationId: string;
+  orderId: string;
+  actorId: string;
+  items?: ShipLine[];
+  carrier?: string;
+  trackingReference?: string;
+  notes?: string;
+}) {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
-    if (order.status !== OrderStatus.PAID) {
+    if (order.status !== OrderStatus.PAID && order.status !== OrderStatus.PARTIALLY_FULFILLED) {
       throw new OrderStateError("Only paid orders can be marked as fulfilled.");
     }
 
-    // The goods physically leave: physical and reserved both drop, available
-    // is unchanged (it was already taken out of availability at confirmation).
-    for (const item of sortByProductId(order.items)) {
+    const shipped = await getShippedByItem(tx, order.id);
+    const remaining = new Map(order.items.map((i) => [i.id, i.quantity - (shipped.get(i.id) ?? 0)]));
+
+    const lines: ShipLine[] =
+      params.items ??
+      order.items.filter((i) => (remaining.get(i.id) ?? 0) > 0).map((i) => ({ orderItemId: i.id, quantity: remaining.get(i.id)! }));
+    if (lines.length === 0) throw new OrderStateError("Choose at least one item to ship.");
+
+    const seen = new Set<string>();
+    for (const line of lines) {
+      const item = order.items.find((i) => i.id === line.orderItemId);
+      if (!item) throw new OrderStateError("One of the selected items is not on this order.");
+      if (seen.has(line.orderItemId)) throw new OrderStateError("Each item can only appear once in a shipment.");
+      seen.add(line.orderItemId);
+      if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
+        throw new OrderStateError("Shipment quantities must be whole numbers greater than zero.");
+      }
+      const left = remaining.get(item.id) ?? 0;
+      if (line.quantity > left) {
+        throw new OrderStateError(
+          left === 0
+            ? `${item.product.name} has already shipped in full.`
+            : `Only ${left} of ${item.product.name} left to ship, but ${line.quantity} was entered.`
+        );
+      }
+    }
+
+    const byItem = new Map(order.items.map((i) => [i.id, i]));
+    for (const line of sortByProductId(lines.map((l) => ({ ...l, productId: byItem.get(l.orderItemId)!.productId })))) {
       await recordStockMovementTx(tx, {
         organizationId: params.organizationId,
-        productId: item.productId,
-        quantityDelta: -item.quantity,
+        productId: line.productId,
+        quantityDelta: -line.quantity,
         reason: StockMovementReason.SALE_FULFILLED,
         reference: order.reference,
         createdById: params.actorId,
       });
     }
 
+    const shipmentCount = await tx.shipment.count({ where: { orderId: order.id } });
+    const shipment = await tx.shipment.create({
+      data: {
+        organizationId: params.organizationId,
+        orderId: order.id,
+        reference: `${order.reference}/${shipmentCount + 1}`,
+        carrier: params.carrier?.trim() || null,
+        trackingReference: params.trackingReference?.trim() || null,
+        notes: params.notes?.trim() || null,
+        createdById: params.actorId,
+        items: { create: lines.map((l) => ({ orderItemId: l.orderItemId, quantity: l.quantity })) },
+      },
+    });
+
+    const complete = order.items.every((i) => (remaining.get(i.id) ?? 0) - (lines.find((l) => l.orderItemId === i.id)?.quantity ?? 0) === 0);
     const updated = await tx.order.update({
       where: { id: order.id },
-      data: { status: OrderStatus.FULFILLED, fulfilledAt: new Date() },
+      data: complete
+        ? { status: OrderStatus.FULFILLED, fulfilledAt: new Date() }
+        : { status: OrderStatus.PARTIALLY_FULFILLED },
     });
 
     await recordAudit(
@@ -470,15 +705,102 @@ export async function markOrderFulfilled(params: { organizationId: string; order
         organizationId: params.organizationId,
         entity: "Order",
         entityId: order.id,
-        action: "ORDER_FULFILLED",
+        action: complete ? "ORDER_FULFILLED" : "ORDER_PARTIALLY_SHIPPED",
         actorId: params.actorId,
-        before: { status: "PAID" },
-        after: { status: "FULFILLED" },
+        before: { status: order.status },
+        after: {
+          status: updated.status,
+          shipment: shipment.reference,
+          units: lines.reduce((sum, l) => sum + l.quantity, 0),
+          ...(shipment.trackingReference ? { tracking: shipment.trackingReference } : {}),
+        },
       },
       tx
     );
 
-    return updated;
+    return { order: updated, shipment };
+  });
+}
+
+/** Ships everything still outstanding on a paid or part-shipped order. */
+export async function markOrderFulfilled(params: { organizationId: string; orderId: string; actorId: string }) {
+  return (await shipOrderItems(params)).order;
+}
+
+/**
+ * Owner closes a part-shipped order: the units that never shipped will not ship.
+ * Their reservation is released back to available stock and the value of what was
+ * paid for but not sent becomes a refund owed to the customer (kind UNSHIPPED).
+ * The order is then complete (FULFILLED) at what actually shipped.
+ */
+export async function closeOrderShort(params: {
+  organizationId: string;
+  orderId: string;
+  actorId: string;
+  actorRole?: UserRole;
+  reason: string;
+}) {
+  if (params.actorRole !== UserRole.OWNER) {
+    throw new ReturnPermissionError("Only an owner can close an order short, because it means refunding the customer.");
+  }
+  const reason = params.reason.trim();
+  if (!reason) throw new OrderStateError("Say why the rest of the order won't ship.");
+
+  return transaction(params.organizationId, async (tx) => {
+    const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
+    if (order.status !== OrderStatus.PARTIALLY_FULFILLED) {
+      throw new OrderStateError("Only an order that has partly shipped can be closed short.");
+    }
+    const shipped = await getShippedByItem(tx, order.id);
+    const unshipped = order.items
+      .map((i) => ({ item: i, quantity: i.quantity - (shipped.get(i.id) ?? 0) }))
+      .filter((u) => u.quantity > 0);
+    if (unshipped.length === 0) throw new OrderStateError("Everything on this order has already shipped.");
+
+    for (const u of sortByProductId(unshipped.map((x) => ({ ...x, productId: x.item.productId })))) {
+      await recordStockMovementTx(tx, {
+        organizationId: params.organizationId,
+        productId: u.productId,
+        quantityDelta: u.quantity,
+        reason: StockMovementReason.RESERVATION_RELEASED,
+        reference: order.reference,
+        createdById: params.actorId,
+      });
+    }
+
+    const refund = await createOwnerRefundTx(tx, {
+      organizationId: params.organizationId,
+      orderId: order.id,
+      customerId: order.customerId,
+      kind: "UNSHIPPED",
+      reason,
+      items: unshipped.map((u) => ({ orderItemId: u.item.id, quantity: u.quantity, unitPriceCents: u.item.unitPriceCents })),
+      actor: { id: params.actorId, role: UserRole.OWNER },
+    });
+
+    const updated = await tx.order.update({
+      where: { id: order.id },
+      data: { status: OrderStatus.FULFILLED, fulfilledAt: new Date() },
+    });
+    await recordAudit(
+      {
+        organizationId: params.organizationId,
+        entity: "Order",
+        entityId: order.id,
+        action: "ORDER_CLOSED_SHORT",
+        actorId: params.actorId,
+        before: { status: "PARTIALLY_FULFILLED" },
+        after: {
+          status: "FULFILLED",
+          refundOwed: refund.reference,
+          refundCents: refund.refundCents,
+          unitsNotShipped: unshipped.reduce((sum, u) => sum + u.quantity, 0),
+          reason,
+        },
+      },
+      tx
+    );
+    return { order: updated, refund };
   });
 }
 
@@ -496,14 +818,16 @@ export async function cancelOrder(params: {
   /** Needed to cancel a paid order; leaving it out is treated as not-an-owner. */
   actorRole?: UserRole;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     const cancellable: OrderStatus[] = [OrderStatus.DRAFT, OrderStatus.CONFIRMED, OrderStatus.PAID];
     if (!cancellable.includes(order.status)) {
       throw new OrderStateError(
         order.status === OrderStatus.FULFILLED
           ? "A fulfilled order can't be cancelled — record a return instead."
-          : "This order can't be cancelled."
+          : order.status === OrderStatus.PARTIALLY_FULFILLED
+            ? "Part of this order has already shipped — close the remainder short, or record a return for what was sent."
+            : "This order can't be cancelled."
       );
     }
     if (order.status === OrderStatus.PAID && params.actorRole !== UserRole.OWNER) {
@@ -525,9 +849,13 @@ export async function cancelOrder(params: {
 
     let refundReference: string | undefined;
     if (order.status === OrderStatus.PAID) {
-      const refund = await createCancellationRefundTx(tx, {
+      const refund = await createOwnerRefundTx(tx, {
         organizationId: params.organizationId,
-        order,
+        orderId: order.id,
+        customerId: order.customerId,
+        kind: "CANCELLATION",
+        reason: "Order cancelled after payment",
+        items: order.items.map((i) => ({ orderItemId: i.id, quantity: i.quantity, unitPriceCents: i.unitPriceCents })),
         actor: { id: params.actorId, role: UserRole.OWNER },
       });
       refundReference = refund.reference;

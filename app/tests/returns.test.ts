@@ -91,7 +91,7 @@ describe("returns, refunds and customer balances", () => {
       for (const status of ["CONFIRMED", "PAID"] as const) {
         const order = await orderAt(status);
         await expect(request(order.id, [{ orderItemId: order.items[0].id, quantity: 1 }])).rejects.toThrow(
-          /fulfilled orders/
+          /orders that have shipped/
         );
       }
     });
@@ -125,7 +125,7 @@ describe("returns, refunds and customer balances", () => {
         "Only 2 of that item can still be returned."
       );
       await request(order.id, [{ orderItemId: itemId, quantity: 2 }]);
-      await expect(request(order.id, [{ orderItemId: itemId, quantity: 1 }])).rejects.toThrow(/already been returned in full/);
+      await expect(request(order.id, [{ orderItemId: itemId, quantity: 1 }])).rejects.toThrow(/Nothing of that item is left to return/);
       expect((await getReturnableQuantities(order.id)).get(itemId)).toBe(0);
     });
 

@@ -1,15 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { loginAction } from "./actions";
 
 export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
-  const [state, formAction, pending] = useActionState(loginAction, {
+  const { state, pending, formProps } = useSubmitAction(loginAction, {
     error: null,
   });
 
   return (
-    <form action={formAction} className="mt-6 flex flex-col gap-4">
+    <form {...formProps} className="mt-6 flex flex-col gap-4">
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
       <div className="flex flex-col gap-1.5">

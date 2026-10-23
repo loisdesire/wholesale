@@ -18,6 +18,7 @@ const ORDER_STATUS: Record<string, { label: string; tone: Tone }> = {
   DRAFT: { label: "Draft", tone: "neutral" },
   CONFIRMED: { label: "Confirmed", tone: "progress" },
   PAID: { label: "Paid", tone: "success" },
+  PARTIALLY_FULFILLED: { label: "Partly shipped", tone: "progress" },
   FULFILLED: { label: "Fulfilled", tone: "success" },
   CANCELLED: { label: "Cancelled", tone: "attention" },
 };

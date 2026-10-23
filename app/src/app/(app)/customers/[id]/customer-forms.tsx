@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { addAddressAction, setPriceAction, updateCustomerAction, type FormState } from "../actions";
 
 const inputClass =
@@ -30,11 +31,11 @@ export function EditCustomerForm({
   email: string | null;
   notes: string | null;
 }) {
-  const [state, formAction, pending] = useActionState(updateCustomerAction.bind(null, customerId), {
+  const { state, pending, formProps } = useSubmitAction(updateCustomerAction.bind(null, customerId), {
     error: null,
   } as FormState);
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex max-w-xl flex-col gap-4 rounded-md border border-line bg-surface p-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="name" className="text-sm font-medium text-ink">Name</label>
@@ -60,11 +61,11 @@ export function EditCustomerForm({
 }
 
 export function AddAddressForm({ customerId }: { customerId: string }) {
-  const [state, formAction, pending] = useActionState(addAddressAction.bind(null, customerId), {
+  const { state, pending, formProps } = useSubmitAction(addAddressAction.bind(null, customerId), {
     error: null,
-  } as FormState);
+  } as FormState, { resetOnSuccess: true });
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
       <div className="grid gap-3 md:grid-cols-[10rem_1fr]">
         <input name="label" placeholder="Label (e.g. Shop)" aria-label="Address label" className={inputClass} />
         <input name="text" required placeholder="Full address" aria-label="Address" className={inputClass} />
@@ -86,11 +87,11 @@ export function AgreedPriceForm({
   customerId: string;
   products: { id: string; label: string; priceNaira: number }[];
 }) {
-  const [state, formAction, pending] = useActionState(setPriceAction.bind(null, customerId), {
+  const { state, pending, formProps } = useSubmitAction(setPriceAction.bind(null, customerId), {
     error: null,
-  } as FormState);
+  } as FormState, { resetOnSuccess: true });
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
       <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
         <select name="productId" aria-label="Product" className={inputClass} defaultValue="">
           <option value="" disabled>

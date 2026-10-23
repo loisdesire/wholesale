@@ -11,6 +11,7 @@ const STATUS_FILTERS = [
   { value: "DRAFT", label: "Draft" },
   { value: "CONFIRMED", label: "Confirmed" },
   { value: "PAID", label: "Paid" },
+  { value: "PARTIALLY_FULFILLED", label: "Partly shipped" },
   { value: "FULFILLED", label: "Fulfilled" },
   { value: "CANCELLED", label: "Cancelled" },
 ] as const;

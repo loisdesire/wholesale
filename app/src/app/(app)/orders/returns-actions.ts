@@ -89,12 +89,17 @@ export async function decideReturnAction(
   const { organizationId, actor } = await requireActor();
   let orderId: string | undefined;
   try {
+    // Optional "refund amount" (₦). Blank means the full value of the goods.
+    const rawAmount = String(formData.get("refundNaira") ?? "").trim();
+    const refundCents = approve && rawAmount !== "" ? Math.round(Number(rawAmount) * 100) : undefined;
+    if (refundCents !== undefined && !Number.isFinite(refundCents)) return { error: "Enter the refund amount as a number." };
     const updated = await decideReturn({
       organizationId,
       returnId,
       actor,
       approve,
       note: String(formData.get("note") ?? ""),
+      refundCents,
     });
     orderId = updated.orderId;
   } catch (err) {

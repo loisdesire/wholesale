@@ -16,7 +16,9 @@ export function OrderStepper({ status }: { status: string }) {
     );
   }
 
-  const currentIndex = STEPS.indexOf(status as (typeof STEPS)[number]);
+  // A part-shipped order is on the last step but not done: show it as such.
+  const partly = status === "PARTIALLY_FULFILLED";
+  const currentIndex = STEPS.indexOf((partly ? "FULFILLED" : status) as (typeof STEPS)[number]);
 
   return (
     <ol className="flex items-center gap-2">
@@ -38,7 +40,7 @@ export function OrderStepper({ status }: { status: string }) {
                 {done ? "✓" : i + 1}
               </span>
               <span className={`text-sm ${active ? "font-medium text-ink" : "text-text-muted"}`}>
-                {STEP_LABEL[step]}
+                {partly && step === "FULFILLED" ? "Partly shipped" : STEP_LABEL[step]}
               </span>
             </div>
             {i < STEPS.length - 1 && <span className="h-px w-6 bg-line" />}

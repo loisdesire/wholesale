@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { recordStockMovementAction } from "../actions";
 
 const REASON_OPTIONS = [
@@ -12,16 +13,16 @@ const REASON_OPTIONS = [
 ] as const;
 
 export function StockMovementForm({ productId }: { productId: string }) {
-  const [state, formAction, pending] = useActionState(
+  const { state, pending, formProps } = useSubmitAction(
     recordStockMovementAction.bind(null, productId),
     { error: null }
-  );
+  , { resetOnSuccess: true });
 
   const [reason, setReason] = useState<string>(REASON_OPTIONS[0].value);
   const fixedDirection = REASON_OPTIONS.find((r) => r.value === reason)?.direction;
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="reason" className="text-sm font-medium text-ink">

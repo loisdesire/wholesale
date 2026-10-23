@@ -51,7 +51,7 @@ export default async function DashboardPage() {
       }),
     ]);
 
-  const pipelineOrder = ["DRAFT", "CONFIRMED", "PAID", "FULFILLED"] as const;
+  const pipelineOrder = ["DRAFT", "CONFIRMED", "PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const;
   const countByStatus = Object.fromEntries(
     pipelineCounts.map((row) => [row.status, row._count._all])
   );
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
 
       <section>
         <h2 className="mb-3 text-sm font-medium text-ink">Order pipeline</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {pipelineOrder.map((status) => (
             <div
               key={status}
@@ -233,6 +233,7 @@ const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
   CONFIRMED: "Confirmed, awaiting payment",
   PAID: "Paid, awaiting fulfillment",
+  PARTIALLY_FULFILLED: "Partly shipped",
   FULFILLED: "Fulfilled",
 };
 

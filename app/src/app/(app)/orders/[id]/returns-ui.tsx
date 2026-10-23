@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+
+import { useSubmitAction } from "@/lib/use-submit-action";
 import {
   decideReturnAction,
   markRefundedAction,
@@ -27,12 +28,12 @@ export type ReturnableLine = {
 };
 
 export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: ReturnableLine[] }) {
-  const [state, formAction, pending] = useActionState(requestReturnAction.bind(null, orderId), {
+  const { state, pending, formProps } = useSubmitAction(requestReturnAction.bind(null, orderId), {
     error: null,
-  } as FormState);
+  } as FormState, { resetOnSuccess: true });
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
@@ -131,9 +132,9 @@ function NoteAction({
   placeholder: string;
   variant?: "primary" | "danger" | "secondary";
 }) {
-  const [state, formAction, pending] = useActionState(action, { error: null } as FormState);
+  const { state, pending, formProps } = useSubmitAction(action, { error: null } as FormState);
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2">
+    <form {...formProps} className="flex flex-wrap items-center gap-2">
       <input name="note" type="text" placeholder={placeholder} aria-label={placeholder} className={`${inputClass} w-64`} />
       <button
         type="submit"
@@ -148,12 +149,12 @@ function NoteAction({
 }
 
 function ReceiveGoodsButton({ returnId }: { returnId: string }) {
-  const [state, formAction, pending] = useActionState(
+  const { state, pending, formProps } = useSubmitAction(
     () => receiveReturnAction(returnId),
     { error: null } as FormState
   );
   return (
-    <form action={formAction} className="flex items-center gap-3">
+    <form {...formProps} className="flex items-center gap-3">
       <button type="submit" disabled={pending} className={secondaryButton}>
         {pending ? "Recording…" : "Goods received — update stock"}
       </button>
@@ -163,16 +164,45 @@ function ReceiveGoodsButton({ returnId }: { returnId: string }) {
 }
 
 /** The next step(s) available on a return, depending on its state and who is looking. */
+function ApproveReturnForm({ returnId, valueNaira }: { returnId: string; valueNaira: number }) {
+  const { state, pending, formProps } = useSubmitAction(decideReturnAction.bind(null, returnId, true), {
+    error: null,
+  } as FormState);
+  return (
+    <form {...formProps} className="flex flex-wrap items-end gap-2">
+      <label className="flex flex-col gap-1 text-xs text-text-muted">
+        Refund (₦) — leave blank for the full {valueNaira.toLocaleString("en-NG")}
+        <input
+          name="refundNaira"
+          type="number"
+          min="1"
+          step="any"
+          max={valueNaira}
+          placeholder={String(valueNaira)}
+          className={`${inputClass} w-44`}
+        />
+      </label>
+      <input name="note" type="text" placeholder="Note (required if refunding less)" aria-label="Note" className={`${inputClass} w-64`} />
+      <button type="submit" disabled={pending} className={primaryButton}>
+        {pending ? "Approving…" : "Approve return"}
+      </button>
+      <ErrorLine error={state.error} />
+    </form>
+  );
+}
+
 export function ReturnActions({
   returnId,
   status,
   refundStatus,
   isOwner,
+  valueNaira,
 }: {
   returnId: string;
   status: string;
   refundStatus: string;
   isOwner: boolean;
+  valueNaira: number;
 }) {
   const nothingForStaff = (what: string) => (
     <p className="text-sm text-text-muted">{what} — only an owner can do this.</p>
@@ -183,12 +213,7 @@ export function ReturnActions({
       {status === "REQUESTED" &&
         (isOwner ? (
           <div className="flex flex-col gap-3">
-            <NoteAction
-              action={decideReturnAction.bind(null, returnId, true)}
-              label="Approve return"
-              pendingLabel="Approving…"
-              placeholder="Note (optional)"
-            />
+            <ApproveReturnForm returnId={returnId} valueNaira={valueNaira} />
             <NoteAction
               action={decideReturnAction.bind(null, returnId, false)}
               label="Reject return"

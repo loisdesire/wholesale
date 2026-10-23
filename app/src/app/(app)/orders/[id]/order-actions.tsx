@@ -108,7 +108,7 @@ export function OrderActions({
       <div className="flex flex-wrap gap-4">
         <ActionButton
           action={markFulfilledAction.bind(null, orderId)}
-          label="Mark as fulfilled"
+          label="Ship everything remaining"
           pendingLabel="Saving…"
         />
         {isOwner ? (
@@ -123,6 +123,16 @@ export function OrderActions({
           <p className="self-center text-sm text-text-muted">Cancelling a paid order means a refund — only an owner can do it.</p>
         )}
       </div>
+    );
+  }
+
+  if (status === "PARTIALLY_FULFILLED") {
+    return (
+      <ActionButton
+        action={markFulfilledAction.bind(null, orderId)}
+        label="Ship everything remaining"
+        pendingLabel="Saving…"
+      />
     );
   }
 

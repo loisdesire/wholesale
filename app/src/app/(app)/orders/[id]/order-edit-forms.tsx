@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { updateItemQuantityAction, updateOrderDetailsAction, type FormState } from "../actions";
 
 const inputClass =
@@ -18,12 +19,12 @@ export function QuantityForm({
   quantity: number;
   moq: number;
 }) {
-  const [state, formAction, pending] = useActionState(
+  const { state, pending, formProps } = useSubmitAction(
     updateItemQuantityAction.bind(null, orderId, orderItemId),
     { error: null } as FormState
   );
   return (
-    <form action={formAction} className="flex items-center justify-end gap-2">
+    <form {...formProps} className="flex items-center justify-end gap-2">
       <input
         name="quantity"
         type="number"
@@ -59,7 +60,7 @@ export function OrderDetailsForm({
   addressOptions: { id: string; label: string | null; text: string }[];
   editable: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(
+  const { state, pending, formProps } = useSubmitAction(
     updateOrderDetailsAction.bind(null, orderId),
     { error: null } as FormState
   );
@@ -80,7 +81,7 @@ export function OrderDetailsForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="deliveryAddress" className="text-sm font-medium text-ink">

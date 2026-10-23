@@ -11,6 +11,8 @@ import { findDuplicateOrders } from "@/lib/orders";
 import { removeOrderItemAction } from "../actions";
 import { OrderActions } from "./order-actions";
 import { OrderDetailsForm, QuantityForm } from "./order-edit-forms";
+import { CloseShortForm, ShipForm } from "./fulfilment-ui";
+import { AmendOrderForm } from "./amend-ui";
 import { AddItemForm } from "./add-item-form";
 import { RequestReturnForm, ReturnActions } from "./returns-ui";
 
@@ -18,7 +20,10 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   ORDER_DRAFTED: "Order drafted",
   ORDER_CONFIRMED: "Order confirmed, stock reserved",
   PAYMENT_MARKED_PAID: "Marked as paid",
-  ORDER_FULFILLED: "Marked as fulfilled",
+  ORDER_FULFILLED: "Fully shipped — order fulfilled",
+  ORDER_PARTIALLY_SHIPPED: "Part of the order shipped",
+  ORDER_CLOSED_SHORT: "Closed short — unshipped items refunded",
+  ORDER_AMENDED: "Order amended",
   ORDER_CANCELLED: "Order cancelled",
   ORDER_ITEM_QUANTITY_CHANGED: "Item quantity changed",
   ORDER_DETAILS_UPDATED: "Delivery address / notes updated",
@@ -66,7 +71,31 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     returnable: returnable.get(item.id) ?? 0,
     unit: item.product.unit,
   }));
-  const canRequestReturn = order.status === "FULFILLED" && returnableLines.some((l) => l.returnable > 0);
+  const canRequestReturn =
+    (order.status === "FULFILLED" || order.status === "PARTIALLY_FULFILLED") &&
+    returnableLines.some((l) => l.returnable > 0);
+
+  const shipments = await prisma.shipment.findMany({
+    where: { orderId: order.id, organizationId },
+    include: { items: { include: { orderItem: { include: { product: true } } } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const shippedByItem = new Map<string, number>();
+  for (const sh of shipments) for (const it of sh.items) shippedByItem.set(it.orderItemId, (shippedByItem.get(it.orderItemId) ?? 0) + it.quantity);
+  const shipLines = order.items.map((item) => ({
+    orderItemId: item.id,
+    label: `${item.product.name}${item.variantLabel ? ` (${item.variantLabel})` : ""}`,
+    sku: item.product.sku,
+    ordered: item.quantity,
+    shipped: shippedByItem.get(item.id) ?? 0,
+    unit: item.product.unit,
+  }));
+  const unshippedUnits = shipLines.reduce((sum, l) => sum + (l.ordered - l.shipped), 0);
+  const unshippedValue = order.items.reduce(
+    (sum, item) => sum + (item.quantity - (shippedByItem.get(item.id) ?? 0)) * item.unitPriceCents,
+    0
+  );
+  const canShip = order.status === "PAID" || order.status === "PARTIALLY_FULFILLED";
 
   const [auditLog, activeProducts, stockMap] = await Promise.all([
     prisma.auditLog.findMany({
@@ -74,7 +103,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       include: { actor: true },
       orderBy: { createdAt: "asc" },
     }),
-    order.status === "DRAFT"
+    order.status === "DRAFT" || order.status === "CONFIRMED"
       ? prisma.product.findMany({ where: { organizationId, active: true }, orderBy: { name: "asc" } })
       : Promise.resolve([]),
     order.status === "DRAFT" ? getStockByProduct(organizationId) : Promise.resolve(new Map()),
@@ -195,6 +224,71 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
+      {order.status === "CONFIRMED" && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-ink">Amend this order</h2>
+          <AmendOrderForm
+            orderId={order.id}
+            lines={order.items.map((item) => ({
+              orderItemId: item.id,
+              label: `${item.product.name}${item.variantLabel ? ` (${item.variantLabel})` : ""}`,
+              sku: item.product.sku,
+              quantity: item.quantity,
+              moq: item.product.moq,
+            }))}
+            products={activeProducts.map((p) => {
+              const variant = p.variantAttributes as Record<string, string> | null;
+              return { id: p.id, label: `${p.name}${variant ? ` (${Object.values(variant).join(" / ")})` : ""}` };
+            })}
+          />
+        </section>
+      )}
+
+      {(canShip || shipments.length > 0) && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-ink">Shipping</h2>
+
+          {canShip && <ShipForm orderId={order.id} lines={shipLines} />}
+
+          {order.status === "PARTIALLY_FULFILLED" &&
+            (isOwner ? (
+              <CloseShortForm
+                orderId={order.id}
+                unshippedLabel={`${unshippedUnits} unit${unshippedUnits === 1 ? "" : "s"}, ${formatMoney(unshippedValue, order.currency)}`}
+              />
+            ) : (
+              <p className="text-sm text-text-muted">Closing the rest of the order short means a refund — only an owner can do it.</p>
+            ))}
+
+          {shipments.length > 0 && (
+            <div className="divide-y divide-line rounded-md border border-line bg-surface">
+              {shipments.map((sh) => (
+                <div key={sh.id} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+                  <div>
+                    <p className="font-tabular text-ink">{sh.reference}</p>
+                    <p className="mt-1 text-text-muted">
+                      {sh.items
+                        .map((it) => `${it.quantity} × ${it.orderItem.product.name}${it.orderItem.variantLabel ? ` (${it.orderItem.variantLabel})` : ""}`)
+                        .join(", ")}
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-text-muted">
+                    <p>{formatDateTime(sh.createdAt)}</p>
+                    {(sh.carrier || sh.trackingReference) && (
+                      <p className="mt-1">
+                        {sh.carrier ?? ""}
+                        {sh.carrier && sh.trackingReference ? " · " : ""}
+                        <span className="font-tabular">{sh.trackingReference ?? ""}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       <section>
         <h2 className="mb-3 text-sm font-medium text-ink">Delivery &amp; notes</h2>
         <OrderDetailsForm
@@ -230,6 +324,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   <p className="font-tabular text-lg font-medium text-ink">
                     {formatMoney(ret.refundCents, order.currency)}
                   </p>
+                  {ret.refundCents < ret.valueCents && (
+                    <p className="text-xs text-text-muted">
+                      partial — goods worth {formatMoney(ret.valueCents, order.currency)}
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     {ret.kind === "RETURN" && <ReturnStatusBadge status={ret.status} />}
                     {ret.status !== "REJECTED" && ret.status !== "REQUESTED" && (
@@ -247,7 +346,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       {item.orderItem.variantLabel ? ` (${item.orderItem.variantLabel})` : ""}
                     </span>
                     <span className="text-xs text-text-muted">
-                      {ret.kind === "CANCELLATION" ? "Not shipped" : item.condition === "DAMAGED" ? "Damaged" : "Resellable"} ·{" "}
+                      {ret.kind !== "RETURN" ? "Not shipped" : item.condition === "DAMAGED" ? "Damaged" : "Resellable"} ·{" "}
                       {formatMoney(item.quantity * item.orderItem.unitPriceCents, order.currency)} at the order price
                     </span>
                   </li>
@@ -273,6 +372,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 status={ret.status}
                 refundStatus={ret.refundStatus}
                 isOwner={isOwner}
+                valueNaira={ret.valueCents / 100}
               />
             </div>
           ))}

@@ -42,7 +42,7 @@ export async function getCustomerBalances(organizationId: string, customerIds?: 
   const [orderRows, returnRows] = await Promise.all([
     prisma.order.groupBy({
       by: ["customerId", "status"],
-      where: { organizationId, ...customerFilter, status: { in: [OrderStatus.CONFIRMED, OrderStatus.PAID, OrderStatus.FULFILLED] } },
+      where: { organizationId, ...customerFilter, status: { in: [OrderStatus.CONFIRMED, OrderStatus.PAID, OrderStatus.PARTIALLY_FULFILLED, OrderStatus.FULFILLED] } },
       _sum: { totalCents: true },
     }),
     prisma.orderReturn.groupBy({

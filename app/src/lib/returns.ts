@@ -30,21 +30,32 @@ function requireOwner(actor: Actor, what: string) {
 }
 
 // Returns that still count against what the customer can send back. A rejected
-// return frees its quantity up again.
+// return frees its quantity up again. Only RETURN-kind records count: cancellation
+// and unshipped refunds are about goods that never left, so they use no returnable units.
 const COUNTING_STATUSES = [ReturnStatus.REQUESTED, ReturnStatus.APPROVED, ReturnStatus.RECEIVED];
 
-/** How many units of each order line can still be returned. */
+/**
+ * How many units of each order line can still be returned: what has actually
+ * shipped, minus what is already being returned. (Ordered-but-unshipped units
+ * can't come back — they never left.)
+ */
 export async function getReturnableQuantities(orderId: string, client: TxClient | typeof prisma = prisma) {
-  const [items, returned] = await Promise.all([
-    client.orderItem.findMany({ where: { orderId }, select: { id: true, quantity: true } }),
+  const [items, shipped, returned] = await Promise.all([
+    client.orderItem.findMany({ where: { orderId }, select: { id: true } }),
+    client.shipmentItem.groupBy({
+      by: ["orderItemId"],
+      where: { shipment: { orderId } },
+      _sum: { quantity: true },
+    }),
     client.returnItem.groupBy({
       by: ["orderItemId"],
-      where: { return: { orderId, status: { in: COUNTING_STATUSES } } },
+      where: { return: { orderId, kind: ReturnKind.RETURN, status: { in: COUNTING_STATUSES } } },
       _sum: { quantity: true },
     }),
   ]);
+  const shippedByItem = new Map(shipped.map((r) => [r.orderItemId, r._sum.quantity ?? 0]));
   const returnedByItem = new Map(returned.map((r) => [r.orderItemId, r._sum.quantity ?? 0]));
-  return new Map(items.map((i) => [i.id, i.quantity - (returnedByItem.get(i.id) ?? 0)]));
+  return new Map(items.map((i) => [i.id, (shippedByItem.get(i.id) ?? 0) - (returnedByItem.get(i.id) ?? 0)]));
 }
 
 /**
@@ -81,8 +92,8 @@ export async function requestReturn(params: {
       include: { items: true },
     });
     if (!order) throw new ReturnStateError("Order not found.");
-    if (order.status !== OrderStatus.FULFILLED) {
-      throw new ReturnStateError("Returns can only be raised against fulfilled orders.");
+    if (order.status !== OrderStatus.FULFILLED && order.status !== OrderStatus.PARTIALLY_FULFILLED) {
+      throw new ReturnStateError("Returns can only be raised against orders that have shipped.");
     }
 
     const returnable = await getReturnableQuantities(order.id, tx);
@@ -94,7 +105,7 @@ export async function requestReturn(params: {
       if (item.quantity > left) {
         throw new ReturnStateError(
           left === 0
-            ? "That item has already been returned in full."
+            ? "Nothing of that item is left to return (it has either not shipped or is already returned)."
             : `Only ${left} of that item can still be returned.`
         );
       }
@@ -114,6 +125,7 @@ export async function requestReturn(params: {
         orderId: order.id,
         customerId: order.customerId,
         reason,
+        valueCents: refundCents,
         refundCents,
         requestedById: params.actor.id,
         items: {
@@ -159,6 +171,12 @@ export async function decideReturn(params: {
   actor: Actor;
   approve: boolean;
   note?: string;
+  /**
+   * Approve paying back less than the goods' value (a restocking fee, damage,
+   * goodwill…). Must be positive and at most the value; a reason is required
+   * when it is less.
+   */
+  refundCents?: number;
 }) {
   requireOwner(params.actor, "approve or reject a return");
 
@@ -168,11 +186,21 @@ export async function decideReturn(params: {
       throw new ReturnStateError("This return has already been decided.");
     }
 
+    let refundCents = ret.valueCents;
+    if (params.approve && params.refundCents !== undefined && params.refundCents !== ret.valueCents) {
+      if (!Number.isInteger(params.refundCents) || params.refundCents <= 0 || params.refundCents > ret.valueCents) {
+        throw new ReturnStateError("A partial refund must be more than zero and no more than the value of the goods.");
+      }
+      if (!params.note?.trim()) throw new ReturnStateError("Say why the refund is less than the full value.");
+      refundCents = params.refundCents;
+    }
+
     const updated = await tx.orderReturn.update({
       where: { id: ret.id },
       data: {
         status: params.approve ? ReturnStatus.APPROVED : ReturnStatus.REJECTED,
         refundStatus: params.approve ? RefundStatus.PENDING : RefundStatus.NONE,
+        refundCents: params.approve ? refundCents : ret.refundCents,
         decidedById: params.actor.id,
         decidedAt: new Date(),
         decisionNote: params.note?.trim() || null,
@@ -187,7 +215,12 @@ export async function decideReturn(params: {
         action: params.approve ? "RETURN_APPROVED" : "RETURN_REJECTED",
         actorId: params.actor.id,
         before: { return: ret.reference, status: ret.status },
-        after: { return: ret.reference, status: updated.status, refundCents: params.approve ? ret.refundCents : 0 },
+        after: {
+          return: ret.reference,
+          status: updated.status,
+          refundCents: params.approve ? refundCents : 0,
+          ...(params.approve && refundCents < ret.valueCents ? { valueCents: ret.valueCents, partial: true } : {}),
+        },
       },
       tx
     );
@@ -292,42 +325,48 @@ export async function markRefunded(params: {
 }
 
 /**
- * Called inside the transaction that cancels an already-paid order: records the
- * refund the customer is now owed. Nothing ships back (the goods never left),
- * so the record is born RECEIVED to keep the "goods received" step — which would
- * restock — out of reach. The owner who cancelled has made the decision.
+ * Called inside the transaction of an owner decision that leaves the customer
+ * owed money for goods that never left: cancelling a paid order (CANCELLATION)
+ * or closing a part-shipped order short (UNSHIPPED). The record is born
+ * RECEIVED so the "goods received" step — which would restock — is out of reach,
+ * and the owner who decided has made the approval.
  */
-export async function createCancellationRefundTx(
+export async function createOwnerRefundTx(
   tx: TxClient,
   params: {
     organizationId: string;
-    order: { id: string; customerId: string; totalCents: number; items: { id: string; quantity: number }[] };
+    orderId: string;
+    customerId: string;
+    kind: "CANCELLATION" | "UNSHIPPED";
+    reason: string;
+    items: { orderItemId: string; quantity: number; unitPriceCents: number }[];
     actor: Actor;
   }
 ) {
+  const valueCents = params.items.reduce((sum, i) => sum + i.quantity * i.unitPriceCents, 0);
   const { returnSeq } = await tx.organization.update({
     where: { id: params.organizationId },
     data: { returnSeq: { increment: 1 } },
     select: { returnSeq: true },
   });
-  const now = new Date();
   return tx.orderReturn.create({
     data: {
       organizationId: params.organizationId,
       reference: `RET-${returnSeq}`,
-      orderId: params.order.id,
-      customerId: params.order.customerId,
-      kind: ReturnKind.CANCELLATION,
+      orderId: params.orderId,
+      customerId: params.customerId,
+      kind: params.kind === "CANCELLATION" ? ReturnKind.CANCELLATION : ReturnKind.UNSHIPPED,
       status: ReturnStatus.RECEIVED,
-      reason: "Order cancelled after payment",
-      refundCents: params.order.totalCents,
+      reason: params.reason,
+      valueCents,
+      refundCents: valueCents,
       refundStatus: RefundStatus.PENDING,
       requestedById: params.actor.id,
       decidedById: params.actor.id,
-      decidedAt: now,
+      decidedAt: new Date(),
       items: {
-        create: params.order.items.map((item) => ({
-          orderItemId: item.id,
+        create: params.items.map((item) => ({
+          orderItemId: item.orderItemId,
           quantity: item.quantity,
           condition: ReturnItemCondition.RESELLABLE,
         })),

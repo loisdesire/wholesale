@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+
+import { useSubmitAction } from "@/lib/use-submit-action";
 import { createCustomerAction, type FormState } from "../actions";
 
 const inputClass =
   "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
 
 export function NewCustomerForm() {
-  const [state, formAction, pending] = useActionState(createCustomerAction, { error: null } as FormState);
+  const { state, pending, formProps } = useSubmitAction(createCustomerAction, { error: null } as FormState);
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form {...formProps} className="flex max-w-xl flex-col gap-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="name" className="text-sm font-medium text-ink">Name</label>
