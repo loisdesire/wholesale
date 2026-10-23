@@ -37,6 +37,7 @@ export default async function CustomersPage({
 
   const where = {
     organizationId,
+    mergedIntoId: null,
     ...(idsForFilter ? { id: { in: idsForFilter } } : {}),
     ...(q ? customerMatch(q) : {}),
   };

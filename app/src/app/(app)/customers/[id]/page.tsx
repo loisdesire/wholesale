@@ -6,7 +6,7 @@ import { EMPTY_BALANCE, getCustomerBalances } from "@/lib/balances";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStatusBadge, RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
 import { findPossibleDuplicates } from "@/lib/customers";
-import { removeAddressAction, removePriceAction, setDefaultAddressAction } from "../actions";
+import { removeAddressAction, removePriceAction, setDefaultAddressAction, undoMergeAction } from "../actions";
 import { AddAddressForm, AgreedPriceForm, EditCustomerForm } from "./customer-forms";
 
 const ACTIVITY_LABEL: Record<string, string> = {
@@ -17,6 +17,9 @@ const ACTIVITY_LABEL: Record<string, string> = {
   DEFAULT_ADDRESS_CHANGED: "Default address changed",
   CUSTOM_PRICE_SET: "Agreed price set",
   CUSTOM_PRICE_REMOVED: "Agreed price removed",
+  CUSTOMER_MERGED_INTO: "Merged into another customer",
+  CUSTOMER_MERGED_FROM: "Another customer was merged in",
+  CUSTOMER_MERGE_UNDONE: "Merge undone",
 };
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,6 +31,17 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   if (!customer) notFound();
 
   const isOwner = session!.user.role === "OWNER";
+  const [merges, mergedInto] = await Promise.all([
+    prisma.customerMerge.findMany({
+      where: { organizationId, targetId: customer.id },
+      include: { source: true },
+      orderBy: { performedAt: "desc" },
+    }),
+    customer.mergedIntoId ? prisma.customer.findUnique({ where: { id: customer.mergedIntoId } }) : null,
+  ]);
+  const archivedBy = mergedInto
+    ? await prisma.customerMerge.findFirst({ where: { organizationId, sourceId: customer.id, undoneAt: null } })
+    : null;
   const [balances, orders, returns, addresses, agreedPrices, products, duplicates, activity] = await Promise.all([
     getCustomerBalances(organizationId, [customer.id]),
     prisma.order.findMany({
@@ -82,6 +96,26 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         {customer.notes && <p className="mt-2 max-w-xl text-sm text-text-muted">{customer.notes}</p>}
       </header>
 
+      {mergedInto && (
+        <section className="rounded-md border border-line bg-status-neutral-bg px-4 py-3 text-sm">
+          <p className="text-ink">
+            This record was merged into{" "}
+            <Link href={`/customers/${mergedInto.id}`} className="underline underline-offset-2">
+              {mergedInto.name ?? mergedInto.phone}
+            </Link>{" "}
+            on {formatDateTime(customer.mergedAt!)}. Its orders, conversations and messages from {customer.phone} now sit
+            with them.
+          </p>
+          {isOwner && archivedBy && (
+            <form action={undoMergeAction.bind(null, archivedBy.id, customer.id)} className="mt-2">
+              <button type="submit" className="text-ink underline underline-offset-2">
+                Undo this merge
+              </button>
+            </form>
+          )}
+        </section>
+      )}
+
       {duplicates.length > 0 && (
         <section className="rounded-md border border-line bg-status-attention-bg px-4 py-3 text-sm">
           <h2 className="font-medium text-status-attention-fg">Possible duplicate customers</h2>
@@ -95,6 +129,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                   {d.customer.name ?? "Unnamed"} · {d.customer.phone}
                 </Link>
                 <span className="text-text-muted"> — {d.reasons.join("; ")}</span>
+                {isOwner && !mergedInto && (
+                  <Link
+                    href={`/customers/${customer.id}/merge?with=${d.customer.id}`}
+                    className="ml-2 text-ink underline underline-offset-2"
+                  >
+                    Review merge →
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -261,6 +303,35 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </table>
         )}
       </section>
+
+      {merges.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-ink">Merge history</h2>
+          <div className="divide-y divide-line rounded-md border border-line bg-surface">
+            {merges.map((m) => (
+              <div key={m.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                <div>
+                  <p className="text-ink">
+                    {m.source.name ?? m.source.phone} <span className="font-tabular text-text-muted">{m.source.phone}</span> was
+                    merged in{m.undoneAt ? " (undone)" : ""}
+                  </p>
+                  {m.note && <p className="mt-0.5 text-text-muted">{m.note}</p>}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-text-muted">
+                  <span>{formatDateTime(m.undoneAt ?? m.performedAt)}</span>
+                  {isOwner && !m.undoneAt && (
+                    <form action={undoMergeAction.bind(null, m.id, customer.id)}>
+                      <button type="submit" className="text-ink underline underline-offset-2">
+                        Undo
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {activity.length > 0 && (
         <section>

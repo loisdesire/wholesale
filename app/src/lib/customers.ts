@@ -23,6 +23,24 @@ function requireOwner(role: UserRole, what: string) {
   if (role !== UserRole.OWNER) throw new CustomerError(`Only an owner can ${what}.`);
 }
 
+const MAX_MERGE_CHAIN = 10;
+
+/**
+ * The customer a record currently stands for: itself, or — if it was merged into
+ * another — the surviving record (following the chain if that one was merged too).
+ * Lets a message from a merged-away number land on the right person.
+ */
+export async function resolveSurvivor(
+  client: TxClient | typeof prisma,
+  customer: Prisma.CustomerGetPayload<object>
+): Promise<Prisma.CustomerGetPayload<object>> {
+  let current = customer;
+  for (let hops = 0; current.mergedIntoId && hops < MAX_MERGE_CHAIN; hops++) {
+    current = await client.customer.findUniqueOrThrow({ where: { id: current.mergedIntoId } });
+  }
+  return current;
+}
+
 function cleanText(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -43,7 +61,10 @@ export async function createCustomer(params: {
   const existing = await prisma.customer.findUnique({
     where: { organizationId_phoneKey: { organizationId: params.organizationId, phoneKey: key } },
   });
-  if (existing) throw new DuplicateCustomerError(existing.id, existing.name);
+  if (existing) {
+    const survivor = await resolveSurvivor(prisma, existing);
+    throw new DuplicateCustomerError(survivor.id, survivor.name);
+  }
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -76,7 +97,10 @@ export async function createCustomer(params: {
       const winner = await prisma.customer.findUnique({
         where: { organizationId_phoneKey: { organizationId: params.organizationId, phoneKey: key } },
       });
-      if (winner) throw new DuplicateCustomerError(winner.id, winner.name);
+      if (winner) {
+        const survivor = await resolveSurvivor(prisma, winner);
+        throw new DuplicateCustomerError(survivor.id, survivor.name);
+      }
     }
     throw err;
   }
@@ -99,13 +123,13 @@ export async function findOrCreateCustomerByPhoneTx(
   const where = { organizationId_phoneKey: { organizationId, phoneKey: key } };
 
   const existing = await tx.customer.findUnique({ where });
-  if (existing) return existing;
+  if (existing) return resolveSurvivor(tx, existing); // a merged-away number files under the survivor
 
   await tx.customer.createMany({
     data: [{ organizationId, phone: displayPhone(key), phoneKey: key, name: cleanText(name) }],
     skipDuplicates: true,
   });
-  return tx.customer.findUniqueOrThrow({ where });
+  return resolveSurvivor(tx, await tx.customer.findUniqueOrThrow({ where }));
 }
 
 async function loadCustomer(tx: TxClient, organizationId: string, customerId: string) {
@@ -350,7 +374,7 @@ export async function findPossibleDuplicates(organizationId: string, customerId:
   if (conditions.length === 0) return [];
 
   const others = await prisma.customer.findMany({
-    where: { organizationId, id: { not: customer.id }, OR: conditions },
+    where: { organizationId, id: { not: customer.id }, mergedIntoId: null, OR: conditions },
     take: 20,
   });
 

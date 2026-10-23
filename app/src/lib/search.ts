@@ -94,7 +94,7 @@ export async function searchEverything(organizationId: string, query: string, li
       take: limit,
     }),
     prisma.customer.findMany({
-      where: { organizationId, ...customerMatch(q) },
+      where: { organizationId, mergedIntoId: null, ...customerMatch(q) },
       orderBy: { name: "asc" },
       take: limit,
     }),

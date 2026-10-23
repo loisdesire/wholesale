@@ -51,6 +51,7 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     // file runs (fileParallelism is off), so a full reset here is safe.
     await prisma.auditLog.deleteMany();
     await prisma.stockMovement.deleteMany();
+    await prisma.customerMerge.deleteMany();
     await prisma.customerPrice.deleteMany();
     await prisma.customerAddress.deleteMany();
     await prisma.shipmentItem.deleteMany();

@@ -14,7 +14,7 @@ export default async function NewOrderPage({
   const organizationId = session!.user.organizationId;
 
   const [customers, products, stockMap, agreedRows] = await Promise.all([
-    prisma.customer.findMany({ where: { organizationId }, orderBy: { name: "asc" } }),
+    prisma.customer.findMany({ where: { organizationId, mergedIntoId: null }, orderBy: { name: "asc" } }),
     prisma.product.findMany({
       where: { organizationId, active: true },
       include: { priceTiers: { orderBy: { minQuantity: "asc" } } },

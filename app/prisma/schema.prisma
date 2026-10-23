@@ -224,18 +224,49 @@ model Customer {
   phoneKey       String
   name           String?
   email          String?
+  // Set when this record was merged into another (see CustomerMerge). A merged
+  // customer is hidden from lists and pickers and its phone number routes to the
+  // surviving record; nothing is deleted, so a merge can be undone.
+  mergedIntoId   String?
+  mergedInto     Customer?    @relation("CustomerMerged", fields: [mergedIntoId], references: [id])
+  mergedAt       DateTime?
   notes          String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @default(now()) @updatedAt
 
-  conversations Conversation[]
-  orders        Order[]
-  returns       OrderReturn[]
-  addresses     CustomerAddress[]
-  prices        CustomerPrice[]
+  conversations  Conversation[]
+  orders         Order[]
+  returns        OrderReturn[]
+  addresses      CustomerAddress[]
+  prices         CustomerPrice[]
+  mergedFrom     Customer[]        @relation("CustomerMerged")
+  mergesAsTarget CustomerMerge[]   @relation("MergeTarget")
+  mergesAsSource CustomerMerge[]   @relation("MergeSource")
 
   @@unique([organizationId, phoneKey])
   @@index([organizationId, name])
+}
+
+// The record of one customer merge: enough to reverse it exactly. `snapshot`
+// lists the ids of everything that moved from source to target, the prices that
+// lost a conflict (and stayed on the source), and the target's fields before and
+// after.
+model CustomerMerge {
+  id             String    @id @default(cuid())
+  organizationId String
+  sourceId       String
+  source         Customer  @relation("MergeSource", fields: [sourceId], references: [id])
+  targetId       String
+  target         Customer  @relation("MergeTarget", fields: [targetId], references: [id])
+  performedById  String?
+  performedAt    DateTime  @default(now())
+  note           String?
+  snapshot       Json
+  undoneAt       DateTime?
+  undoneById     String?
+
+  @@index([organizationId, targetId])
+  @@index([sourceId])
 }
 
 model CustomerAddress {

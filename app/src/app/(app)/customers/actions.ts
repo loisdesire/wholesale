@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { mergeCustomers, undoMerge } from "@/lib/customer-merge";
 import {
   CustomerError,
   DuplicateCustomerError,
@@ -148,5 +149,42 @@ export async function removePriceAction(customerId: string, productId: string): 
   } catch (err) {
     friendly(err);
   }
+  revalidatePath(`/customers/${customerId}`);
+}
+
+export async function mergeCustomersAction(
+  sourceId: string,
+  targetId: string,
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireSession();
+  try {
+    await mergeCustomers({
+      organizationId: session.user.organizationId,
+      sourceId,
+      targetId,
+      actor: { id: session.user.id, role: session.user.role },
+      note: String(formData.get("note") ?? ""),
+    });
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  revalidatePath("/customers");
+  redirect(`/customers/${targetId}`);
+}
+
+export async function undoMergeAction(mergeId: string, customerId: string): Promise<void> {
+  const session = await requireSession();
+  try {
+    await undoMerge({
+      organizationId: session.user.organizationId,
+      mergeId,
+      actor: { id: session.user.id, role: session.user.role },
+    });
+  } catch (err) {
+    friendly(err);
+  }
+  revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
 }

@@ -9,7 +9,7 @@ import type { Prisma } from "@prisma/client";
  */
 export async function lockRow(
   tx: Prisma.TransactionClient,
-  table: "Order" | "OrderReturn",
+  table: "Order" | "OrderReturn" | "Customer",
   id: string
 ) {
   await tx.$queryRawUnsafe(`SELECT "id" FROM "${table}" WHERE "id" = $1 FOR UPDATE`, id);

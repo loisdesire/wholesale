@@ -18,6 +18,7 @@ function ledgerRow(
 }
 
 async function main() {
+  await prisma.customerMerge.deleteMany();
   await prisma.customerPrice.deleteMany();
   await prisma.customerAddress.deleteMany();
   await prisma.auditLog.deleteMany();
