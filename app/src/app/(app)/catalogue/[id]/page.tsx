@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getProductStock } from "@/lib/stock";
+import { getStockBreakdown } from "@/lib/stock";
 import { formatDateTime } from "@/lib/format";
 import { EditProductForm } from "./edit-product-form";
 import { StockMovementForm } from "./stock-movement-form";
@@ -14,7 +14,9 @@ const REASON_LABEL: Record<string, string> = {
   SALE_FULFILLED: "Sale fulfilled",
   RESERVATION_RELEASED: "Reservation released",
   RETURN: "Customer return",
-  DAMAGE: "Damaged / written off",
+  RETURN_DAMAGED: "Customer return (damaged)",
+  DAMAGE: "Set aside as damaged",
+  DAMAGE_WRITTEN_OFF: "Damaged stock written off",
   MANUAL_ADJUSTMENT: "Manual adjustment",
 };
 
@@ -33,8 +35,8 @@ export default async function ProductDetailPage({
   });
   if (!product) notFound();
 
-  const [stock, movements] = await Promise.all([
-    getProductStock(product.id),
+  const [figures, movements] = await Promise.all([
+    getStockBreakdown(product.id),
     prisma.stockMovement.findMany({
       where: { productId: product.id },
       include: { createdBy: true },
@@ -59,15 +61,25 @@ export default async function ProductDetailPage({
               {variant ? ` · ${Object.values(variant).join(" / ")}` : ""}
             </p>
           </div>
-          <div className="text-right">
-            <p className={`font-tabular text-2xl font-medium ${stock === 0 ? "text-status-attention-fg" : "text-ink"}`}>
-              {stock}
-            </p>
-            <p className="text-xs text-text-muted">
-              {product.unit}
-              {stock === 1 ? "" : "s"} in stock
-            </p>
-          </div>
+          <dl className="flex gap-6 text-right">
+            {[
+              { label: "On hand", value: figures.physical, emphasis: false },
+              { label: "Reserved", value: figures.reserved, emphasis: false },
+              { label: "Damaged", value: figures.damaged, emphasis: false },
+              { label: `Available ${product.unit}${figures.available === 1 ? "" : "s"}`, value: figures.available, emphasis: true },
+            ].map((f) => (
+              <div key={f.label}>
+                <dd
+                  className={`font-tabular ${f.emphasis ? "text-2xl font-medium" : "text-lg text-text-muted"} ${
+                    f.emphasis && f.value === 0 ? "text-status-attention-fg" : f.emphasis ? "text-ink" : ""
+                  }`}
+                >
+                  {f.value}
+                </dd>
+                <dt className="text-xs text-text-muted">{f.label}</dt>
+              </div>
+            ))}
+          </dl>
         </div>
       </header>
 
@@ -112,7 +124,9 @@ export default async function ProductDetailPage({
                 <th className="py-2 pr-4">Reference</th>
                 <th className="py-2 pr-4">Note</th>
                 <th className="py-2 pr-4">By</th>
-                <th className="py-2 pr-4 text-right">Change</th>
+                <th className="py-2 pr-4 text-right">On hand</th>
+                <th className="py-2 pr-4 text-right">Reserved</th>
+                <th className="py-2 pr-4 text-right">Damaged</th>
               </tr>
             </thead>
             <tbody>
@@ -123,14 +137,11 @@ export default async function ProductDetailPage({
                   <td className="py-3 pr-4 font-tabular text-text-muted">{m.reference ?? "—"}</td>
                   <td className="py-3 pr-4 max-w-xs truncate text-text-muted">{m.note ?? "—"}</td>
                   <td className="py-3 pr-4 text-text-muted">{m.createdBy?.name ?? "—"}</td>
-                  <td
-                    className={`py-3 pr-4 text-right font-tabular ${
-                      m.quantityDelta < 0 ? "text-status-attention-fg" : "text-status-success-fg"
-                    }`}
-                  >
-                    {m.quantityDelta > 0 ? "+" : ""}
-                    {m.quantityDelta}
-                  </td>
+                  {[m.physicalDelta, m.reservedDelta, m.damagedDelta].map((delta, i) => (
+                    <td key={i} className="py-3 pr-4 text-right font-tabular text-text-muted">
+                      {delta === 0 ? "—" : `${delta > 0 ? "+" : ""}${delta}`}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

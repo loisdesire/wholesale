@@ -6,18 +6,21 @@ import { redirect } from "next/navigation";
 import { Prisma, StockMovementReason } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getProductStock, recordStockMovement, InsufficientStockError } from "@/lib/stock";
+import { getProductStock, recordStockMovement, InsufficientStockError, StockInvariantError } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
 import { parseProductsCsv, commitProductsImport, type ImportRowResult } from "@/lib/csv";
 
 export type FormState = { error: string | null };
 
-const MANUAL_REASONS = [
-  StockMovementReason.PURCHASE_RECEIVED,
-  StockMovementReason.MANUAL_ADJUSTMENT,
-  StockMovementReason.DAMAGE,
-  StockMovementReason.RETURN,
-] as const;
+// Reasons staff can record by hand, and which way each one moves stock. Only a
+// manual adjustment can go either way; the rest have one meaningful direction.
+const MANUAL_REASON_DIRECTION = {
+  [StockMovementReason.PURCHASE_RECEIVED]: "in",
+  [StockMovementReason.RETURN]: "in",
+  [StockMovementReason.DAMAGE]: "out", // available -> damaged (set aside)
+  [StockMovementReason.DAMAGE_WRITTEN_OFF]: "out", // damaged stock discarded
+  [StockMovementReason.MANUAL_ADJUSTMENT]: "either",
+} as const;
 
 const productSchema = z.object({
   sku: z.string().trim().min(1, "SKU is required").max(64),
@@ -229,6 +232,7 @@ const movementSchema = z.object({
     StockMovementReason.PURCHASE_RECEIVED,
     StockMovementReason.MANUAL_ADJUSTMENT,
     StockMovementReason.DAMAGE,
+    StockMovementReason.DAMAGE_WRITTEN_OFF,
     StockMovementReason.RETURN,
   ]),
   quantity: z.coerce.number().int("Quantity must be a whole number"),
@@ -254,9 +258,6 @@ export async function recordStockMovementAction(
   if (parsed.data.quantity <= 0) {
     return { error: "Quantity must be greater than zero." };
   }
-  if (!MANUAL_REASONS.includes(parsed.data.reason)) {
-    return { error: "Not a valid manual movement reason." };
-  }
 
   const product = await prisma.product.findFirst({
     where: { id: productId, organizationId: session.user.organizationId },
@@ -265,7 +266,9 @@ export async function recordStockMovementAction(
     return { error: "Product not found." };
   }
 
-  const signedQuantity = direction === "out" ? -parsed.data.quantity : parsed.data.quantity;
+  const fixedDirection = MANUAL_REASON_DIRECTION[parsed.data.reason];
+  const goesOut = fixedDirection === "either" ? direction === "out" : fixedDirection === "out";
+  const signedQuantity = goesOut ? -parsed.data.quantity : parsed.data.quantity;
 
   try {
     await recordStockMovement({
@@ -277,7 +280,7 @@ export async function recordStockMovementAction(
       createdById: session.user.id,
     });
   } catch (err) {
-    if (err instanceof InsufficientStockError) {
+    if (err instanceof InsufficientStockError || err instanceof StockInvariantError) {
       return { error: err.message };
     }
     throw err;

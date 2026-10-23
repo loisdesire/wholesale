@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/format";
+import { getStockBreakdownByProduct } from "@/lib/stock";
 
 const PAGE_SIZE = 50;
 
@@ -22,14 +23,14 @@ export default async function CataloguePage({
     ...(query
       ? {
           OR: [
-            { name: { contains: query } },
-            { sku: { contains: query } },
+            { name: { contains: query, mode: "insensitive" as const } },
+            { sku: { contains: query, mode: "insensitive" as const } },
           ],
         }
       : {}),
   };
 
-  const [products, totalCount, stockByProduct] = await Promise.all([
+  const [products, totalCount] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy: { name: "asc" },
@@ -37,16 +38,11 @@ export default async function CataloguePage({
       take: PAGE_SIZE,
     }),
     prisma.product.count({ where }),
-    prisma.stockMovement.groupBy({
-      by: ["productId"],
-      where: { organizationId },
-      _sum: { quantityDelta: true },
-    }),
   ]);
-
-  const stockMap = new Map(
-    stockByProduct.map((row) => [row.productId, row._sum.quantityDelta ?? 0])
-  );
+  // Only this page's products, not the whole catalogue's ledger.
+  const stockMap = await getStockBreakdownByProduct(organizationId, {
+    productIds: products.map((p) => p.id),
+  });
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const pageLink = (p: number) =>
@@ -117,13 +113,14 @@ export default async function CataloguePage({
                 <th className="py-2 pr-4">Product</th>
                 <th className="py-2 pr-4">Variant</th>
                 <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4 text-right">In stock</th>
+                <th className="py-2 pr-4 text-right">Available</th>
                 <th className="py-2 pr-4 text-right">Price</th>
               </tr>
             </thead>
             <tbody>
               {products.map((p) => {
-                const stock = stockMap.get(p.id) ?? 0;
+                const figures = stockMap.get(p.id);
+                const stock = figures?.available ?? 0;
                 const variant = p.variantAttributes as Record<string, string> | null;
                 return (
                   <tr key={p.id} className="border-b border-line last:border-0">

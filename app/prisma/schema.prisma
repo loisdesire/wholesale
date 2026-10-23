@@ -3,17 +3,16 @@
 // doesn't require a schema rewrite, even though isolation is only enforced at the
 // application layer (single tenant) for now.
 //
-// Dev datasource is SQLite (zero local setup). Swap `provider`/`url` to Postgres
-// before any real concurrency or production use — SQLite serializes writes and
-// Prisma's `Decimal` type isn't available on it, which is why money is stored as
-// integer cents here rather than switched later.
+// Datasource is PostgreSQL (docker-compose.yml for local dev). Money is stored as
+// integer cents rather than `Decimal` — a deliberate choice that predates the
+// SQLite -> Postgres move and keeps arithmetic exact and simple.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -52,8 +51,9 @@ enum OrderStatus {
   CANCELLED
 }
 
-// Reasons an inventory ledger entry exists. Current stock is always
-// SUM(quantityDelta) for a product — never a column that gets edited directly.
+// Reasons an inventory ledger entry exists. Every stock figure (physical,
+// reserved, damaged, available) is a SUM over the ledger's delta columns —
+// never a column that gets edited directly. See src/lib/stock-effects.ts.
 enum StockMovementReason {
   INITIAL_STOCK
   PURCHASE_RECEIVED
@@ -61,13 +61,18 @@ enum StockMovementReason {
   SALE_FULFILLED
   RESERVATION_RELEASED
   RETURN
+  RETURN_DAMAGED
   DAMAGE
+  DAMAGE_WRITTEN_OFF
   MANUAL_ADJUSTMENT
 }
 
 model Organization {
   id        String   @id @default(cuid())
   name      String
+  // Last order number issued (ORD-<n>). Incremented atomically when a draft is
+  // created, so concurrent drafts can never be given the same reference.
+  orderSeq  Int      @default(1000)
   createdAt DateTime @default(now())
 
   users         User[]
@@ -151,7 +156,11 @@ model StockMovement {
   organization   Organization @relation(fields: [organizationId], references: [id])
   productId      String
   product        Product  @relation(fields: [productId], references: [id])
-  quantityDelta  Int
+  // Effect on each stock figure (see src/lib/stock-effects.ts). available =
+  // physical - reserved - damaged, so it is derived, never stored.
+  physicalDelta  Int      @default(0)
+  reservedDelta  Int      @default(0)
+  damagedDelta   Int      @default(0)
   reason         StockMovementReason
   // Free-form pointer to the causing record, e.g. an order reference or PO number.
   reference      String?

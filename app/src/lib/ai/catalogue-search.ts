@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getStockBreakdownByProduct } from "@/lib/stock";
 
 export type CatalogueMatch = {
   productId: string;
@@ -13,9 +14,10 @@ export type CatalogueMatch = {
 };
 
 // Bounded candidate pool size — not the whole catalogue, per VISION.md's
-// "never the full catalogue loaded into AI context." SQLite can't filter
-// inside a JSON column cheaply, so matching against variant attributes
-// (colour/size) happens in memory on this bounded pool rather than in SQL.
+// "never the full catalogue loaded into AI context." Variant attributes live
+// in a JSON column that isn't indexed for substring search, so matching
+// against them (colour/size) happens in memory on this bounded pool rather
+// than in SQL.
 const CANDIDATE_POOL_LIMIT = 200;
 
 /**
@@ -41,7 +43,7 @@ export async function searchCatalogue(
       where: {
         organizationId,
         active: true,
-        OR: terms.flatMap((term) => [{ name: { contains: term } }, { sku: { contains: term } }]),
+        OR: terms.flatMap((term) => [{ name: { contains: term, mode: "insensitive" as const } }, { sku: { contains: term, mode: "insensitive" as const } }]),
       },
       include: { priceTiers: true },
       take: CANDIDATE_POOL_LIMIT,
@@ -57,12 +59,8 @@ export async function searchCatalogue(
   const candidates = new Map([...termMatches, ...recentPool].map((p) => [p.id, p]));
   if (candidates.size === 0) return [];
 
-  const stockRows = await prisma.stockMovement.groupBy({
-    by: ["productId"],
-    where: { productId: { in: [...candidates.keys()] } },
-    _sum: { quantityDelta: true },
-  });
-  const stockMap = new Map(stockRows.map((r) => [r.productId, r._sum.quantityDelta ?? 0]));
+  // Available stock only: reserved and damaged units can't be promised to a customer.
+  const stockMap = await getStockBreakdownByProduct(organizationId, { productIds: [...candidates.keys()] });
 
   const scored = [...candidates.values()].map((product) => {
     const variant = product.variantAttributes as Record<string, string> | null;
@@ -93,6 +91,6 @@ export async function searchCatalogue(
       priceTiers: product.priceTiers
         .map((t) => ({ minQuantity: t.minQuantity, priceCents: t.priceCents }))
         .sort((a, b) => a.minQuantity - b.minQuantity),
-      stock: stockMap.get(product.id) ?? 0,
+      stock: stockMap.get(product.id)?.available ?? 0,
     }));
 }

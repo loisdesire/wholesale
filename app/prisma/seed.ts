@@ -1,7 +1,20 @@
 import { PrismaClient, StockMovementReason } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { movementEffects } from "../src/lib/stock-effects";
 
 const prisma = new PrismaClient();
+
+// Builds a ledger row the same way the app does, so seeded stock figures
+// (physical / reserved / damaged) obey the same rules as real movements.
+function ledgerRow(
+  organizationId: string,
+  productId: string,
+  reason: StockMovementReason,
+  quantityDelta: number,
+  extra: { reference?: string; createdById?: string } = {}
+) {
+  return { organizationId, productId, reason, ...movementEffects(reason, quantityDelta), ...extra };
+}
 
 async function main() {
   await prisma.auditLog.deleteMany();
@@ -17,7 +30,7 @@ async function main() {
   await prisma.organization.deleteMany();
 
   const org = await prisma.organization.create({
-    data: { name: "Adaeze Fashion Wholesale" },
+    data: { name: "Adaeze Fashion Wholesale", orderSeq: 1003 },
   });
 
   const ownerPasswordHash = await bcrypt.hash("owner-dev-pass", 10);
@@ -103,16 +116,14 @@ async function main() {
         priceTiers: p.priceTiers ? { create: p.priceTiers } : undefined,
       },
     });
-    await prisma.stockMovement.create({
-      data: {
-        organizationId: org.id,
-        productId: product.id,
-        quantityDelta: p.initialStock,
-        reason: StockMovementReason.INITIAL_STOCK,
-        reference: "SEED-OPENING-BALANCE",
-        createdById: owner.id,
-      },
-    });
+    if (p.initialStock > 0) {
+      await prisma.stockMovement.create({
+        data: ledgerRow(org.id, product.id, StockMovementReason.INITIAL_STOCK, p.initialStock, {
+          reference: "SEED-OPENING-BALANCE",
+          createdById: owner.id,
+        }),
+      });
+    }
     createdProducts.push(product);
   }
   const bySku = (sku: string) => createdProducts.find((p) => p.sku === sku)!;
@@ -168,11 +179,16 @@ async function main() {
       { orderId: order1.id, productId: bySku("ANK-2PC-RED-L").id, variantLabel: "Red / L", quantity: 5, unitPriceCents: 1850000 },
     ],
   });
+  // ORD-1001 was reserved at confirmation, then shipped at fulfilment.
+  const order1Lines = [
+    { sku: "ANK-2PC-BLK-M", quantity: 10 },
+    { sku: "ANK-2PC-RED-L", quantity: 5 },
+  ];
   await prisma.stockMovement.createMany({
-    data: [
-      { organizationId: org.id, productId: bySku("ANK-2PC-BLK-M").id, quantityDelta: -10, reason: StockMovementReason.SALE_FULFILLED, reference: order1.reference, createdById: staff.id },
-      { organizationId: org.id, productId: bySku("ANK-2PC-RED-L").id, quantityDelta: -5, reason: StockMovementReason.SALE_FULFILLED, reference: order1.reference, createdById: staff.id },
-    ],
+    data: order1Lines.flatMap((line) => [
+      ledgerRow(org.id, bySku(line.sku).id, StockMovementReason.SALE_RESERVED, -line.quantity, { reference: order1.reference, createdById: staff.id }),
+      ledgerRow(org.id, bySku(line.sku).id, StockMovementReason.SALE_FULFILLED, -line.quantity, { reference: order1.reference, createdById: staff.id }),
+    ]),
   });
 
   // Conversation 2 — awaiting staff confirmation on a draft order (stock is short).
@@ -258,6 +274,9 @@ async function main() {
   });
   await prisma.orderItem.create({
     data: { orderId: order3.id, productId: bySku("SNKR-CHUNK-WHT-41").id, variantLabel: "White / 41", quantity: 6, unitPriceCents: 2650000 },
+  });
+  await prisma.stockMovement.create({
+    data: ledgerRow(org.id, bySku("SNKR-CHUNK-WHT-41").id, StockMovementReason.SALE_RESERVED, -6, { reference: order3.reference, createdById: staff.id }),
   });
 
   await prisma.auditLog.createMany({

@@ -1,6 +1,6 @@
 import { OrderStatus, StockMovementReason, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { recordStockMovementTx } from "@/lib/stock";
+import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
 import { resolveUnitPriceCents } from "@/lib/pricing";
 
@@ -86,13 +86,15 @@ export async function createDraftOrder(params: {
   });
 }
 
-// Count-based numbering is fine at Phase 1's manual, low-volume order rate,
-// and the @@unique constraint on (organizationId, reference) means a
-// collision fails loudly rather than silently duplicating a reference. A
-// dedicated sequence would be needed before this sees real concurrent load.
+// The increment takes a row lock on the organization, so concurrent drafts get
+// distinct, gap-free numbers (and a rolled-back draft gives its number back).
 async function nextOrderReference(tx: TxClient, organizationId: string) {
-  const count = await tx.order.count({ where: { organizationId } });
-  return `ORD-${1000 + count + 1}`;
+  const { orderSeq } = await tx.organization.update({
+    where: { id: organizationId },
+    data: { orderSeq: { increment: 1 } },
+    select: { orderSeq: true },
+  });
+  return `ORD-${orderSeq}`;
 }
 
 async function loadOrderForUpdate(tx: TxClient, orderId: string, organizationId: string) {
@@ -169,9 +171,10 @@ export async function removeOrderItem(params: {
 /**
  * Confirms a draft order: reserves stock for every line item atomically (all
  * items succeed or none do) and moves the order to CONFIRMED. This is the
- * point stock actually leaves the available ledger — not at draft, since a
- * draft/quote is non-binding, and not at fulfilment, since that would let
- * two confirmed orders oversell the same units between confirm and fulfil.
+ * point stock leaves *available* — not at draft, since a draft/quote is
+ * non-binding, and not at fulfilment, since that would let two confirmed
+ * orders oversell the same units between confirm and fulfil. Fulfilment later
+ * moves the units out of physical + reserved (available is unaffected).
  */
 export async function confirmOrder(params: { organizationId: string; orderId: string; actorId: string }) {
   return prisma.$transaction(async (tx) => {
@@ -183,7 +186,7 @@ export async function confirmOrder(params: { organizationId: string; orderId: st
       throw new OrderStateError("Add at least one item before confirming.");
     }
 
-    for (const item of order.items) {
+    for (const item of sortByProductId(order.items)) {
       await recordStockMovementTx(tx, {
         organizationId: params.organizationId,
         productId: item.productId,
@@ -252,6 +255,19 @@ export async function markOrderFulfilled(params: { organizationId: string; order
       throw new OrderStateError("Only paid orders can be marked as fulfilled.");
     }
 
+    // The goods physically leave: physical and reserved both drop, available
+    // is unchanged (it was already taken out of availability at confirmation).
+    for (const item of sortByProductId(order.items)) {
+      await recordStockMovementTx(tx, {
+        organizationId: params.organizationId,
+        productId: item.productId,
+        quantityDelta: -item.quantity,
+        reason: StockMovementReason.SALE_FULFILLED,
+        reference: order.reference,
+        createdById: params.actorId,
+      });
+    }
+
     const updated = await tx.order.update({
       where: { id: order.id },
       data: { status: OrderStatus.FULFILLED, fulfilledAt: new Date() },
@@ -289,7 +305,7 @@ export async function cancelOrder(params: { organizationId: string; orderId: str
     }
 
     if (order.status === OrderStatus.CONFIRMED) {
-      for (const item of order.items) {
+      for (const item of sortByProductId(order.items)) {
         await recordStockMovementTx(tx, {
           organizationId: params.organizationId,
           productId: item.productId,

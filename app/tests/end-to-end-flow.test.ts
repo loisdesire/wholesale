@@ -14,7 +14,7 @@ vi.mock("@anthropic-ai/sdk", () => {
 
 import { prisma } from "@/lib/prisma";
 import { StockMovementReason } from "@prisma/client";
-import { recordStockMovement, getProductStock } from "@/lib/stock";
+import { recordStockMovement, getProductStock, getStockBreakdown } from "@/lib/stock";
 import { confirmOrder, markOrderPaid, markOrderFulfilled } from "@/lib/orders";
 import { runAIAssist } from "@/lib/ai/engine";
 import { POST as webhookPost } from "@/app/api/webhooks/whatsapp/route";
@@ -171,6 +171,7 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     // manually-created order would go through.
     await confirmOrder({ organizationId, orderId: aiResult.draftOrder!.id, actorId: userId });
     expect(await getProductStock(productId)).toBe(3); // reserved exactly once, at confirm
+    expect(await getStockBreakdown(productId)).toEqual({ physical: 5, reserved: 2, damaged: 0, available: 3 });
 
     await markOrderPaid({ organizationId, orderId: aiResult.draftOrder!.id, actorId: userId });
     await markOrderFulfilled({ organizationId, orderId: aiResult.draftOrder!.id, actorId: userId });
@@ -183,6 +184,8 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     expect(finalOrder.conversationId).toBe(conversation.id);
     expect(finalOrder.totalCents).toBe(2 * 1850000);
     expect(await getProductStock(productId)).toBe(3); // still correct — nothing double-counted
+    // Shipping moved the 2 units out of physical and reserved together.
+    expect(await getStockBreakdown(productId)).toEqual({ physical: 3, reserved: 0, damaged: 0, available: 3 });
 
     // 4. The audit trail reconciles with the ledger: one reservation
     // movement, matching exactly the order's confirmed quantity.
@@ -190,8 +193,14 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
       where: { productId, reason: StockMovementReason.SALE_RESERVED },
     });
     expect(movements).toHaveLength(1);
-    expect(movements[0].quantityDelta).toBe(-2);
+    expect(movements[0]).toMatchObject({ physicalDelta: 0, reservedDelta: 2, damagedDelta: 0 });
     expect(movements[0].reference).toBe(finalOrder.reference);
+
+    const shipments = await prisma.stockMovement.findMany({
+      where: { productId, reason: StockMovementReason.SALE_FULFILLED },
+    });
+    expect(shipments).toHaveLength(1);
+    expect(shipments[0]).toMatchObject({ physicalDelta: -2, reservedDelta: -2, damagedDelta: 0 });
 
     const auditEntries = await prisma.auditLog.findMany({
       where: { organizationId, entity: "Order", entityId: finalOrder.id },

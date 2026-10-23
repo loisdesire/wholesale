@@ -62,7 +62,7 @@ describe("stock ledger", () => {
     });
 
     const movements = await prisma.stockMovement.findMany({ where: { productId } });
-    const sum = movements.reduce((total, m) => total + m.quantityDelta, 0);
+    const sum = movements.reduce((total, m) => total + m.physicalDelta - m.reservedDelta - m.damagedDelta, 0);
     expect(await getProductStock(productId)).toBe(sum);
   });
 
@@ -87,13 +87,13 @@ describe("stock ledger", () => {
         organizationId,
         productId: lastUnitProduct.id,
         quantityDelta: -1,
-        reason: StockMovementReason.SALE_FULFILLED,
+        reason: StockMovementReason.SALE_RESERVED,
       }),
       recordStockMovement({
         organizationId,
         productId: lastUnitProduct.id,
         quantityDelta: -1,
-        reason: StockMovementReason.SALE_FULFILLED,
+        reason: StockMovementReason.SALE_RESERVED,
       }),
     ]);
 
@@ -106,5 +106,34 @@ describe("stock ledger", () => {
 
     // Never negative — exactly one sale went through against the one unit.
     expect(await getProductStock(lastUnitProduct.id)).toBe(0);
+  });
+
+  it("admits exactly as many concurrent reservations as there is stock for (real Postgres connections)", async () => {
+    const product = await prisma.product.create({
+      data: { organizationId, sku: "TEST-SKU-STRESS", name: "Stress Product", priceCents: 10000 },
+    });
+    await recordStockMovement({
+      organizationId,
+      productId: product.id,
+      quantityDelta: 3,
+      reason: StockMovementReason.INITIAL_STOCK,
+    });
+
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 12 }, () =>
+        recordStockMovement({
+          organizationId,
+          productId: product.id,
+          quantityDelta: -1,
+          reason: StockMovementReason.SALE_RESERVED,
+        })
+      )
+    );
+
+    expect(attempts.filter((a) => a.status === "fulfilled")).toHaveLength(3);
+    for (const a of attempts.filter((a) => a.status === "rejected")) {
+      expect((a as PromiseRejectedResult).reason).toBeInstanceOf(InsufficientStockError);
+    }
+    expect(await getProductStock(product.id)).toBe(0);
   });
 });
