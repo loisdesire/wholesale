@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStockBreakdownByProduct } from "@/lib/stock";
+import { ci } from "@/lib/search";
 
 export type CatalogueMatch = {
   productId: string;
@@ -43,7 +44,7 @@ export async function searchCatalogue(
       where: {
         organizationId,
         active: true,
-        OR: terms.flatMap((term) => [{ name: { contains: term, mode: "insensitive" as const } }, { sku: { contains: term, mode: "insensitive" as const } }]),
+        OR: terms.flatMap((term) => [{ name: ci(term) }, { sku: ci(term) }]),
       },
       include: { priceTiers: true },
       take: CANDIDATE_POOL_LIMIT,

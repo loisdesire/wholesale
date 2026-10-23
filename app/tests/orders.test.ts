@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { StockMovementReason } from "@prisma/client";
+import { phoneKeyOf } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { recordStockMovement, getProductStock, InsufficientStockError } from "@/lib/stock";
 import {
@@ -30,7 +31,7 @@ describe("order lifecycle", () => {
     userId = user.id;
 
     const customer = await prisma.customer.create({
-      data: { organizationId, phone: "+10000000000", name: "Test Customer" },
+      data: { organizationId, phone: "+10000000000", phoneKey: phoneKeyOf("+10000000000")!, name: "Test Customer" },
     });
     customerId = customer.id;
 
@@ -129,7 +130,7 @@ describe("order lifecycle", () => {
     const stockBBefore = await getProductStock(productB);
 
     await expect(
-      confirmOrder({ organizationId, orderId: order.id, actorId: userId })
+      confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true })
     ).rejects.toBeInstanceOf(InsufficientStockError);
 
     expect(await getProductStock(productA)).toBe(stockABefore);
@@ -148,7 +149,7 @@ describe("order lifecycle", () => {
       items: [{ productId: productA, quantity: 1 }],
     });
 
-    await confirmOrder({ organizationId, orderId: order.id, actorId: userId });
+    await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
     expect(await getProductStock(productA)).toBe(stockBefore - 1);
 
     await markOrderPaid({ organizationId, orderId: order.id, actorId: userId });
@@ -188,7 +189,7 @@ describe("order lifecycle", () => {
       items: [{ productId: productA, quantity: 1 }],
     });
 
-    await confirmOrder({ organizationId, orderId: order.id, actorId: userId });
+    await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
     expect(await getProductStock(productA)).toBe(stockBefore - 1);
 
     await cancelOrder({ organizationId, orderId: order.id, actorId: userId });
@@ -205,7 +206,7 @@ describe("order lifecycle", () => {
       createdById: userId,
       items: [{ productId: productA, quantity: 1 }],
     });
-    await confirmOrder({ organizationId, orderId: order.id, actorId: userId });
+    await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
     await markOrderPaid({ organizationId, orderId: order.id, actorId: userId });
     await markOrderFulfilled({ organizationId, orderId: order.id, actorId: userId });
 

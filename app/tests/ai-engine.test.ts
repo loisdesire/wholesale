@@ -10,6 +10,7 @@ vi.mock("@anthropic-ai/sdk", () => {
   };
 });
 
+import { phoneKeyOf } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { StockMovementReason } from "@prisma/client";
 import { recordStockMovement } from "@/lib/stock";
@@ -32,7 +33,7 @@ describe("runAIAssist", () => {
     userId = user.id;
 
     const customer = await prisma.customer.create({
-      data: { organizationId, phone: "+19990001111", name: "AI Test Customer" },
+      data: { organizationId, phone: "+19990001111", phoneKey: phoneKeyOf("+19990001111")!, name: "AI Test Customer" },
     });
     customerId = customer.id;
 

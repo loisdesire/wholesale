@@ -7,8 +7,10 @@ import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStepper } from "@/components/order-stepper";
 import { RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
 import { getReturnableQuantities } from "@/lib/returns";
+import { findDuplicateOrders } from "@/lib/orders";
 import { removeOrderItemAction } from "../actions";
 import { OrderActions } from "./order-actions";
+import { OrderDetailsForm, QuantityForm } from "./order-edit-forms";
 import { AddItemForm } from "./add-item-form";
 import { RequestReturnForm, ReturnActions } from "./returns-ui";
 
@@ -18,6 +20,8 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   PAYMENT_MARKED_PAID: "Marked as paid",
   ORDER_FULFILLED: "Marked as fulfilled",
   ORDER_CANCELLED: "Order cancelled",
+  ORDER_ITEM_QUANTITY_CHANGED: "Item quantity changed",
+  ORDER_DETAILS_UPDATED: "Delivery address / notes updated",
   RETURN_REQUESTED: "Return requested",
   RETURN_APPROVED: "Return approved",
   RETURN_REJECTED: "Return rejected",
@@ -33,7 +37,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const order = await prisma.order.findFirst({
     where: { id, organizationId },
     include: {
-      customer: true,
+      customer: { include: { addresses: { orderBy: { createdAt: "asc" } } } },
       conversation: true,
       items: { include: { product: true }, orderBy: { createdAt: "asc" } },
     },
@@ -41,6 +45,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   if (!order) notFound();
 
   const isOwner = session!.user.role === "OWNER";
+  const duplicates =
+    order.status === "DRAFT" ? await findDuplicateOrders(organizationId, order.id) : [];
   const [returns, returnable] = await Promise.all([
     prisma.orderReturn.findMany({
       where: { orderId: order.id, organizationId },
@@ -96,7 +102,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div>
             <h1 className="font-tabular text-xl font-medium text-ink">{order.reference}</h1>
             <p className="mt-1 text-sm text-text-muted">
-              {order.customer.name ?? "Unnamed"} · {order.customer.phone}
+              <Link href={`/customers/${order.customer.id}`} className="underline-offset-2 hover:underline">
+                {order.customer.name ?? "Unnamed"}
+              </Link>{" "}
+              · {order.customer.phone}
               {order.conversation && (
                 <>
                   {" · from "}
@@ -117,7 +126,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       </header>
 
       <section>
-        <OrderActions orderId={order.id} status={order.status} />
+        <OrderActions
+          orderId={order.id}
+          status={order.status}
+          isOwner={isOwner}
+          duplicateOf={duplicates.map((d) => d.reference)}
+        />
       </section>
 
       <section>
@@ -141,7 +155,18 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     {item.variantLabel ? ` (${item.variantLabel})` : ""}
                     <span className="ml-2 font-tabular text-xs text-text-muted">{item.product.sku}</span>
                   </td>
-                  <td className="px-4 py-3 text-right font-tabular text-ink">{item.quantity}</td>
+                  <td className="px-4 py-3 text-right font-tabular text-ink">
+                    {order.status === "DRAFT" ? (
+                      <QuantityForm
+                        orderId={order.id}
+                        orderItemId={item.id}
+                        quantity={item.quantity}
+                        moq={item.product.moq}
+                      />
+                    ) : (
+                      item.quantity
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right font-tabular text-text-muted">
                     {formatMoney(item.unitPriceCents, order.currency)}
                   </td>
@@ -170,6 +195,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-ink">Delivery &amp; notes</h2>
+        <OrderDetailsForm
+          orderId={order.id}
+          notes={order.notes}
+          deliveryAddress={order.deliveryAddress}
+          addressOptions={order.customer.addresses}
+          editable={order.status !== "FULFILLED" && order.status !== "CANCELLED"}
+        />
+      </section>
+
       {order.status === "DRAFT" && (
         <section>
           <h2 className="mb-3 text-sm font-medium text-ink">Add an item</h2>
@@ -195,7 +231,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     {formatMoney(ret.refundCents, order.currency)}
                   </p>
                   <div className="flex gap-2">
-                    <ReturnStatusBadge status={ret.status} />
+                    {ret.kind === "RETURN" && <ReturnStatusBadge status={ret.status} />}
                     {ret.status !== "REJECTED" && ret.status !== "REQUESTED" && (
                       <RefundStatusBadge status={ret.refundStatus} />
                     )}
@@ -211,7 +247,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       {item.orderItem.variantLabel ? ` (${item.orderItem.variantLabel})` : ""}
                     </span>
                     <span className="text-xs text-text-muted">
-                      {item.condition === "DAMAGED" ? "Damaged" : "Resellable"} ·{" "}
+                      {ret.kind === "CANCELLATION" ? "Not shipped" : item.condition === "DAMAGED" ? "Damaged" : "Resellable"} ·{" "}
                       {formatMoney(item.quantity * item.orderItem.unitPriceCents, order.currency)} at the order price
                     </span>
                   </li>

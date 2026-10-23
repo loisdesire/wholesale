@@ -53,6 +53,14 @@ enum ReturnStatus {
   RECEIVED
 }
 
+// RETURN: goods coming back from a fulfilled order. CANCELLATION: an owner
+// cancelled an order that was already paid — nothing ships back, but the
+// money is owed (same refund workflow).
+enum ReturnKind {
+  RETURN
+  CANCELLATION
+}
+
 enum ReturnItemCondition {
   RESELLABLE
   DAMAGED
@@ -157,6 +165,7 @@ model Product {
   stockMovements StockMovement[]
   orderItems     OrderItem[]
   priceTiers     PriceTier[]
+  customerPrices CustomerPrice[]
 
   @@unique([organizationId, sku])
   @@index([organizationId, active])
@@ -203,16 +212,56 @@ model Customer {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  // Phone exactly as first recorded/displayed (e.g. "+2348031234567").
   phone          String
+  // Digits-only canonical form (see src/lib/phone.ts) — the real identity key,
+  // so "0803 123 4567", "+234 803 123 4567" and WhatsApp's "2348031234567"
+  // are the same customer instead of three.
+  phoneKey       String
   name           String?
+  email          String?
   notes          String?
   createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now()) @updatedAt
 
   conversations Conversation[]
   orders        Order[]
   returns       OrderReturn[]
+  addresses     CustomerAddress[]
+  prices        CustomerPrice[]
 
-  @@unique([organizationId, phone])
+  @@unique([organizationId, phoneKey])
+  @@index([organizationId, name])
+}
+
+model CustomerAddress {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  label          String?
+  // Free text on purpose: delivery addresses here are written however the
+  // customer sends them, and a rigid street/city schema would just be wrong.
+  text           String
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([customerId])
+}
+
+// A price agreed with one customer for one product. When present it wins over
+// the product's quantity-break tiers and base price (src/lib/pricing.ts).
+model CustomerPrice {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id])
+  priceCents     Int
+  createdAt      DateTime @default(now())
+
+  @@unique([customerId, productId])
 }
 
 model Conversation {
@@ -250,25 +299,27 @@ model Message {
 }
 
 model Order {
-  id             String        @id @default(cuid())
-  organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  reference      String
-  customerId     String
-  customer       Customer      @relation(fields: [customerId], references: [id])
-  conversationId String?
-  conversation   Conversation? @relation(fields: [conversationId], references: [id])
-  status         OrderStatus   @default(DRAFT)
-  totalCents     Int           @default(0)
-  currency       String        @default("NGN")
-  createdById    String?
-  createdBy      User?         @relation(fields: [createdById], references: [id])
-  confirmedAt    DateTime?
-  paidAt         DateTime?
-  fulfilledAt    DateTime?
-  cancelledAt    DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  reference       String
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  conversationId  String?
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  status          OrderStatus   @default(DRAFT)
+  totalCents      Int           @default(0)
+  currency        String        @default("NGN")
+  notes           String?
+  deliveryAddress String?
+  createdById     String?
+  createdBy       User?         @relation(fields: [createdById], references: [id])
+  confirmedAt     DateTime?
+  paidAt          DateTime?
+  fulfilledAt     DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   items   OrderItem[]
   returns OrderReturn[]
@@ -306,6 +357,7 @@ model OrderReturn {
   // Denormalized from the order so balances can be summed per customer.
   customerId     String
   customer       Customer     @relation(fields: [customerId], references: [id])
+  kind           ReturnKind   @default(RETURN)
   status         ReturnStatus @default(REQUESTED)
   reason         String
   refundCents    Int

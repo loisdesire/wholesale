@@ -13,9 +13,13 @@ import {
   markOrderPaid,
   markOrderFulfilled,
   cancelOrder,
+  updateOrderItemQuantity,
+  updateOrderDetails,
   OrderStateError,
 } from "@/lib/orders";
 import { InsufficientStockError } from "@/lib/stock";
+import { CustomerError, DuplicateCustomerError, createCustomer } from "@/lib/customers";
+import { ReturnPermissionError } from "@/lib/returns";
 
 export type FormState = { error: string | null };
 
@@ -26,7 +30,12 @@ async function requireSession() {
 }
 
 function friendlyError(err: unknown): string {
-  if (err instanceof InsufficientStockError || err instanceof OrderStateError) {
+  if (
+    err instanceof InsufficientStockError ||
+    err instanceof OrderStateError ||
+    err instanceof ReturnPermissionError ||
+    err instanceof CustomerError
+  ) {
     return err.message;
   }
   throw err;
@@ -44,6 +53,8 @@ const newOrderSchema = z.object({
   customerPhone: z.string().trim().max(32).optional(),
   conversationId: z.string().optional(),
   items: z.array(itemSchema).min(1, "Add at least one item."),
+  deliveryAddress: z.string().trim().max(500).optional(),
+  notes: z.string().trim().max(1000).optional(),
 });
 
 export async function createOrderAction(
@@ -65,6 +76,8 @@ export async function createOrderAction(
     customerName: formData.get("customerName") || undefined,
     customerPhone: formData.get("customerPhone") || undefined,
     conversationId: formData.get("conversationId") || undefined,
+    deliveryAddress: formData.get("deliveryAddress") || undefined,
+    notes: formData.get("notes") || undefined,
     items,
   });
   if (!parsed.success) {
@@ -82,14 +95,20 @@ export async function createOrderAction(
     customerId = customer.id;
   } else {
     if (!data.customerPhone) return { error: "Phone number is required for a new customer." };
-    const customer = await prisma.customer.create({
-      data: {
+    try {
+      const customer = await createCustomer({
         organizationId: session.user.organizationId,
         phone: data.customerPhone,
-        name: data.customerName || null,
-      },
-    });
-    customerId = customer.id;
+        name: data.customerName,
+        actorId: session.user.id,
+      });
+      customerId = customer.id;
+    } catch (err) {
+      if (err instanceof DuplicateCustomerError) {
+        return { error: `${err.message} Choose them from the customer list instead of creating a duplicate.` };
+      }
+      return { error: friendlyError(err) };
+    }
   }
 
   let orderId: string;
@@ -100,6 +119,8 @@ export async function createOrderAction(
       conversationId: data.conversationId,
       createdById: session.user.id,
       items: data.items,
+      deliveryAddress: data.deliveryAddress,
+      notes: data.notes,
     });
     orderId = order.id;
   } catch (err) {
@@ -155,10 +176,20 @@ export async function removeOrderItemAction(orderId: string, orderItemId: string
   revalidatePath(`/orders/${orderId}`);
 }
 
-export async function confirmOrderAction(orderId: string): Promise<FormState> {
+export async function confirmOrderAction(
+  orderId: string,
+  allowDuplicate: boolean,
+  _prevState: FormState
+): Promise<FormState> {
+  void _prevState; // required by useActionState's signature
   const session = await requireSession();
   try {
-    await confirmOrder({ organizationId: session.user.organizationId, orderId, actorId: session.user.id });
+    await confirmOrder({
+      organizationId: session.user.organizationId,
+      orderId,
+      actorId: session.user.id,
+      allowDuplicate,
+    });
   } catch (err) {
     return { error: friendlyError(err) };
   }
@@ -195,10 +226,16 @@ export async function markFulfilledAction(orderId: string): Promise<FormState> {
   return { error: null };
 }
 
-export async function cancelOrderAction(orderId: string): Promise<FormState> {
+export async function cancelOrderAction(orderId: string, _prevState: FormState): Promise<FormState> {
+  void _prevState; // required by useActionState's signature
   const session = await requireSession();
   try {
-    await cancelOrder({ organizationId: session.user.organizationId, orderId, actorId: session.user.id });
+    await cancelOrder({
+      organizationId: session.user.organizationId,
+      orderId,
+      actorId: session.user.id,
+      actorRole: session.user.role,
+    });
   } catch (err) {
     return { error: friendlyError(err) };
   }
@@ -206,5 +243,49 @@ export async function cancelOrderAction(orderId: string): Promise<FormState> {
   revalidatePath("/orders");
   revalidatePath("/catalogue");
   revalidatePath("/");
+  return { error: null };
+}
+
+export async function updateItemQuantityAction(
+  orderId: string,
+  orderItemId: string,
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireSession();
+  try {
+    await updateOrderItemQuantity({
+      organizationId: session.user.organizationId,
+      orderId,
+      orderItemId,
+      quantity: Number(formData.get("quantity")),
+      actorId: session.user.id,
+    });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/orders");
+  return { error: null };
+}
+
+export async function updateOrderDetailsAction(
+  orderId: string,
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireSession();
+  try {
+    await updateOrderDetails({
+      organizationId: session.user.organizationId,
+      orderId,
+      actorId: session.user.id,
+      notes: String(formData.get("notes") ?? ""),
+      deliveryAddress: String(formData.get("deliveryAddress") ?? ""),
+    });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+  revalidatePath(`/orders/${orderId}`);
   return { error: null };
 }

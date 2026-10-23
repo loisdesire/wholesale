@@ -83,7 +83,7 @@ describe("WhatsApp webhook route", () => {
     const stored = await prisma.message.findUnique({ where: { externalId: "wamid.route-test-1" } });
     expect(stored?.body).toBe("Is the Lace gown still available?");
 
-    const customer = await prisma.customer.findFirst({ where: { phone: "15559990000" } });
+    const customer = await prisma.customer.findFirst({ where: { phoneKey: "15559990000" } });
     expect(customer?.name).toBe("Route Test Customer");
   });
 

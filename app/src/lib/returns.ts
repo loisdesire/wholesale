@@ -1,4 +1,5 @@
 import {
+  ReturnKind,
   OrderStatus,
   RefundStatus,
   ReturnItemCondition,
@@ -10,6 +11,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
+import { lockRow } from "@/lib/locks";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -25,11 +27,6 @@ function requireOwner(actor: Actor, what: string) {
   if (actor.role !== UserRole.OWNER) {
     throw new ReturnPermissionError(`Only an owner can ${what}.`);
   }
-}
-
-/** Row lock, so concurrent requests on the same order/return run one at a time. */
-async function lockRow(tx: TxClient, table: "Order" | "OrderReturn", id: string) {
-  await tx.$queryRawUnsafe(`SELECT "id" FROM "${table}" WHERE "id" = $1 FOR UPDATE`, id);
 }
 
 // Returns that still count against what the customer can send back. A rejected
@@ -291,5 +288,50 @@ export async function markRefunded(params: {
       tx
     );
     return updated;
+  });
+}
+
+/**
+ * Called inside the transaction that cancels an already-paid order: records the
+ * refund the customer is now owed. Nothing ships back (the goods never left),
+ * so the record is born RECEIVED to keep the "goods received" step — which would
+ * restock — out of reach. The owner who cancelled has made the decision.
+ */
+export async function createCancellationRefundTx(
+  tx: TxClient,
+  params: {
+    organizationId: string;
+    order: { id: string; customerId: string; totalCents: number; items: { id: string; quantity: number }[] };
+    actor: Actor;
+  }
+) {
+  const { returnSeq } = await tx.organization.update({
+    where: { id: params.organizationId },
+    data: { returnSeq: { increment: 1 } },
+    select: { returnSeq: true },
+  });
+  const now = new Date();
+  return tx.orderReturn.create({
+    data: {
+      organizationId: params.organizationId,
+      reference: `RET-${returnSeq}`,
+      orderId: params.order.id,
+      customerId: params.order.customerId,
+      kind: ReturnKind.CANCELLATION,
+      status: ReturnStatus.RECEIVED,
+      reason: "Order cancelled after payment",
+      refundCents: params.order.totalCents,
+      refundStatus: RefundStatus.PENDING,
+      requestedById: params.actor.id,
+      decidedById: params.actor.id,
+      decidedAt: now,
+      items: {
+        create: params.order.items.map((item) => ({
+          orderItemId: item.id,
+          quantity: item.quantity,
+          condition: ReturnItemCondition.RESELLABLE,
+        })),
+      },
+    },
   });
 }

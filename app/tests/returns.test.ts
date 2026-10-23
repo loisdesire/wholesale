@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ReturnItemCondition, StockMovementReason, UserRole } from "@prisma/client";
+import { phoneKeyOf } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getStockBreakdown, recordStockMovement } from "@/lib/stock";
 import { confirmOrder, createDraftOrder, markOrderFulfilled, markOrderPaid } from "@/lib/orders";
@@ -40,7 +41,7 @@ describe("returns, refunds and customer balances", () => {
 
   async function newCustomer() {
     n += 1;
-    return (await prisma.customer.create({ data: { organizationId, phone: `+1888000${n}`, name: `Customer ${n}` } })).id;
+    return (await prisma.customer.create({ data: { organizationId, phone: `+1888000${n}`, phoneKey: phoneKeyOf(`+1888000${n}`)!, name: `Customer ${n}` } })).id;
   }
 
   async function newProduct(stock: number, priceCents = 10000) {

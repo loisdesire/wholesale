@@ -61,7 +61,7 @@ describe("physical / reserved / available / damaged stock", () => {
         data: { organizationId, email: "figures@example.com", passwordHash: "x", name: "Figures Staff" },
       })
     ).id;
-    customerId = (await prisma.customer.create({ data: { organizationId, phone: "+19990000001" } })).id;
+    customerId = (await prisma.customer.create({ data: { organizationId, phone: "+19990000001", phoneKey: "19990000001" } })).id;
   });
 
   afterAll(async () => {
@@ -100,7 +100,7 @@ describe("physical / reserved / available / damaged stock", () => {
     // A draft is a non-binding quote: nothing moves.
     expect(await getStockBreakdown(productId)).toEqual({ physical: 10, reserved: 0, damaged: 0, available: 10 });
 
-    await confirmOrder({ organizationId, orderId: order.id, actorId: userId });
+    await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
     expect(await getStockBreakdown(productId)).toEqual({ physical: 10, reserved: 4, damaged: 0, available: 6 });
 
     await markOrderPaid({ organizationId, orderId: order.id, actorId: userId });
@@ -116,7 +116,7 @@ describe("physical / reserved / available / damaged stock", () => {
       createdById: userId,
       items: [{ productId, quantity: 3 }],
     });
-    await confirmOrder({ organizationId, orderId: order.id, actorId: userId });
+    await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
     await cancelOrder({ organizationId, orderId: order.id, actorId: userId });
     expect(await getStockBreakdown(productId)).toEqual({ physical: 5, reserved: 0, damaged: 0, available: 5 });
   });
@@ -129,7 +129,7 @@ describe("physical / reserved / available / damaged stock", () => {
       createdById: userId,
       items: [{ productId, quantity: 4 }],
     });
-    await confirmOrder({ organizationId, orderId: order.id, actorId: userId });
+    await confirmOrder({ organizationId, orderId: order.id, actorId: userId, allowDuplicate: true });
 
     // 5 on the shelf, but only 1 is actually available to take out.
     await expect(move(productId, "MANUAL_ADJUSTMENT", -2)).rejects.toBeInstanceOf(InsufficientStockError);
@@ -190,7 +190,7 @@ describe("physical / reserved / available / damaged stock", () => {
       )
     );
     const results = await Promise.allSettled(
-      orders.map((o) => confirmOrder({ organizationId, orderId: o.id, actorId: userId }))
+      orders.map((o) => confirmOrder({ organizationId, orderId: o.id, actorId: userId, allowDuplicate: true }))
     );
     expect(results.map((r) => r.status)).toEqual(Array(6).fill("fulfilled"));
     expect(await getStockBreakdown(a)).toMatchObject({ reserved: 6, available: 44 });
@@ -214,7 +214,7 @@ describe("physical / reserved / available / damaged stock", () => {
       )
     );
     const results = await Promise.allSettled(
-      orders.map((o) => confirmOrder({ organizationId, orderId: o.id, actorId: userId }))
+      orders.map((o) => confirmOrder({ organizationId, orderId: o.id, actorId: userId, allowDuplicate: true }))
     );
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(2);
     // All-or-nothing: the rejected orders reserved none of the plentiful item either.

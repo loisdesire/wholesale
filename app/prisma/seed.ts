@@ -1,6 +1,7 @@
 import { PrismaClient, StockMovementReason } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { movementEffects } from "../src/lib/stock-effects";
+import { phoneKeyOf } from "../src/lib/phone";
 
 const prisma = new PrismaClient();
 
@@ -17,6 +18,8 @@ function ledgerRow(
 }
 
 async function main() {
+  await prisma.customerPrice.deleteMany();
+  await prisma.customerAddress.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.returnItem.deleteMany();
   await prisma.orderReturn.deleteMany();
@@ -131,10 +134,10 @@ async function main() {
   const bySku = (sku: string) => createdProducts.find((p) => p.sku === sku)!;
 
   const customers = await Promise.all([
-    prisma.customer.create({ data: { organizationId: org.id, phone: "+2348031234567", name: "Ngozi Eze", notes: "Prefers Ankara prints, usually orders in bulk for her boutique in Enugu." } }),
-    prisma.customer.create({ data: { organizationId: org.id, phone: "+2347098765432", name: "Funmilayo Adebayo", notes: "Reseller, Lagos. Pays via bank transfer, always sends screenshot." } }),
-    prisma.customer.create({ data: { organizationId: org.id, phone: "+2348123456789", name: "Blessing Nwachukwu" } }),
-    prisma.customer.create({ data: { organizationId: org.id, phone: "+2349087654321", name: "Chioma Okonkwo", notes: "New customer, found us via Instagram." } }),
+    prisma.customer.create({ data: { organizationId: org.id, phone: "+2348031234567", phoneKey: phoneKeyOf("+2348031234567")!, name: "Ngozi Eze", notes: "Prefers Ankara prints, usually orders in bulk for her boutique in Enugu." } }),
+    prisma.customer.create({ data: { organizationId: org.id, phone: "+2347098765432", phoneKey: phoneKeyOf("+2347098765432")!, name: "Funmilayo Adebayo", notes: "Reseller, Lagos. Pays via bank transfer, always sends screenshot." } }),
+    prisma.customer.create({ data: { organizationId: org.id, phone: "+2348123456789", phoneKey: phoneKeyOf("+2348123456789")!, name: "Blessing Nwachukwu" } }),
+    prisma.customer.create({ data: { organizationId: org.id, phone: "+2349087654321", phoneKey: phoneKeyOf("+2349087654321")!, name: "Chioma Okonkwo", notes: "New customer, found us via Instagram." } }),
   ]);
 
   const now = Date.now();
@@ -315,6 +318,24 @@ async function main() {
       actorId: staff.id,
       after: { return: seededReturn.reference, refundCents: seededReturn.refundCents, reason: seededReturn.reason },
       createdAt: hoursAgo(3),
+    },
+  });
+
+  // Phase 3 data: an address and an agreed price for Ngozi, and a lookalike record
+  // (same line, UK format) so the "possible duplicate" warning has something to find.
+  await prisma.customerAddress.create({
+    data: { organizationId: org.id, customerId: customers[0].id, label: "Shop", text: "Shop 14, Ogbete Main Market, Enugu", isDefault: true },
+  });
+  await prisma.customerPrice.create({
+    data: { organizationId: org.id, customerId: customers[0].id, productId: bySku("ANK-2PC-BLK-M").id, priceCents: 1750000 },
+  });
+  await prisma.customer.create({
+    data: {
+      organizationId: org.id,
+      phone: "+448031234567",
+      phoneKey: phoneKeyOf("+448031234567")!,
+      name: "Ngozi Eze",
+      notes: "Probably Ngozi's UK number — check before merging anything.",
     },
   });
 

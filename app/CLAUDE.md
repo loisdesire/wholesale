@@ -49,6 +49,30 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   what was ordered. **Only an OWNER can approve/reject a return or record a refund paid** (VISION.md:
   refunds need human approval) — enforced in the domain function, not just hidden in the UI. Goods
   arriving writes real ledger movements (`RETURN` resellable / `RETURN_DAMAGED`).
+- **Customer identity is the normalized phone** (`Customer.phoneKey`, digits only, built by
+  `phoneKeyOf` in `src/lib/phone.ts`; unique per organization). `phone` is only for display. Never
+  look a customer up or create one by the raw string — "0803…", "+234 803…" and WhatsApp's
+  "234803…" are one person. Create via `createCustomer` (refuses duplicates, points at the existing
+  record) or `findOrCreateCustomerByPhoneTx` (race-safe, used by webhook ingest). **Duplicates are
+  only ever surfaced** (`findPossibleDuplicates`) — nothing merges automatically, and a shared name
+  alone is labelled a weak signal.
+- **Agreed prices** (`CustomerPrice`): per-customer, per-product; resolution order is agreed price →
+  quantity tier → list price (`resolveUnitPriceCents`). Owner-only to set/remove, enforced in
+  `src/lib/customers.ts`. They apply to new orders and draft re-quantifying; existing orders keep
+  their locked prices.
+- **Locks.** `loadOrderForUpdate` genuinely locks the order row (`src/lib/locks.ts`). It used to
+  only *read* it, which on Postgres let two simultaneous confirms both reserve stock and two
+  simultaneous cancels both refund. Any new state-transition function should go through it.
+- **Cancelling a paid order** is owner-only and creates a `CANCELLATION`-kind `OrderReturn` (status
+  RECEIVED so the restocking "goods received" step can't run; refund PENDING). Balances count that
+  cash as paid, then subtract it when the refund is paid out. Fulfilled orders can't be cancelled —
+  they go through a return.
+- **Repeat-order guard:** `confirmOrder` refuses an order that duplicates another live one (same
+  customer, identical items and quantities, within 24h) unless `allowDuplicate` is passed — the UI
+  only passes it from an explicit "Confirm anyway" button, and the audit entry records it. Tests that
+  deliberately create identical orders must pass `allowDuplicate: true`.
+- **User-typed search text goes through `ci()` / `escapeLike()`** (`src/lib/search.ts`): Prisma's
+  `contains` doesn't escape `%`/`_`, so a bare "%" would match everything.
 - **Customer balances are computed, never stored** (`src/lib/balances.ts`): owes-us = CONFIRMED
   unpaid orders; we-owe = approved-unpaid refunds; cash received = paid orders minus refunds paid.
   Revenue/cash/receivables stay separate — never label any of it profit.
@@ -144,7 +168,8 @@ npm run dev
   on "the one organization" (the WhatsApp webhook resolves its org via `organization.findFirst()`)
   needs its test to wipe all data in `beforeAll` first — see `tests/end-to-end-flow.test.ts`.
 - **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
-  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. Missing this once caused an FK failure
+  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten twice now — it only fails when the
+  full suite runs, because other test files leave rows behind.) Missing this once caused an FK failure
   that only appeared when the full suite ran, not in isolation.
 - **Stale Turbopack cache** can produce phantom runtime errors ("X is not a function") for exports
   that are correct and pass tests. Kill the dev server, delete `.next/`, restart.
@@ -161,5 +186,9 @@ npm run dev
   a new `prisma/migrations/<timestamp>_name/migration.sql`, and add backfill SQL for existing rows
   (see `…_stock_figures`). Migration folders sort lexically — a timestamp earlier than the baseline
   runs first and fails on a fresh database. Test a backfill on a legacy-shaped scratch DB.
+- **Playwright screenshots can trigger a dev-only hydration warning** ("1 Issue" badge) because
+  Playwright injects `caret-color: transparent` into inputs. Not an app bug — check the console
+  without screenshots before chasing it. Also: `waitForURL(/\/orders\/.+/)` matches `/orders/new`
+  immediately; use `(?!new)`.
 - **`prisma migrate reset` is blocked for agents** (needs the user's consent), and the test harness
   doesn't use it — it drops and recreates the `_test` schema itself.

@@ -14,16 +14,25 @@ function ActionButton({
   label,
   pendingLabel,
   variant = "primary",
+  confirmMessage,
 }: {
   action: (prevState: FormState) => Promise<FormState>;
   label: string;
   pendingLabel: string;
   variant?: "primary" | "danger";
+  /** Ask "are you sure?" before running — for actions that move money. */
+  confirmMessage?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, { error: null });
 
   return (
-    <form action={formAction} className="flex items-center gap-3">
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (confirmMessage && !window.confirm(confirmMessage)) e.preventDefault();
+      }}
+      className="flex items-center gap-3"
+    >
       <button
         type="submit"
         disabled={pending}
@@ -40,14 +49,34 @@ function ActionButton({
   );
 }
 
-export function OrderActions({ orderId, status }: { orderId: string; status: string }) {
+export function OrderActions({
+  orderId,
+  status,
+  isOwner,
+  duplicateOf,
+}: {
+  orderId: string;
+  status: string;
+  isOwner: boolean;
+  /** References of orders this one looks like a repeat of. */
+  duplicateOf: string[];
+}) {
   if (status === "DRAFT") {
+    const repeat = duplicateOf.length > 0;
     return (
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-col gap-4">
+        {repeat && (
+          <p role="status" className="rounded-md border border-line bg-status-attention-bg px-4 py-3 text-sm text-status-attention-fg">
+            Possible repeat order: {duplicateOf.join(", ")} has the same customer and the same items from the last
+            day. Check before confirming so the customer isn&apos;t charged twice.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-4">
         <ActionButton
-          action={confirmOrderAction.bind(null, orderId)}
-          label="Confirm order"
+          action={confirmOrderAction.bind(null, orderId, repeat)}
+          label={repeat ? "Confirm anyway — it's intended" : "Confirm order"}
           pendingLabel="Confirming…"
+          confirmMessage={repeat ? `This looks like a repeat of ${duplicateOf.join(", ")}. Confirm it anyway?` : undefined}
         />
         <ActionButton
           action={cancelOrderAction.bind(null, orderId)}
@@ -55,6 +84,7 @@ export function OrderActions({ orderId, status }: { orderId: string; status: str
           pendingLabel="Cancelling…"
           variant="danger"
         />
+        </div>
       </div>
     );
   }
@@ -75,11 +105,24 @@ export function OrderActions({ orderId, status }: { orderId: string; status: str
 
   if (status === "PAID") {
     return (
-      <ActionButton
-        action={markFulfilledAction.bind(null, orderId)}
-        label="Mark as fulfilled"
-        pendingLabel="Saving…"
-      />
+      <div className="flex flex-wrap gap-4">
+        <ActionButton
+          action={markFulfilledAction.bind(null, orderId)}
+          label="Mark as fulfilled"
+          pendingLabel="Saving…"
+        />
+        {isOwner ? (
+          <ActionButton
+            action={cancelOrderAction.bind(null, orderId)}
+            label="Cancel order and refund"
+            pendingLabel="Cancelling…"
+            variant="danger"
+            confirmMessage="Cancel this paid order? Its stock is released and the full amount becomes a refund you owe the customer."
+          />
+        ) : (
+          <p className="self-center text-sm text-text-muted">Cancelling a paid order means a refund — only an owner can do it.</p>
+        )}
+      </div>
     );
   }
 

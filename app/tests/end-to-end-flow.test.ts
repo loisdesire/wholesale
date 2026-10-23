@@ -51,6 +51,8 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     // file runs (fileParallelism is off), so a full reset here is safe.
     await prisma.auditLog.deleteMany();
     await prisma.stockMovement.deleteMany();
+    await prisma.customerPrice.deleteMany();
+    await prisma.customerAddress.deleteMany();
     await prisma.returnItem.deleteMany();
     await prisma.orderReturn.deleteMany();
     await prisma.orderItem.deleteMany();
@@ -133,7 +135,7 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     );
     expect(webhookRes.status).toBe(200);
 
-    const customer = await prisma.customer.findFirstOrThrow({ where: { phone: "15557778888" } });
+    const customer = await prisma.customer.findFirstOrThrow({ where: { phoneKey: "15557778888" } });
     const conversation = await prisma.conversation.findFirstOrThrow({
       where: { organizationId, customerId: customer.id },
     });

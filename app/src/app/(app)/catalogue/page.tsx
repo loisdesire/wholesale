@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/format";
 import { getStockBreakdownByProduct } from "@/lib/stock";
+import { ci } from "@/lib/search";
 
 const PAGE_SIZE = 50;
 
@@ -23,8 +24,8 @@ export default async function CataloguePage({
     ...(query
       ? {
           OR: [
-            { name: { contains: query, mode: "insensitive" as const } },
-            { sku: { contains: query, mode: "insensitive" as const } },
+            { name: ci(query) },
+            { sku: ci(query) },
           ],
         }
       : {}),

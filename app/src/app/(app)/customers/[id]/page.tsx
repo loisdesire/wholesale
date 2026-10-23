@@ -5,6 +5,19 @@ import { prisma } from "@/lib/prisma";
 import { EMPTY_BALANCE, getCustomerBalances } from "@/lib/balances";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStatusBadge, RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
+import { findPossibleDuplicates } from "@/lib/customers";
+import { removeAddressAction, removePriceAction, setDefaultAddressAction } from "../actions";
+import { AddAddressForm, AgreedPriceForm, EditCustomerForm } from "./customer-forms";
+
+const ACTIVITY_LABEL: Record<string, string> = {
+  CUSTOMER_CREATED: "Customer added",
+  CUSTOMER_UPDATED: "Details updated",
+  ADDRESS_ADDED: "Address added",
+  ADDRESS_REMOVED: "Address removed",
+  DEFAULT_ADDRESS_CHANGED: "Default address changed",
+  CUSTOM_PRICE_SET: "Agreed price set",
+  CUSTOM_PRICE_REMOVED: "Agreed price removed",
+};
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,7 +27,8 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const customer = await prisma.customer.findFirst({ where: { id, organizationId } });
   if (!customer) notFound();
 
-  const [balances, orders, returns] = await Promise.all([
+  const isOwner = session!.user.role === "OWNER";
+  const [balances, orders, returns, addresses, agreedPrices, products, duplicates, activity] = await Promise.all([
     getCustomerBalances(organizationId, [customer.id]),
     prisma.order.findMany({
       where: { organizationId, customerId: customer.id },
@@ -24,6 +38,22 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       where: { organizationId, customerId: customer.id },
       include: { order: true },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.customerAddress.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: "asc" } }),
+    prisma.customerPrice.findMany({
+      where: { customerId: customer.id },
+      include: { product: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    isOwner
+      ? prisma.product.findMany({ where: { organizationId, active: true }, orderBy: { name: "asc" } })
+      : Promise.resolve([]),
+    findPossibleDuplicates(organizationId, customer.id),
+    prisma.auditLog.findMany({
+      where: { organizationId, entity: "Customer", entityId: customer.id },
+      include: { actor: true },
+      orderBy: { createdAt: "desc" },
+      take: 30,
     }),
   ]);
   const balance = balances.get(customer.id) ?? EMPTY_BALANCE;
@@ -52,6 +82,25 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         {customer.notes && <p className="mt-2 max-w-xl text-sm text-text-muted">{customer.notes}</p>}
       </header>
 
+      {duplicates.length > 0 && (
+        <section className="rounded-md border border-line bg-status-attention-bg px-4 py-3 text-sm">
+          <h2 className="font-medium text-status-attention-fg">Possible duplicate customers</h2>
+          <p className="mt-1 text-text-muted">
+            These records might be the same person. Nothing is merged automatically — check before treating them as one.
+          </p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {duplicates.map((d) => (
+              <li key={d.customer.id}>
+                <Link href={`/customers/${d.customer.id}`} className="text-ink underline underline-offset-2">
+                  {d.customer.name ?? "Unnamed"} · {d.customer.phone}
+                </Link>
+                <span className="text-text-muted"> — {d.reasons.join("; ")}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section>
         <h2 className="mb-3 text-sm font-medium text-ink">Balance</h2>
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line md:grid-cols-4">
@@ -74,6 +123,106 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <p className="mt-1 text-sm text-text-muted">
             A further {formatMoney(balance.refundRequestedCents)} is on returns still awaiting the owner&apos;s decision.
           </p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-ink">Details</h2>
+        <EditCustomerForm customerId={customer.id} name={customer.name} email={customer.email} notes={customer.notes} />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-ink">Delivery addresses</h2>
+        {addresses.length > 0 && (
+          <ul className="mb-3 divide-y divide-line rounded-md border border-line bg-surface">
+            {addresses.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                <div>
+                  <p className="text-ink">
+                    {a.label ? `${a.label} · ` : ""}
+                    {a.text}
+                    {a.isDefault && (
+                      <span className="ml-2 rounded-full bg-status-neutral-bg px-2 py-0.5 text-xs text-status-neutral-fg">
+                        Default
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex gap-3 text-xs">
+                  {!a.isDefault && (
+                    <form action={setDefaultAddressAction.bind(null, customer.id, a.id)}>
+                      <button type="submit" className="text-ink underline-offset-2 hover:underline">
+                        Make default
+                      </button>
+                    </form>
+                  )}
+                  <form action={removeAddressAction.bind(null, customer.id, a.id)}>
+                    <button type="submit" className="text-status-attention-fg underline-offset-2 hover:underline">
+                      Remove
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="max-w-xl">
+          <AddAddressForm customerId={customer.id} />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-sm font-medium text-ink">Agreed prices</h2>
+        <p className="mb-3 text-sm text-text-muted">
+          A price agreed with this customer beats the list price and quantity breaks on new orders. Orders already
+          placed keep the price they were made at.
+        </p>
+        {agreedPrices.length > 0 && (
+          <table className="mb-3 w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <th className="py-2 pr-4">Product</th>
+                <th className="py-2 pr-4 text-right">List price</th>
+                <th className="py-2 pr-4 text-right">Agreed price</th>
+                {isOwner && <th className="py-2" />}
+              </tr>
+            </thead>
+            <tbody>
+              {agreedPrices.map((p) => (
+                <tr key={p.id} className="border-b border-line last:border-0">
+                  <td className="py-3 pr-4 text-ink">
+                    {p.product.name}
+                    <span className="ml-2 font-tabular text-xs text-text-muted">{p.product.sku}</span>
+                  </td>
+                  <td className="py-3 pr-4 text-right font-tabular text-text-muted">{formatMoney(p.product.priceCents)}</td>
+                  <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(p.priceCents)}</td>
+                  {isOwner && (
+                    <td className="py-3 text-right">
+                      <form action={removePriceAction.bind(null, customer.id, p.productId)}>
+                        <button type="submit" className="text-xs text-status-attention-fg underline-offset-2 hover:underline">
+                          Remove
+                        </button>
+                      </form>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {isOwner ? (
+          <div className="max-w-xl">
+            <AgreedPriceForm
+              customerId={customer.id}
+              products={products.map((p) => ({
+                id: p.id,
+                label: `${p.name}${p.variantAttributes ? ` (${Object.values(p.variantAttributes as Record<string, string>).join(" / ")})` : ""}`,
+                priceNaira: p.priceCents / 100,
+              }))}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-text-muted">Only an owner can set agreed prices.</p>
         )}
       </section>
 
@@ -112,6 +261,22 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </table>
         )}
       </section>
+
+      {activity.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-ink">Activity</h2>
+          <div className="divide-y divide-line rounded-md border border-line bg-surface">
+            {activity.map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                <span className="text-ink">{ACTIVITY_LABEL[entry.action] ?? entry.action}</span>
+                <span className="text-xs text-text-muted">
+                  {entry.actor?.name ?? "System"} · {formatDateTime(entry.createdAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {returns.length > 0 && (
         <section>

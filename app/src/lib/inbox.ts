@@ -1,5 +1,6 @@
 import { ConversationStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { findOrCreateCustomerByPhoneTx } from "@/lib/customers";
 import type { InboundWhatsAppMessage } from "@/lib/whatsapp";
 import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
 
@@ -14,14 +15,9 @@ import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
  */
 export async function ingestInboundMessage(organizationId: string, message: InboundWhatsAppMessage) {
   return prisma.$transaction(async (tx) => {
-    let customer = await tx.customer.findUnique({
-      where: { organizationId_phone: { organizationId, phone: message.from } },
-    });
-    if (!customer) {
-      customer = await tx.customer.create({
-        data: { organizationId, phone: message.from, name: message.contactName ?? null },
-      });
-    }
+    // Matched on the normalized phone, so WhatsApp's "2348031234567" finds the
+    // customer staff entered as "0803 123 4567" instead of creating a second one.
+    const customer = await findOrCreateCustomerByPhoneTx(tx, organizationId, message.from, message.contactName);
 
     let conversation = await tx.conversation.findFirst({
       where: {

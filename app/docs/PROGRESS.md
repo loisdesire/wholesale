@@ -346,6 +346,70 @@ changed the schema the next one builds on.
   a customer with a confirmed unpaid order shows ₦159,000 owed; stock figures on the product page.
 - `npm run lint`, `npm run build`, `npm run test` (87 tests, 12 files) all pass clean.
 
+## Done (2026-10-23, later — Phase 3: Orders & customers)
+
+VISION.md Phase 3 is "customer records, order creation/items/pricing/lifecycle, search, history,
+audit events". Returns/refunds/balances (above) were the first slice; this is the rest of what's
+buildable without real payments or multi-tenancy.
+
+### Customer records
+- **Identity is the normalized phone** (`Customer.phoneKey`, `src/lib/phone.ts`). Found while
+  scoping this: Meta's webhook sends `2348031234567`, staff type `0803 123 4567` or `+234…` — the
+  old exact-string match would have created a *second customer* for the same person (splitting
+  their orders, balance and conversations). Now all formats are one customer; creating one that
+  already exists is refused with a link to the existing record; webhook ingest and manual creation
+  are both race-safe (verified by firing 5–6 concurrent creates and checking for exactly one row).
+- The migration backfills the key from existing phones and **refuses to run (with a clear error,
+  changing nothing) if existing customers collide** — merging people is a human decision. Tested on
+  a scratch DB with mixed formats and with a deliberate collision.
+- Editable details (name/email/notes), delivery addresses (first is default; default is promoted if
+  removed), activity history from the audit log, a new `/customers/new`, and a customer list with
+  search (name/email/notes/phone in any format), balance filters ("Owes us", "We owe them") and
+  pagination.
+- **Possible-duplicate detection** (`findPossibleDuplicates`): flags the same line written with a
+  different country code, the same email, or the same name — and says plainly that nothing is
+  merged. A shared name alone is labelled a weak signal.
+- **Agreed prices** per customer per product (owner-only). Resolution: agreed → tier → list. Applied
+  on create / add-item / quantity change; existing orders keep their locked prices (tested, including
+  after the agreement is changed or removed). The new-order form previews the agreed price.
+
+### Order depth
+- **Quantity change on a draft** re-prices the line (tier breaks, agreed prices, MOQ re-checked), is
+  audited with before/after.
+- **Delivery address + notes** on orders (prefilled from the customer's default address), editable
+  until fulfilment, audited.
+- **Cancelling a paid order** (owner-only): releases the reserved stock and records the refund owed
+  (a `CANCELLATION`-kind refund that follows the normal pay-out step; there is no "goods received"
+  step to wrongly restock). Balances treat it correctly: cash still held → refund owed → cash 0.
+- **Repeat-order protection** (VISION's "repeated order request"): confirming an order identical to
+  another live one from the same customer within 24h is refused unless a person explicitly overrides
+  ("Confirm anyway — it's intended"); the override is recorded in the audit log.
+- **Customer from another organization** could previously be attached to a new order — now rejected.
+
+### Search
+- Orders list: free-text search (reference, customer name/email/phone in any format, product
+  name/SKU, notes, address), status chips, date range, pagination. Customers list likewise.
+  New global `/search` across orders, customers, products and returns.
+- **Bug found by a test:** Prisma's `contains` doesn't escape `%` and `_`, so typing `%` matched
+  everything (also affected the existing catalogue search and the AI's `search_catalogue`). All
+  user-typed search now goes through `ci()`/`escapeLike()`.
+
+### Concurrency bugs found and fixed along the way
+- **`loadOrderForUpdate` never actually locked.** Invisible on SQLite; on Postgres two simultaneous
+  confirms both reserved stock, two simultaneous payments both recorded, two simultaneous cancels
+  both refunded. Now takes a real row lock (`src/lib/locks.ts`); tests fail without it.
+
+### Verification
+- **Tests:** 147 across 15 files (`customers` 27, `order-depth` 19, `search` 14 new). Mutation-checked
+  the important ones: removing the order lock fails the double-confirm/double-pay tests; replacing
+  the race-safe customer insert fails the concurrent-ingest test.
+- **Live in a browser (Playwright, 27 checks, screenshots)**: phone search in local format,
+  duplicate-customer refusal, duplicate panel, notes edit + activity log, agreed price preview and
+  order total, address prefill, quantity re-pricing, repeat-order warning and override button,
+  paid → cancel-and-refund → refund recorded, customer balance, staff seeing no cancel-and-refund
+  and no agreed-price form, global search by phone.
+- `npm run lint`, `npm run build`, `npm run test` all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -368,6 +432,12 @@ changed the schema the next one builds on.
   order paid); a return is only possible after fulfilment (cancelling a paid-but-unfulfilled order is
   still out of scope). The balance is "orders vs refunds" only — there are no partial/instalment
   payments yet, so "owes us" means a whole confirmed order awaiting payment.
+- **Phase 3 not done / deliberately left:** partial fulfilment (an order shipping in pieces) and
+  partial refunds / credit notes; customer *merging* (duplicates are only surfaced); multi-tenant
+  isolation enforcement (every query is org-scoped and tested for cross-org access, but there is no
+  DB-level isolation or membership model); delivery-address validation (free text on purpose);
+  order amendments after confirmation other than cancelling (a confirmed order can't have lines
+  edited — cancel and redraft); a global search box in the header (it's a nav page).
 - **`DAMAGE` meaning changed.** Pre-existing `DAMAGE` rows (which meant "written off") were converted
   to `MANUAL_ADJUSTMENT` with an explanatory note by the migration so history keeps its meaning.
 
@@ -376,12 +446,13 @@ changed the schema the next one builds on.
 These are natural follow-ons, flagged here rather than started unprompted:
 
 - Get real WhatsApp Business + Anthropic credentials into `.env` and do a live smoke test of
-  webhook ingestion, reply sending, and AI product-matching against actual traffic.
+  webhook ingestion, reply sending, and AI product-matching against actual traffic. (Customer
+  matching on the normalized phone matters most here — it's the first thing real traffic exercises.)
 - Decide on and set up deployment (hosting, managed Postgres, env vars, running `prisma migrate
   deploy` in CI/CD).
-- Phase 3 remainder (VISION.md): partial refunds / credit notes, order amendments and
-  cancel-after-payment, duplicate-order investigation, customer duplicate detection.
-- Phase 4 (operations control room): operational metrics — return/refund rate, overdue orders —
-  now that there are real records to compute them from.
+- Phase 3 remainder: partial fulfilment + partial refunds, a safe customer-merge tool (explicit,
+  previewed, reversible), real multi-tenant membership/isolation.
+- Phase 4 (operations control room): operational metrics — return/refund rate, overdue orders,
+  response times — now that there are real records to compute them from; assignment and queues.
 - Phase 6 (payments & delivery): automated payment verification would let "mark paid" and "refund
   paid" rest on evidence instead of a manual click.

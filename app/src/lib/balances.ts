@@ -1,4 +1,4 @@
-import { OrderStatus, RefundStatus, ReturnStatus } from "@prisma/client";
+import { OrderStatus, RefundStatus, ReturnKind, ReturnStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -46,7 +46,7 @@ export async function getCustomerBalances(organizationId: string, customerIds?: 
       _sum: { totalCents: true },
     }),
     prisma.orderReturn.groupBy({
-      by: ["customerId", "status", "refundStatus"],
+      by: ["customerId", "kind", "status", "refundStatus"],
       where: { organizationId, ...customerFilter, status: { not: ReturnStatus.REJECTED } },
       _sum: { refundCents: true },
     }),
@@ -70,6 +70,9 @@ export async function getCustomerBalances(organizationId: string, customerIds?: 
   for (const r of returnRows) {
     const cents = r._sum.refundCents ?? 0;
     const row = get(r.customerId);
+    // A cancelled order drops out of the order totals above, but the customer
+    // did pay for it — count that cash so the refund doesn't subtract from nothing.
+    if (r.kind === ReturnKind.CANCELLATION) row.paidCents += cents;
     if (r.refundStatus === RefundStatus.REFUNDED) row.refundedCents += cents;
     else if (r.refundStatus === RefundStatus.PENDING) row.refundDueCents += cents;
     else if (r.status === ReturnStatus.REQUESTED) row.refundRequestedCents += cents;

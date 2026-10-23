@@ -13,7 +13,7 @@ export default async function NewOrderPage({
   const session = await auth();
   const organizationId = session!.user.organizationId;
 
-  const [customers, products, stockMap] = await Promise.all([
+  const [customers, products, stockMap, agreedRows] = await Promise.all([
     prisma.customer.findMany({ where: { organizationId }, orderBy: { name: "asc" } }),
     prisma.product.findMany({
       where: { organizationId, active: true },
@@ -21,7 +21,10 @@ export default async function NewOrderPage({
       orderBy: { name: "asc" },
     }),
     getStockByProduct(organizationId),
+    prisma.customerPrice.findMany({ where: { organizationId } }),
   ]);
+  const agreedPrices: Record<string, Record<string, number>> = {};
+  for (const row of agreedRows) (agreedPrices[row.customerId] ??= {})[row.productId] = row.priceCents;
 
   const productOptions = products.map((p) => {
     const variant = p.variantAttributes as Record<string, string> | null;
@@ -55,6 +58,7 @@ export default async function NewOrderPage({
         products={productOptions}
         defaultCustomerId={customerId}
         conversationId={conversationId}
+        agreedPrices={agreedPrices}
       />
     </div>
   );

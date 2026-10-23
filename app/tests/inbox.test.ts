@@ -31,7 +31,7 @@ describe("ingestInboundMessage", () => {
     expect(result).not.toBeNull();
 
     const customer = await prisma.customer.findUniqueOrThrow({
-      where: { organizationId_phone: { organizationId, phone: "15550001111" } },
+      where: { organizationId_phoneKey: { organizationId, phoneKey: "15550001111" } },
     });
     expect(customer.name).toBe("Test Customer");
 
@@ -51,7 +51,7 @@ describe("ingestInboundMessage", () => {
     );
 
     const conversations = await prisma.conversation.findMany({
-      where: { organizationId, customer: { phone: "15550001111" } },
+      where: { organizationId, customer: { phoneKey: "15550001111" } },
     });
     expect(conversations).toHaveLength(1);
 
@@ -70,14 +70,14 @@ describe("ingestInboundMessage", () => {
     const phone = "15550002222";
     await ingestInboundMessage(organizationId, message({ externalId: "wamid.r1", from: phone }));
     const conversation = await prisma.conversation.findFirstOrThrow({
-      where: { organizationId, customer: { phone } },
+      where: { organizationId, customer: { phoneKey: phone } },
     });
     await prisma.conversation.update({ where: { id: conversation.id }, data: { status: "RESOLVED" } });
 
     await ingestInboundMessage(organizationId, message({ externalId: "wamid.r2", from: phone }));
 
     const conversations = await prisma.conversation.findMany({
-      where: { organizationId, customer: { phone } },
+      where: { organizationId, customer: { phoneKey: phone } },
       orderBy: { createdAt: "asc" },
     });
     // A new conversation is opened rather than appending to the resolved one.

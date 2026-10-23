@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/orders", label: "Orders" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/customers", label: "Customers" },
+  { href: "/search", label: "Search" },
 ];
 
 export function Nav({
