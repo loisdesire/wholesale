@@ -103,9 +103,12 @@ It's safe to deploy with only `DATABASE_URL`/`DIRECT_URL`/`AUTH_SECRET` set and 
 the restricted `wholesale_app` role created the same way `docker/init-app-role.sql` does locally,
 `prisma migrate deploy`, `npm run db:check-isolation` (fails the build if tenant isolation isn't
 actually enforced — the same check `src/instrumentation.ts` runs at startup, just moved earlier),
-lint, typecheck, the full test suite, and the production build. It is **not** a deploy pipeline —
-it verifies the branch, it doesn't ship it anywhere. A real CD step (running `prisma migrate
-deploy` against the real database and deploying the build) still waits on the hosting decision
+lint, the production build (Next.js runs its own full TypeScript check as part of `next build` —
+a standalone `tsc --noEmit` step before it fails on the App Router's auto-generated
+`LayoutProps`/`PageProps` types, which only exist once `next build`/`next dev` has run), and the
+full test suite. It is **not** a deploy pipeline — it verifies the branch, it doesn't ship it
+anywhere. A real CD step (running `prisma migrate deploy` against the real database and deploying
+the build) still waits on the hosting decision
 below.
 
 ## What's deliberately not here yet
