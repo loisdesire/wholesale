@@ -168,6 +168,13 @@ export async function recordSubscriptionPayment(params: {
   plan: Plan;
   amountCents: number;
   providerReference: string;
+  /**
+   * A reusable card authorization from the same charge, if Paystack returned one (see
+   * parsePaystackWebhookEvent). Captured for a future tokenized recurring subscription
+   * (src/lib/subscriptions.ts) — stored, but nothing acts on it today; see that module's doc
+   * comment for why.
+   */
+  authorizationCode?: string | null;
 }) {
   const periodStart = new Date();
   const periodEnd = new Date(periodStart.getTime() + PERIOD_MS);
@@ -193,7 +200,12 @@ export async function recordSubscriptionPayment(params: {
 
   await prisma.organization.update({
     where: { id: params.organizationId },
-    data: { plan: params.plan, subscriptionStatus: SubscriptionStatus.ACTIVE, currentPeriodEnd: periodEnd },
+    data: {
+      plan: params.plan,
+      subscriptionStatus: SubscriptionStatus.ACTIVE,
+      currentPeriodEnd: periodEnd,
+      ...(params.authorizationCode ? { paystackAuthorizationCode: params.authorizationCode } : {}),
+    },
   });
 
   return payment;

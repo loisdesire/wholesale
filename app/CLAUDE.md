@@ -206,7 +206,15 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   as evidence it completed (its own docs: 200 means accepted, not completed), so the owner still
   confirms via the pre-existing `markRefunded` once funds have actually landed; automatic
   completion via the `refund.processed` webhook was deliberately not built since its payload shape
-  wasn't confirmed in Paystack's docs.
+  wasn't confirmed in Paystack's docs. **Tokenized recurring-subscription plumbing is built but
+  deliberately dormant** (`src/lib/subscriptions.ts`: `findOrCreatePaystackPlan`,
+  `createPaystackSubscription`) — nothing in the app calls it. A reusable card authorization is
+  captured from a verified webhook's `data.authorization` (`Organization.paystackAuthorizationCode`,
+  `parsePaystackWebhookEvent`/`recordSubscriptionPayment`), which is the raw material Paystack's
+  Subscriptions API needs, but actually creating a live subscription would mean Paystack
+  auto-charges a saved card every period with no way yet to reliably recognize those renewal
+  webhooks and apply them to the ledger — see `subscriptions.ts`'s own doc comment for why that gap
+  blocks turning this on, not a missing feature.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -295,6 +303,15 @@ these the app degrades gracefully (clear "not configured" messages in the UI, se
 rather than failing silently or pretending to work — the logic itself is tested against synthetic
 signed payloads / mocked responses in `tests/`, not against the real services. See
 `docs/PROGRESS.md` for exactly what's been verified vs. what needs real credentials to confirm.
+
+`SENTRY_DSN` is required for error tracking (`@sentry/nextjs`, wired into `src/instrumentation.ts`
+and `sentry.server.config.ts`) to actually report anywhere — without it, `Sentry.init()` is never
+called, so every `Sentry.captureException`/`captureMessage` call elsewhere (including the two
+webhook routes' own rejection paths) is a safe no-op. See `docs/MONITORING_AND_BACKUPS.md`.
+
+`.github/workflows/ci.yml` runs lint/typecheck/test/build against a throwaway Postgres on every
+push and PR — it verifies the branch, it does not deploy anything. See `docs/DEPLOYMENT.md`'s
+"Continuous integration" section.
 
 ## What's deferred (do not build yet)
 

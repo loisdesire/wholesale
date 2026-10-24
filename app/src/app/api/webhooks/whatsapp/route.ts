@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { resolveOrganizationForWhatsApp } from "@/lib/whatsapp-routing";
 import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates } from "@/lib/whatsapp";
 import { ingestInboundMessage } from "@/lib/inbox";
@@ -81,6 +82,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (unrouted > 0 || unroutedStatuses > 0) {
+    // One summary capture per request, not one per unrouted item — keeps Sentry's own volume
+    // proportionate while still surfacing it to someone who isn't tailing logs (see
+    // docs/MONITORING_AND_BACKUPS.md's "alerting on the two webhook routes").
+    Sentry.captureMessage(
+      `WhatsApp webhook: ${unrouted} unrouted message(s), ${unroutedStatuses} unrouted status update(s) this request — see server logs for which phone_number_id(s).`,
+      "warning"
+    );
     return new Response(`OK (${unrouted} unrouted message(s), ${unroutedStatuses} unrouted status update(s) not applied)`, { status: 200 });
   }
 

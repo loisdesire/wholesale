@@ -97,10 +97,20 @@ It's safe to deploy with only `DATABASE_URL`/`DIRECT_URL`/`AUTH_SECRET` set and 
   with updating the webhook configuration on Paystack's/Meta's side, since both are used to verify
   inbound webhook signatures, not just to make outbound calls.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and PR: a throwaway Postgres service container,
+the restricted `wholesale_app` role created the same way `docker/init-app-role.sql` does locally,
+`prisma migrate deploy`, `npm run db:check-isolation` (fails the build if tenant isolation isn't
+actually enforced — the same check `src/instrumentation.ts` runs at startup, just moved earlier),
+lint, typecheck, the full test suite, and the production build. It is **not** a deploy pipeline —
+it verifies the branch, it doesn't ship it anywhere. A real CD step (running `prisma migrate
+deploy` against the real database and deploying the build) still waits on the hosting decision
+below.
+
 ## What's deliberately not here yet
 
-Per VISION.md's Phase 7 scope and `docs/PROGRESS.md`'s "Suggested next steps": a CI/CD pipeline
-definition (what's above is the manual sequence CI should automate), a chosen hosting provider,
-a chosen managed-Postgres provider, log aggregation/APM, uptime alerting, and a documented backup/
-restore drill. These wait on an actual hosting decision, which is the user's to make, not
-something to invent here.
+Per VISION.md's Phase 7 scope and `docs/PROGRESS.md`'s "Suggested next steps": a CD step that
+actually deploys (CI above only verifies), a chosen hosting provider, a chosen managed-Postgres
+provider, log aggregation/APM, uptime alerting, and a documented backup/restore drill. These wait
+on an actual hosting decision, which is the user's to make, not something to invent here.

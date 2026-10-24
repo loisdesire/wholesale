@@ -4,9 +4,16 @@
  * BYPASSRLS role, or a tenant table lacks row-level security) — better a failed
  * deploy than a running app that quietly isolates nothing. In development it warns.
  * Set ALLOW_UNENFORCED_ISOLATION=true to override, knowingly.
+ *
+ * Also loads Sentry's server config here (Next.js's documented hook for it) — see
+ * sentry.server.config.ts for why that's a no-op without SENTRY_DSN set. Only the Node.js
+ * runtime is covered; this app has no edge middleware logic worth instrumenting separately
+ * today (see docs/MONITORING_AND_BACKUPS.md).
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  await import("../sentry.server.config");
 
   const { checkTenantIsolation } = await import("@/lib/isolation-check");
   let status;
@@ -24,3 +31,7 @@ export async function register() {
   }
   console.warn(`⚠ ${message}`);
 }
+
+// Captures errors from Server Components, route handlers and server actions that Next.js
+// itself catches — a safe no-op when Sentry was never initialized (no SENTRY_DSN).
+export { captureRequestError as onRequestError } from "@sentry/nextjs";

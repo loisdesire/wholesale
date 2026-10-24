@@ -22,10 +22,23 @@ gaps" for the standing caveat that this app has only ever run against a local Po
   `docs/PROGRESS.md`'s Phase 4 entry); `src/instrumentation.ts` logs the isolation warning in
   development. None of this goes anywhere but host-captured stdout/stderr today — no aggregation,
   no alerting, no dashboards.
-- **No error-tracking SDK** (Sentry or similar) is wired in. An uncaught exception in a server
-  action or route handler is visible only in host logs, to whoever happens to be looking.
-- **No APM / request tracing.** No latency or throughput metrics beyond whatever the hosting
-  platform captures for you.
+- **Error tracking is wired in, but inert without a DSN.** `@sentry/nextjs` is installed;
+  `sentry.server.config.ts` calls `Sentry.init()` only when `SENTRY_DSN` is set (same
+  degrade-gracefully shape as every other integration — see CLAUDE.md), and `src/instrumentation.ts`
+  loads it and exports `onRequestError = Sentry.captureRequestError`, Next.js's documented hook for
+  catching exceptions from Server Components, Route Handlers and Server Actions. The two webhook
+  routes also call `Sentry.captureMessage` on each of their existing rejection paths (bad
+  reference, a payment/subscription that couldn't be applied, an unrouted WhatsApp event) — without
+  `SENTRY_DSN` set, every one of these calls is a safe no-op (confirmed by the test suite, which
+  exercises these exact paths with no DSN configured). **Without a real DSN, none of this actually
+  reports anywhere yet** — it needs a real Sentry project, set up outside this environment. Also
+  not done: `next.config.ts` isn't wrapped with `withSentryConfig` (needs a real org/project/auth
+  token for source-map upload — skipping this still gives working error capture, just with
+  minified stack traces until that's added), and only the Node.js runtime is covered, not edge
+  middleware.
+- **No APM / request tracing.** `tracesSampleRate: 0` in `sentry.server.config.ts` — no latency or
+  throughput metrics beyond whatever the hosting platform captures for you. Turning this on is a
+  one-line change once that's actually wanted.
 - **No backup job of any kind.** Local development's Postgres (`docker-compose.yml`) has a plain
   Docker volume with no backup; nothing has been set up against a managed database either, because
   none has been chosen yet.
@@ -50,19 +63,15 @@ In rough priority order — cheapest/most load-bearing first:
    choosing a host at all (`docs/DEPLOYMENT.md`). Nearly every managed Postgres provider (RDS,
    Supabase, Neon, Render, Cloud SQL) includes this by default — the work here is choosing a
    provider and confirming retention window and restore process, not building anything.
-2. **An error-tracking SDK** (e.g. Sentry) wired into Next.js's instrumentation hooks
-   (`src/instrumentation.ts` already exists as the place Next.js calls on startup — a
-   `Sentry.init()` call belongs there, plus `onRequestError` per Next.js's documented hook for
-   catching request-level exceptions). This is the single highest-value addition here: today an
-   uncaught error in, say, order creation or a webhook handler is invisible unless someone is
-   tailing logs at the right moment.
-3. **Alerting on the two webhook routes specifically**, since they're the app's only unattended
-   entry points (no human clicks "submit" when Paystack or WhatsApp calls in) and already log
-   every rejection with enough detail to act on (`console.error` call sites listed above) — piping
-   those into whatever error tracker is chosen immediately makes them actionable instead of
-   silent. A failed/rejected webhook event today is acknowledged (so the provider doesn't retry
-   forever) but otherwise invisible — "payment didn't apply and nobody noticed" is the realistic
-   failure mode to guard against first.
+2. ~~An error-tracking SDK wired into Next.js's instrumentation hooks~~ — **done**: `@sentry/nextjs`
+   is installed and wired into `src/instrumentation.ts`/`sentry.server.config.ts`, including
+   `onRequestError` and the two webhook routes' rejection paths. What's left here is entirely
+   outside this environment: create a real Sentry project and set `SENTRY_DSN` — everything else
+   activates automatically once that's set, nothing more to build.
+3. **Alerting on the two webhook routes specifically** is now wired in (see above) — what remains
+   is configuring actual alert rules in Sentry once a real project exists (e.g. "page someone if
+   more than N webhook rejections happen in 5 minutes"), which is Sentry dashboard configuration,
+   not application code.
 4. **A documented restore drill**, once backups exist: actually restore a backup to a scratch
    database and run `npm run db:check-isolation` against it, confirming RLS and the restricted
    role survive a restore (a snapshot/restore process on some providers recreates roles

@@ -209,6 +209,33 @@ describe("recordSubscriptionPayment", () => {
     const count = await prisma.subscriptionPayment.count({ where: { providerReference: reference } });
     expect(count).toBe(1);
   });
+
+  it("captures a reusable card authorization code when the charge carried one — raw material for a future tokenized subscription", async () => {
+    const org = await prisma.organization.create({ data: { name: "Billing Auth Capture Test Org" } });
+    const reference = buildSubscriptionPaymentReference(org.id, "STARTER");
+    await recordSubscriptionPayment({
+      organizationId: org.id,
+      plan: "STARTER",
+      amountCents: PLAN_LIMITS.STARTER.monthlyFeeCents,
+      providerReference: reference,
+      authorizationCode: "AUTH_capture_test",
+    });
+    const updated = await prisma.organization.findUniqueOrThrow({ where: { id: org.id } });
+    expect(updated.paystackAuthorizationCode).toBe("AUTH_capture_test");
+  });
+
+  it("leaves any previously captured authorization code untouched when this charge didn't carry one", async () => {
+    const org = await prisma.organization.create({ data: { name: "Billing Auth Keep Test Org", paystackAuthorizationCode: "AUTH_keep_me" } });
+    await recordSubscriptionPayment({
+      organizationId: org.id,
+      plan: "STARTER",
+      amountCents: PLAN_LIMITS.STARTER.monthlyFeeCents,
+      providerReference: buildSubscriptionPaymentReference(org.id, "STARTER"),
+      // authorizationCode omitted — e.g. a renewal paid by bank transfer, no reusable card involved
+    });
+    const updated = await prisma.organization.findUniqueOrThrow({ where: { id: org.id } });
+    expect(updated.paystackAuthorizationCode).toBe("AUTH_keep_me");
+  });
 });
 
 describe("Paystack webhook route dispatches order vs subscription payments correctly", () => {
@@ -268,6 +295,21 @@ describe("Paystack webhook route dispatches order vs subscription payments corre
 
     // The order payment ledger is untouched by a subscription charge.
     expect(await prisma.payment.count({ where: { orderId } })).toBe(0);
+  });
+
+  it("threads a reusable card authorization from the webhook event through to the organization", async () => {
+    // Uses GROWTH, not STARTER — a sibling test in this block asserts the STARTER subscription
+    // payment count stays at zero for this same shared organization fixture.
+    const reference = buildSubscriptionPaymentReference(organizationId, "GROWTH");
+    const body = JSON.stringify({
+      event: "charge.success",
+      data: { reference, amount: PLAN_LIMITS.GROWTH.monthlyFeeCents, status: "success", authorization: { authorization_code: "AUTH_via_webhook", reusable: true } },
+    });
+    const res = await post(body);
+    expect(res.status).toBe(200);
+
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId } });
+    expect(org.paystackAuthorizationCode).toBe("AUTH_via_webhook");
   });
 
   it("a pay_ reference still routes to the order-payment path, same endpoint", async () => {

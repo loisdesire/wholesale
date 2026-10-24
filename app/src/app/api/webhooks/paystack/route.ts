@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import {
   verifyPaystackSignature,
   parsePaystackWebhookEvent,
@@ -55,11 +56,14 @@ export async function POST(req: NextRequest) {
         plan: subscriptionRef.plan,
         amountCents: event.amountCents,
         providerReference: event.reference,
+        authorizationCode: event.authorizationCode,
       });
       return new Response(result ? "OK" : "OK (already processed)", { status: 200 });
     } catch (err) {
       if (err instanceof BillingError) {
-        console.error(`Paystack webhook: could not apply subscription payment for org ${subscriptionRef.organizationId}: ${err.message}`);
+        const message = `Paystack webhook: could not apply subscription payment for org ${subscriptionRef.organizationId}: ${err.message}`;
+        console.error(message);
+        Sentry.captureMessage(message, "warning");
         return new Response(`OK (${err.message})`, { status: 200 });
       }
       throw err;
@@ -68,7 +72,9 @@ export async function POST(req: NextRequest) {
 
   const parsed = parsePaymentReference(event.reference);
   if (!parsed) {
-    console.error(`Paystack webhook: reference "${event.reference}" doesn't match a reference this app generated — not applied.`);
+    const message = `Paystack webhook: reference "${event.reference}" doesn't match a reference this app generated — not applied.`;
+    console.error(message);
+    Sentry.captureMessage(message, "warning");
     return new Response("OK (unrecognized reference)", { status: 200 });
   }
 
@@ -86,7 +92,9 @@ export async function POST(req: NextRequest) {
       // The order itself refused it (not found, draft, cancelled) — acknowledge so
       // Paystack doesn't retry forever; this is logged for a human to investigate,
       // since a genuine successful charge with nowhere to apply it is unusual.
-      console.error(`Paystack webhook: could not apply payment for order ${parsed.orderId}: ${err.message}`);
+      const message = `Paystack webhook: could not apply payment for order ${parsed.orderId}: ${err.message}`;
+      console.error(message);
+      Sentry.captureMessage(message, "warning");
       return new Response(`OK (${err.message})`, { status: 200 });
     }
     throw err;

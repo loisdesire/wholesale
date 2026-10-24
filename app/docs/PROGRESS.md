@@ -1061,6 +1061,49 @@ Paystack API usage bounded.
   the page's existing design system.
 - `npm run lint`, `npm run build`, and `npm run test` (354/354) all pass clean.
 
+## Done (2026-10-24, continued)
+
+Three infrastructure pieces, all buildable without real external accounts:
+
+- **CI pipeline** (`.github/workflows/ci.yml`): runs on every push/PR — a throwaway Postgres
+  service container, the restricted `wholesale_app` role created the same way
+  `docker/init-app-role.sql` does locally, `prisma migrate deploy`, `npm run db:check-isolation`
+  (fails the build if tenant isolation isn't actually enforced), lint, typecheck, the full test
+  suite, and the production build. Verifies the branch; does not deploy anything — see
+  `docs/DEPLOYMENT.md`'s new "Continuous integration" section.
+- **Error tracking** (`@sentry/nextjs`, `sentry.server.config.ts`, `src/instrumentation.ts`'s new
+  `onRequestError` export): same degrade-gracefully shape as every other integration —
+  `Sentry.init()` only runs when `SENTRY_DSN` is set, so every Sentry call elsewhere (including the
+  two webhook routes' existing rejection paths, which now also call `Sentry.captureMessage`) is a
+  safe no-op without it — confirmed by the existing test suite, which exercises those exact lines
+  with no DSN configured. Deliberately not wrapping `next.config.ts` with `withSentryConfig` yet
+  (needs a real org/project/auth token for source-map upload; skipping it still gives working
+  error capture, just with minified stack traces until that's added). Verified live: a fresh dev
+  server starts cleanly with the new instrumentation, and a real request to the Paystack webhook
+  still behaves correctly (signature check, response codes) with Sentry wired in.
+- **Paystack tokenized Subscriptions API plumbing** (`src/lib/subscriptions.ts`:
+  `findOrCreatePaystackPlan`, `createPaystackSubscription`) — **built, but deliberately not wired
+  into anything**, a judgment call checked with the user first rather than assumed. The confirmed
+  half (creating a Plan, creating a Subscription against a saved card authorization) is built and
+  tested; a reusable card authorization is now captured from a verified webhook event
+  (`Organization.paystackAuthorizationCode`, new migration, `parsePaystackWebhookEvent` extended to
+  read `data.authorization`) as pure data capture, no action taken on it. What's not built: actually
+  calling `createPaystackSubscription` from any button, because doing so would make Paystack start
+  genuinely auto-charging a saved card every period, and this app can't yet reliably recognize
+  Paystack's renewal-webhook events (`subscription.create`, `invoice.create`, etc. — their payload
+  shapes weren't confirmable with the same confidence as `/transaction/initialize` or `/refund`) to
+  apply those charges to the ledger. Turning this on without that piece would mean real money
+  moving with the app's own records silently drifting out of sync — worse than not building it.
+- **Tests:** 11 new (365 total) — `findOrCreatePaystackPlan` (refuses when not configured, reuses
+  an existing plan by name instead of duplicating, creates one when missing, pages through the
+  plan list), `createPaystackSubscription` (refuses when not configured, creates against a plan +
+  authorization, surfaces Paystack's own rejection message), and authorization-code capture
+  (`recordSubscriptionPayment` persists it when present, leaves a previously captured one untouched
+  when a charge doesn't carry one, and the webhook route itself threads it through end to end from
+  a `data.authorization` payload to `Organization.paystackAuthorizationCode`).
+- `npm run lint`, `npm run build`, `npm run test` (365/365), and the migration-drift check all pass
+  clean on a fresh `prisma migrate deploy` from scratch.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1133,19 +1176,28 @@ These are natural follow-ons, flagged here rather than started unprompted:
   subscription webhook end-to-end (same "built and tested against synthetic payloads, not yet run
   for real" gap as order payments); decide real pricing/limits before turning the current
   informational entitlement checks into actual enforcement; per-organization Paystack accounts
-  rather than the one global key billing scaffolding used; Paystack's tokenized Subscriptions API
-  for true auto-recurring billing once pricing is final (today's flow is a one-off charge per
-  30-day period, started manually); platform super-admin — once there's a real pilot business
-  ready to run on this. Deployment documentation (`docs/DEPLOYMENT.md`), a pilot onboarding
-  runbook (`docs/PILOT_ONBOARDING.md`), and a monitoring/backups plan (`docs/MONITORING_AND_BACKUPS.md`)
-  are now written, but the actual hosting/managed-Postgres/error-tracking-vendor decisions they
-  depend on haven't been made, and nothing in any of them has been exercised for real yet. The
-  onboarding runbook documents today's actual process honestly (a manual DB-level script, no
-  self-serve sign-up) rather than assuming a UI that doesn't exist — building that UI is listed in
-  the runbook itself as deliberately deferred until a couple of real pilots show which parts of it
-  are actually worth automating first. A security review of the whole branch is now done (no
-  HIGH/MEDIUM findings — see the Done entry above) but should be re-run once platform super-admin
-  and real payment provider credentials land, since both expand the attack surface this review
-  covered. A CI/CD pipeline automating `docs/DEPLOYMENT.md`'s steps, and the error-tracking SDK and
-  webhook alerting `docs/MONITORING_AND_BACKUPS.md` recommends, are still to build, once a host and
-  vendors are chosen.
+  rather than the one global key billing scaffolding used; platform super-admin — once there's a
+  real pilot business ready to run on this. Deployment documentation (`docs/DEPLOYMENT.md`), a
+  pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`), and a monitoring/backups plan
+  (`docs/MONITORING_AND_BACKUPS.md`) are now written, but the actual hosting/managed-Postgres/
+  error-tracking-vendor decisions they depend on haven't been made, and nothing in any of them has
+  been exercised for real yet. The onboarding runbook documents today's actual process honestly (a
+  manual DB-level script, no self-serve sign-up) rather than assuming a UI that doesn't exist —
+  building that UI is listed in the runbook itself as deliberately deferred until a couple of real
+  pilots show which parts of it are actually worth automating first. A security review of the
+  whole branch is now done (no HIGH/MEDIUM findings — see the Done entry above) but should be
+  re-run once platform super-admin and real payment provider credentials land, since both expand
+  the attack surface this review covered.
+- A CI pipeline (`.github/workflows/ci.yml`) and error-tracking SDK wiring (`@sentry/nextjs`) are
+  now both built (see the Done entry above) — what's left on each is entirely outside this
+  environment: a CD step that actually deploys, once a host is chosen; a real Sentry project and
+  `SENTRY_DSN`, which activates everything already wired in with no further code changes; and
+  `withSentryConfig` for readable (non-minified) stack traces, which needs an org/project/auth
+  token from that same real project.
+- Paystack's tokenized Subscriptions API plumbing is now built but deliberately dormant (see the
+  Done entry above) — not wired into any button, since this app can't yet reliably recognize
+  Paystack's renewal-webhook events to keep the ledger in sync with auto-charges it would trigger.
+  Confirming that payload contract against a real Paystack account (the same kind of live
+  verification the refund-completion webhook gap is waiting on) is the actual blocker, not more
+  code — once that's confirmed, wiring an "enable auto-renewal" button to
+  `createPaystackSubscription` is a small, already-tested addition away.

@@ -76,13 +76,27 @@ describe("payment reference round trip", () => {
 describe("parsePaystackWebhookEvent", () => {
   it("extracts the fields this app acts on", () => {
     const event = parsePaystackWebhookEvent({ event: "charge.success", data: { reference: "pay_a_b_c", amount: 50000, status: "success" } });
-    expect(event).toEqual({ event: "charge.success", reference: "pay_a_b_c", amountCents: 50000, status: "success" });
+    expect(event).toEqual({ event: "charge.success", reference: "pay_a_b_c", amountCents: 50000, status: "success", authorizationCode: null });
   });
 
   it("returns null for a malformed or unrelated payload", () => {
     expect(parsePaystackWebhookEvent(null)).toBeNull();
     expect(parsePaystackWebhookEvent({ event: "charge.success" })).toBeNull(); // no data
     expect(parsePaystackWebhookEvent({ event: "charge.success", data: { reference: "x" } })).toBeNull(); // no amount
+  });
+
+  it("extracts a reusable card authorization code, but never a non-reusable one", () => {
+    const withAuth = parsePaystackWebhookEvent({
+      event: "charge.success",
+      data: { reference: "pay_a_b_c", amount: 50000, status: "success", authorization: { authorization_code: "AUTH_abc123", reusable: true } },
+    });
+    expect(withAuth?.authorizationCode).toBe("AUTH_abc123");
+
+    const nonReusable = parsePaystackWebhookEvent({
+      event: "charge.success",
+      data: { reference: "pay_a_b_c", amount: 50000, status: "success", authorization: { authorization_code: "AUTH_abc123", reusable: false } },
+    });
+    expect(nonReusable?.authorizationCode).toBeNull();
   });
 });
 

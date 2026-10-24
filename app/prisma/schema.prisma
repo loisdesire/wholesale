@@ -122,10 +122,17 @@ model Organization {
   // Subscription/billing status — foundations only, not final pricing (see
   // src/lib/billing.ts's PLAN_LIMITS). A fresh organization starts TRIALING; call
   // startTrial() to set trialEndsAt (a schema default can't compute "now + N days").
-  plan               Plan               @default(STARTER)
-  subscriptionStatus SubscriptionStatus @default(TRIALING)
-  trialEndsAt        DateTime?
-  currentPeriodEnd   DateTime?
+  plan                      Plan               @default(STARTER)
+  subscriptionStatus        SubscriptionStatus @default(TRIALING)
+  trialEndsAt               DateTime?
+  currentPeriodEnd          DateTime?
+  // A reusable card authorization captured from a verified Paystack webhook (never user input;
+  // see parsePaystackWebhookEvent/recordSubscriptionPayment) — the raw material a real tokenized
+  // recurring subscription needs (src/lib/subscriptions.ts). Set, but not yet acted on: nothing
+  // creates a live Paystack subscription from it today, since this app can't yet reliably
+  // recognize Paystack's renewal-charge webhook events to keep the ledger in sync if it did. See
+  // docs/PROGRESS.md.
+  paystackAuthorizationCode String?
 
   memberships          Membership[]
   products             Product[]

@@ -150,9 +150,16 @@ export type PaystackWebhookEvent = {
   amountCents: number;
   /** Paystack's own status field for this transaction, e.g. "success". */
   status: string;
+  /**
+   * A reusable card authorization from this charge, if there is one — the raw material for a
+   * future tokenized recurring subscription (src/lib/subscriptions.ts), which Paystack requires.
+   * Only ever present when Paystack marks it `reusable: true`; a one-off (e.g. bank transfer, or
+   * a card the customer declined to save) never carries one.
+   */
+  authorizationCode: string | null;
 };
 
-/** Normalizes a Paystack webhook POST body into the one field this app acts on. */
+/** Normalizes a Paystack webhook POST body into the fields this app acts on. */
 export function parsePaystackWebhookEvent(body: unknown): PaystackWebhookEvent | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
@@ -164,7 +171,13 @@ export function parsePaystackWebhookEvent(body: unknown): PaystackWebhookEvent |
   const status = data.status;
   if (typeof reference !== "string" || typeof amount !== "number" || typeof status !== "string") return null;
 
-  return { event: b.event, reference, amountCents: Math.round(amount), status };
+  const authorization = data.authorization as Record<string, unknown> | undefined;
+  const authorizationCode =
+    authorization?.reusable === true && typeof authorization.authorization_code === "string"
+      ? authorization.authorization_code
+      : null;
+
+  return { event: b.event, reference, amountCents: Math.round(amount), status, authorizationCode };
 }
 
 /** Sum of every verified payment recorded against an order — the only source of truth for "amount paid." */
