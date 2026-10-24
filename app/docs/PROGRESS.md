@@ -900,6 +900,18 @@ Phase 7 (commercial launch), first slice — billing/subscriptions scaffolding:
 - `npm run lint`, `npm run build`, `npm run test` (339/339) and the migration-drift check all pass
   clean.
 
+## Done (2026-10-24, continued)
+
+Phase 7, second slice — deployment documentation (`docs/DEPLOYMENT.md`): the restricted-role
+grant sequence for a managed Postgres host (beyond what `docker/init-app-role.sql` does locally,
+including the `ALTER DEFAULT PRIVILEGES` grant a later migration's new table needs), the
+environment variable table (which are required vs. optional, and what each degrades to when
+unset), the first-deploy step sequence (provision → role → `prisma migrate deploy` →
+`db:check-isolation` → build/start → point webhooks at the deployed URL), and what's still
+undecided (hosting/managed-Postgres choice, CI/CD pipeline, backups, monitoring). No code changed;
+this is documentation only, written from what's already true of the running app and its existing
+docs (`docs/ISOLATION.md`, `.env.example`), not a new feature — nothing to test or verify live.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -967,6 +979,8 @@ These are natural follow-ons, flagged here rather than started unprompted:
   informational entitlement checks into actual enforcement; per-organization Paystack accounts
   rather than the one global key billing scaffolding used; Paystack's tokenized Subscriptions API
   for true auto-recurring billing once pricing is final (today's flow is a one-off charge per
-  30-day period, started manually); platform super-admin, monitoring/backups, a formal deployment
-  pipeline and docs, a security review, pilot onboarding — once there's a real pilot business ready
-  to run on this.
+  30-day period, started manually); platform super-admin, monitoring/backups, a security review,
+  pilot onboarding — once there's a real pilot business ready to run on this. Deployment
+  documentation (`docs/DEPLOYMENT.md`) is now written, but the actual hosting/managed-Postgres
+  decision it depends on hasn't been made, and nothing in it has been exercised against a real
+  host yet — a CI/CD pipeline automating the steps it documents is still to build.
