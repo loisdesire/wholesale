@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { describe, expect, it, beforeAll } from "vitest";
-import { verifyWebhookSignature, parseWebhookPayload } from "@/lib/whatsapp";
+import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates } from "@/lib/whatsapp";
 
 beforeAll(() => {
   process.env.WHATSAPP_APP_SECRET = "test-app-secret";
@@ -109,5 +109,81 @@ describe("parseWebhookPayload", () => {
     expect(parseWebhookPayload({ object: "page" })).toHaveLength(0);
     expect(parseWebhookPayload(null)).toHaveLength(0);
     expect(parseWebhookPayload("not an object")).toHaveLength(0);
+  });
+});
+
+describe("parseStatusUpdates", () => {
+  it("extracts a delivered status with its phone number id", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                metadata: { phone_number_id: "biz-phone-1" },
+                statuses: [{ id: "wamid.OUT1", status: "delivered", timestamp: "1700000100" }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const updates = parseStatusUpdates(payload);
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({ externalId: "wamid.OUT1", status: "delivered", phoneNumberId: "biz-phone-1" });
+    expect(updates[0].timestamp.getTime()).toBe(1700000100 * 1000);
+  });
+
+  it("captures the failure reason only for a failed status", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                statuses: [
+                  { id: "wamid.OUT2", status: "failed", timestamp: "1700000200", errors: [{ title: "Recipient opted out" }] },
+                  { id: "wamid.OUT3", status: "sent", timestamp: "1700000201" },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const updates = parseStatusUpdates(payload);
+    expect(updates.find((u) => u.externalId === "wamid.OUT2")?.errorReason).toBe("Recipient opted out");
+    expect(updates.find((u) => u.externalId === "wamid.OUT3")?.errorReason).toBeUndefined();
+  });
+
+  it("ignores an unrecognized status value rather than guessing", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [{ changes: [{ field: "messages", value: { statuses: [{ id: "wamid.OUT4", status: "deleted", timestamp: "1700000300" }] } }] }],
+    };
+    expect(parseStatusUpdates(payload)).toHaveLength(0);
+  });
+
+  it("extracts nothing from a plain inbound-message payload, and vice versa", () => {
+    const messagePayload = {
+      object: "whatsapp_business_account",
+      entry: [{ changes: [{ field: "messages", value: { messages: [{ from: "1", id: "wamid.IN1", timestamp: "1700000400", type: "text", text: { body: "hi" } }] } }] }],
+    };
+    expect(parseStatusUpdates(messagePayload)).toHaveLength(0);
+
+    const statusPayload = {
+      object: "whatsapp_business_account",
+      entry: [{ changes: [{ field: "messages", value: { statuses: [{ id: "wamid.OUT5", status: "sent", timestamp: "1700000500" }] } }] }],
+    };
+    expect(parseWebhookPayload(statusPayload)).toHaveLength(0);
+  });
+
+  it("ignores payloads that aren't whatsapp_business_account events", () => {
+    expect(parseStatusUpdates({ object: "page" })).toHaveLength(0);
+    expect(parseStatusUpdates(null)).toHaveLength(0);
   });
 });

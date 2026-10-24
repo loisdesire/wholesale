@@ -42,9 +42,8 @@ export type InboundWhatsAppMessage = {
 
 /**
  * Normalizes a WhatsApp Cloud API webhook POST body into the inbound
- * messages it contains. Only `object: "whatsapp_business_account"` payloads
- * with a "messages" field are relevant — status updates (sent/delivered/read)
- * and other change types are ignored (out of Phase 1 scope).
+ * messages it contains. A status-update webhook (see `parseStatusUpdates`)
+ * carries no `value.messages`, so it naturally yields nothing here.
  */
 export function parseWebhookPayload(body: unknown): InboundWhatsAppMessage[] {
   const messages: InboundWhatsAppMessage[] = [];
@@ -96,6 +95,67 @@ export function parseWebhookPayload(body: unknown): InboundWhatsAppMessage[] {
   }
 
   return messages;
+}
+
+export type InboundWhatsAppStatusUpdate = {
+  /** The externalId a message was stored under when sent — joins back to that Message. */
+  externalId: string;
+  status: "sent" | "delivered" | "read" | "failed";
+  timestamp: Date;
+  /** The business phone number the status update is about — identifies the tenant, same as an inbound message. */
+  phoneNumberId?: string;
+  /** Meta's own description, only present (and only meaningful) when status is "failed". */
+  errorReason?: string;
+};
+
+const KNOWN_STATUSES = new Set(["sent", "delivered", "read", "failed"]);
+
+/**
+ * Normalizes a WhatsApp Cloud API webhook POST body into the delivery-status
+ * updates it contains (sent/delivered/read/failed for a message this business
+ * sent) — Meta delivers these on the same `changes[].value` shape as inbound
+ * messages, just under `statuses` instead of `messages`.
+ */
+export function parseStatusUpdates(body: unknown): InboundWhatsAppStatusUpdate[] {
+  const updates: InboundWhatsAppStatusUpdate[] = [];
+  if (!body || typeof body !== "object" || (body as Record<string, unknown>).object !== "whatsapp_business_account") {
+    return updates;
+  }
+
+  const entries = (body as { entry?: unknown[] }).entry;
+  if (!Array.isArray(entries)) return updates;
+
+  for (const entry of entries) {
+    const changes = (entry as { changes?: unknown[] })?.changes;
+    if (!Array.isArray(changes)) continue;
+
+    for (const change of changes) {
+      const value = (change as { value?: Record<string, unknown> })?.value;
+      if (!value) continue;
+
+      const phoneNumberId = (value.metadata as { phone_number_id?: string } | undefined)?.phone_number_id;
+      const rawStatuses = (value.statuses as Record<string, unknown>[]) ?? [];
+      for (const s of rawStatuses) {
+        const id = String(s.id ?? "");
+        const status = String(s.status ?? "").toLowerCase();
+        if (!id || !KNOWN_STATUSES.has(status)) continue;
+
+        const timestampSeconds = Number(s.timestamp ?? 0);
+        const timestamp = timestampSeconds ? new Date(timestampSeconds * 1000) : new Date();
+        const errors = s.errors as { title?: string }[] | undefined;
+
+        updates.push({
+          externalId: id,
+          status: status as InboundWhatsAppStatusUpdate["status"],
+          timestamp,
+          phoneNumberId: phoneNumberId ? String(phoneNumberId) : undefined,
+          errorReason: status === "failed" ? errors?.[0]?.title : undefined,
+        });
+      }
+    }
+  }
+
+  return updates;
 }
 
 export class WhatsAppSendError extends Error {}

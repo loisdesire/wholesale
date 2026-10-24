@@ -45,6 +45,12 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
 - **Users belong to organizations through `Membership`** (role per organization). The session's
   organization + role are re-read from it on every request; never trust them from the token.
 - **WhatsApp webhooks route by `Organization.whatsappPhoneNumberId`**, never "the first organization".
+- **Outbound WhatsApp delivery status** (`Message.deliveryStatus`/`deliveryStatusAt`/
+  `deliveryError`, `src/lib/message-status.ts`'s `applyMessageStatus`): Meta's status webhooks
+  (`parseStatusUpdates` in `src/lib/whatsapp.ts`) are matched back to the `Message` by
+  `externalId` and applied rank-ordered (sent < delivered < read; failed is terminal and always
+  wins) — a redelivered or reordered webhook can never regress a message from "read" back to
+  "delivered". `null` means "no status webhook received yet," never an assumed/guessed state.
 - **Forms use `useSubmitAction`** (`src/lib/use-submit-action.ts`), not `useActionState` + `<form
   action>`: React 19 clears every uncontrolled input after a failed submit, and a retry then submits
   blanks. If you put your own `onSubmit` on such a form, call `formProps.onSubmit(e)` from it.
@@ -222,14 +228,18 @@ exactly what's been verified vs. what needs real credentials to confirm.
 
 See VISION.md Part 2 "Explicitly deferred". Built since that list was written: multi-tenant
 isolation enforcement, customer-merge logic, bulk operations (order bulk-assign, previewed), basic
-reporting, in-app notifications, an email notification channel layered on top of them, and
-per-organization SLA configuration — see `docs/PROGRESS.md` for what shipped and what's still
-intentionally narrower than VISION.md's full Phase 4/Part 1 ambition. Still deferred: billing,
-platform super-admin, automated payment verification, an SMS channel (email is the only push
-channel so far), non-WhatsApp messaging channels, a formal AI eval harness, saved/scheduled
-reports, live delivery-tracking integration, the full configurable-automation engine VISION.md
-describes (triggers/conditions/actions/execution logs/retry) — what shipped is narrower: one
-fixed trigger (a new/changed notification-worthy event) with one fixed action (notify), not a
+reporting, in-app notifications, an email notification channel layered on top of them,
+per-organization SLA configuration, and WhatsApp delivery-status tracking (sent/delivered/read/
+failed on outbound messages — VISION.md's Phase 5 "ingestion/delivery tracking") — see
+`docs/PROGRESS.md` for what shipped and what's still intentionally narrower than VISION.md's full
+Phase 4/5/Part 1 ambition. Still deferred: billing, platform super-admin, automated payment
+verification, an SMS channel (email is the only push channel so far), non-WhatsApp messaging
+channels, a formal AI eval harness, saved/scheduled reports, live *courier/physical* delivery-
+tracking integration (not to be confused with the WhatsApp message delivery-status tracking above
+— that's Phase 6 territory, a different "delivery" entirely), the full configurable-automation
+engine VISION.md describes (triggers/conditions/actions/execution logs/retry) — what shipped is
+narrower: one fixed trigger (a new/changed notification-worthy event) with one fixed action
+(notify), not a
 general rule builder.
 
 ## First-time setup (new machine or cloud session)

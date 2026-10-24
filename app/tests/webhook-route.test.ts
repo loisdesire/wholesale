@@ -128,6 +128,73 @@ describe("WhatsApp webhook route", () => {
     expect(await prisma.message.count()).toBe(before);
   });
 
+  describe("delivery-status updates", () => {
+    it("applies a delivered status to the outbound message it's about, end to end", async () => {
+      const org = await prisma.organization.findUniqueOrThrow({ where: { whatsappPhoneNumberId: ROUTE_PHONE_ID } });
+      const customer = await prisma.customer.create({
+        data: { organizationId: org.id, phone: "+1555900001", phoneKey: "1555900001", name: "Status Route Customer" },
+      });
+      const conversation = await prisma.conversation.create({ data: { organizationId: org.id, customerId: customer.id } });
+      await prisma.message.create({
+        data: { conversationId: conversation.id, direction: "OUTBOUND", sender: "STAFF", body: "On its way", externalId: "wamid.route-status-1" },
+      });
+
+      const body = JSON.stringify({
+        object: "whatsapp_business_account",
+        entry: [
+          {
+            changes: [
+              {
+                field: "messages",
+                value: {
+                  metadata: { phone_number_id: ROUTE_PHONE_ID },
+                  statuses: [{ id: "wamid.route-status-1", status: "delivered", timestamp: String(Math.floor(Date.now() / 1000)) }],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const req = new NextRequest("http://localhost/api/webhooks/whatsapp", {
+        method: "POST",
+        body,
+        headers: { "x-hub-signature-256": sign(body) },
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+
+      const stored = await prisma.message.findUnique({ where: { externalId: "wamid.route-status-1" } });
+      expect(stored?.deliveryStatus).toBe("DELIVERED");
+    });
+
+    it("does not apply a status update for a number no organization owns, and says so", async () => {
+      const body = JSON.stringify({
+        object: "whatsapp_business_account",
+        entry: [
+          {
+            changes: [
+              {
+                field: "messages",
+                value: {
+                  metadata: { phone_number_id: "route-test-unknown" },
+                  statuses: [{ id: "wamid.route-status-unrouted", status: "sent", timestamp: String(Math.floor(Date.now() / 1000)) }],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const req = new NextRequest("http://localhost/api/webhooks/whatsapp", {
+        method: "POST",
+        body,
+        headers: { "x-hub-signature-256": sign(body) },
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toMatch(/unrouted status update/);
+    });
+  });
+
   describe("routing to the right organization", () => {
     function post(phoneNumberId: string | undefined, from: string, id: string, text: string) {
       const body = JSON.stringify({

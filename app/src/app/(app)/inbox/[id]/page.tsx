@@ -18,6 +18,13 @@ const SENDER_LABEL: Record<string, string> = {
   STAFF: "Staff",
 };
 
+const DELIVERY_LABEL: Record<string, string> = {
+  SENT: "Sent",
+  DELIVERED: "Delivered",
+  READ: "Read",
+  FAILED: "Not delivered",
+};
+
 export default async function ConversationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
@@ -133,8 +140,16 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                     >
                       {SENDER_LABEL[m.sender] && <span>{SENDER_LABEL[m.sender]}</span>}
                       <span className="font-tabular">{formatDateTime(m.createdAt)}</span>
+                      {!isInbound && m.deliveryStatus && (
+                        <span className={m.deliveryStatus === "FAILED" ? "font-medium text-white" : ""}>
+                          · {DELIVERY_LABEL[m.deliveryStatus]}
+                        </span>
+                      )}
                     </div>
                     <p className="whitespace-pre-wrap">{m.body}</p>
+                    {!isInbound && m.deliveryStatus === "FAILED" && m.deliveryError && (
+                      <p className="mt-1 text-xs text-white/80">{m.deliveryError}</p>
+                    )}
                   </div>
                 </div>
               );

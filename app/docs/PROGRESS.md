@@ -698,6 +698,39 @@ configuration, and a push notification channel layered on the existing in-app on
 - `npm run lint`, `npm run build`, `npm run test` (276/276) and the migration-drift check all pass
   clean.
 
+## Done (2026-10-24, Phase 5 — WhatsApp delivery-status tracking)
+
+VISION.md's Phase 5 line explicitly includes "ingestion/**delivery tracking**" — previously the
+webhook route silently discarded every status event Meta sent (the comment literally said so). An
+outbound message's actual delivery state is now real, not assumed.
+
+- **`parseStatusUpdates`** (`src/lib/whatsapp.ts`) extracts Meta's sent/delivered/read/failed
+  events from `value.statuses` on the same webhook shape inbound messages arrive on, including the
+  failure reason Meta provides for a `failed` event.
+- **`applyMessageStatus`** (`src/lib/message-status.ts`) matches an event back to the `Message` it
+  sent by `externalId` and applies it rank-ordered — sent < delivered < read, with failed terminal
+  and always winning — so a webhook Meta redelivers or delivers out of order can never regress a
+  message from "read" back to "delivered". Routed to the right organization the same way an
+  inbound message is (`Organization.whatsappPhoneNumberId`), never guessed, never applied to an
+  unrouted number's event.
+- **The webhook route** (`src/app/api/webhooks/whatsapp/route.ts`) now processes both message and
+  status events from the same POST body in one pass, sharing the organization-routing cache
+  between them; an unrouted status event is logged and acknowledged (so Meta doesn't retry
+  forever) exactly like an unrouted message, never applied to a guess.
+- **The conversation view** shows the delivery state inline on each outbound message ("· Read", "·
+  Not delivered" with Meta's reason underneath) — nothing shown at all when no status webhook has
+  arrived yet (`null`, not a fabricated "sent" assumption the moment the send call returns 200).
+- **Tests:** 11 new (287 total) — `parseStatusUpdates` (extraction, failure reasons only on
+  `failed`, unrecognized status values ignored, messages vs. statuses never cross-contaminate);
+  `applyMessageStatus` (forward progress, never regresses, failed is terminal, unknown externalId
+  and cross-tenant message both correctly no-op); the webhook route end to end (a signed status
+  webhook actually updates the right `Message`, an unrouted number's status event is acknowledged
+  but not applied). **Verified live in a browser** (Playwright, 42/42 checks, screenshot
+  reviewed): a "Read" and a "Not delivered" status (with its reason) both render correctly and
+  legibly against the dark outbound-message bubble.
+- `npm run lint`, `npm run build`, `npm run test` (287/287) and the migration-drift check all pass
+  clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a

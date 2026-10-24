@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { resolveOrganizationForWhatsApp } from "@/lib/whatsapp-routing";
-import { verifyWebhookSignature, parseWebhookPayload } from "@/lib/whatsapp";
+import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates } from "@/lib/whatsapp";
 import { ingestInboundMessage } from "@/lib/inbox";
+import { applyMessageStatus } from "@/lib/message-status";
 
 /**
  * Meta's one-time webhook verification handshake, run when the webhook URL
@@ -37,33 +38,51 @@ export async function POST(req: NextRequest) {
   }
 
   const messages = parseWebhookPayload(payload);
-  if (messages.length === 0) {
-    // Not a message event (e.g. a status update) — acknowledge and move on.
-    return new Response("OK", { status: 200 });
+  const statusUpdates = parseStatusUpdates(payload);
+
+  // Route each event to the organization that owns the WhatsApp number it's about.
+  // One we can't attribute to exactly one organization is not stored (filing it under
+  // a guess would leak one tenant's customer into another's inbox, or apply a status
+  // to the wrong tenant's message); it is logged loudly, and acknowledged so Meta
+  // doesn't retry it forever.
+  const organizationCache = new Map<string, string | null>();
+  async function resolve(phoneNumberId: string | undefined) {
+    const key = phoneNumberId ?? "";
+    if (!organizationCache.has(key)) {
+      organizationCache.set(key, (await resolveOrganizationForWhatsApp(phoneNumberId))?.id ?? null);
+    }
+    return organizationCache.get(key) ?? null;
   }
 
-  // Route each message to the organization that owns the WhatsApp number it was
-  // sent to. A message we can't attribute to exactly one organization is not stored
-  // (filing it under a guess would leak one tenant's customer into another's inbox);
-  // it is logged loudly, and acknowledged so Meta doesn't retry it forever.
-  const organizationCache = new Map<string, string | null>();
   let unrouted = 0;
   for (const message of messages) {
-    const key = message.phoneNumberId ?? "";
-    if (!organizationCache.has(key)) {
-      organizationCache.set(key, (await resolveOrganizationForWhatsApp(message.phoneNumberId))?.id ?? null);
-    }
-    const organizationId = organizationCache.get(key);
+    const organizationId = await resolve(message.phoneNumberId);
     if (!organizationId) {
       unrouted += 1;
       console.error(
-        `WhatsApp webhook: message ${message.externalId} for phone number id "${key || "(none)"}" matches no organization — not stored.`
+        `WhatsApp webhook: message ${message.externalId} for phone number id "${message.phoneNumberId || "(none)"}" matches no organization — not stored.`
       );
       continue;
     }
     await ingestInboundMessage(organizationId, message);
   }
-  if (unrouted > 0) return new Response(`OK (${unrouted} unrouted message(s) not stored)`, { status: 200 });
+
+  let unroutedStatuses = 0;
+  for (const update of statusUpdates) {
+    const organizationId = await resolve(update.phoneNumberId);
+    if (!organizationId) {
+      unroutedStatuses += 1;
+      console.error(
+        `WhatsApp webhook: status update for ${update.externalId} ("${update.status}") on phone number id "${update.phoneNumberId || "(none)"}" matches no organization — not applied.`
+      );
+      continue;
+    }
+    await applyMessageStatus(organizationId, update);
+  }
+
+  if (unrouted > 0 || unroutedStatuses > 0) {
+    return new Response(`OK (${unrouted} unrouted message(s), ${unroutedStatuses} unrouted status update(s) not applied)`, { status: 200 });
+  }
 
   return new Response("OK", { status: 200 });
 }

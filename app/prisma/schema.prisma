@@ -364,18 +364,32 @@ model Conversation {
 }
 
 model Message {
-  id             String           @id @default(cuid())
-  conversationId String
-  conversation   Conversation     @relation(fields: [conversationId], references: [id])
-  direction      MessageDirection
-  sender         MessageSender
-  body           String
+  id               String                 @id @default(cuid())
+  conversationId   String
+  conversation     Conversation           @relation(fields: [conversationId], references: [id])
+  direction        MessageDirection
+  sender           MessageSender
+  body             String
   // WhatsApp message id — unique when present, so a re-delivered webhook event
   // can be detected and ignored instead of creating a duplicate message.
-  externalId     String?          @unique
-  createdAt      DateTime         @default(now())
+  externalId       String?                @unique
+  // Outbound only: Meta's delivery-status webhook, applied by src/lib/message-status.ts.
+  // Null means "we don't know yet" (an inbound message, or an outbound one with no
+  // status webhook received), never a guessed/assumed state.
+  deliveryStatus   MessageDeliveryStatus?
+  deliveryStatusAt DateTime?
+  // Set only when deliveryStatus is FAILED — Meta's own error description, truncated.
+  deliveryError    String?
+  createdAt        DateTime               @default(now())
 
   @@index([conversationId])
+}
+
+enum MessageDeliveryStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
 }
 
 model Order {
