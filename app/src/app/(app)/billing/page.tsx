@@ -6,6 +6,7 @@ import { getEntitlementStatus, PLAN_LIMITS, isTrialExpired } from "@/lib/billing
 import { formatMoney, formatDateTime } from "@/lib/format";
 import { SubscriptionStatusBadge } from "@/components/status-badge";
 import { SubscriptionPaymentButton } from "./subscription-payment-button";
+import { ReconciliationPanel } from "./reconciliation-panel";
 
 export default async function BillingPage() {
   const session = await auth();
@@ -137,6 +138,15 @@ export default async function BillingPage() {
             </table>
           </div>
         )}
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-sm font-medium text-ink">Reconciliation</h2>
+        <p className="mb-3 text-xs text-text-muted">
+          Compares what Paystack says it successfully charged against what&apos;s recorded here — catches a webhook
+          that silently never arrived or never applied. Read-only; nothing here changes any record.
+        </p>
+        <ReconciliationPanel />
       </section>
 
       <Link href="/" className="text-sm text-text-muted hover:text-ink">

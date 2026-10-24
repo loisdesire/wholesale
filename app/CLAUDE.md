@@ -196,7 +196,17 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   simplification as `WHATSAPP_ACCESS_TOKEN`/`PAYSTACK_SECRET_KEY`: one global Paystack account for
   now, not per-organization. Real auto-recurring billing (Paystack's tokenized Subscriptions API)
   is also deferred — what's built here is a one-off charge per 30-day period, started manually from
-  `/billing`.
+  `/billing`. `/billing` also has a **reconciliation report** (`src/lib/reconciliation.ts`):
+  read-only, compares Paystack's `GET /transaction` list against `Payment`/`SubscriptionPayment`,
+  filtering to this organization by parsing each transaction's reference the same way the webhook
+  route does — necessary precisely because one Paystack account serves every organization, so
+  Paystack's own transaction list is never itself organization-scoped. A refund can also be
+  **requested** (not completed) through Paystack from a return's page
+  (`requestProviderRefund`/`createPaystackRefund`) — Paystack accepting the request is not treated
+  as evidence it completed (its own docs: 200 means accepted, not completed), so the owner still
+  confirms via the pre-existing `markRefunded` once funds have actually landed; automatic
+  completion via the `refund.processed` webhook was deliberately not built since its payload shape
+  wasn't confirmed in Paystack's docs.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing

@@ -1024,6 +1024,43 @@ wrong return, which is worse than the owner confirming by hand as they do today.
   actually happening when this was flagged — a concurrent test run from the other tool's own
   sweep).
 
+## Done (2026-10-24, continued)
+
+Phase 6 remainder, second slice — a reconciliation report (`src/lib/reconciliation.ts`): compares
+what Paystack's own `GET /transaction` list says it successfully charged against what this app
+actually recorded (`Payment`/`SubscriptionPayment`), the natural follow-on flagged after Phase 6's
+payment verification landed. Unlike the refund API's contract, `List Transactions`' shape was
+confirmed with reasonable confidence before coding (official sample response fields, though
+pagination metadata specifics came from third-party sources — handled defensively by paging on
+`data.length < 100` rather than trusting an undocumented `meta` field). Read-only: it never writes
+anything, it only surfaces where Paystack's records and this app's disagree, for a human to look
+at. Since one Paystack account serves every organization on the platform (see CLAUDE.md), every
+transaction Paystack returns is filtered to just this organization's own by parsing each
+transaction's `reference` with the exact same `parsePaymentReference`/`parseSubscriptionPaymentReference`
+the webhook route itself uses — a transaction whose reference doesn't belong to this organization
+is simply not its concern, proven directly in a test. Flags two kinds of discrepancy:
+`MISSING_LOCALLY` (Paystack shows a successful charge nothing was ever recorded for — exactly the
+"a webhook silently never arrived or was rejected" scenario the two webhooks' own `console.error`
+logging already can't surface to anyone not tailing logs, see `docs/MONITORING_AND_BACKUPS.md`)
+and `AMOUNT_MISMATCH` (recorded, but for a different amount than Paystack reports — shouldn't
+normally happen given how `recordProviderPayment`/`recordSubscriptionPayment` work, but checked
+anyway as defense in depth). Capped at 20 pages (~2000 transactions) per run to keep one run's
+Paystack API usage bounded.
+- **UI**: a new "Reconciliation" section on `/billing` (owner-only, like the rest of that page) —
+  a "Run reconciliation (last 30 days)" button and a results table when discrepancies are found.
+- **Tests:** 7 new (354 total, `tests/reconciliation.test.ts`) — refuses when Paystack isn't
+  configured, no discrepancies when everything matches, flags a missing-locally charge, flags an
+  amount mismatch, subscription payments are included in the comparison too, another
+  organization's Paystack transactions are never attributed to this one (mocked response includes
+  both; only the matching one appears), and pagination correctly continues past a full 100-row
+  page and stops at a short one.
+- **Verified live in a browser**: the Reconciliation section renders on `/billing` with its
+  explanatory copy and button; clicking it with no `PAYSTACK_SECRET_KEY` configured (true of this
+  environment) shows the real refusal; staff visiting `/billing` directly still get the existing
+  owner-only refusal, never the reconciliation panel — screenshot reviewed, no visual bugs, matches
+  the page's existing design system.
+- `npm run lint`, `npm run build`, and `npm run test` (354/354) all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1082,10 +1119,10 @@ These are natural follow-ons, flagged here rather than started unprompted:
   but was not persisted anywhere (not committed, not saved to memory) and not wired into a full
   webhook round trip — that still needs a publicly reachable callback URL (tunnel/ngrok) this
   environment doesn't have set up. A full live smoke test of automated payment verification (the
-  webhook path, not just the outbound call) is still open. A reconciliation report (what the
-  provider says was paid vs. what's recorded) is the natural next piece, and — unlike the webhook
-  round trip — is buildable and even live-testable now with only read-only `GET /transaction`
-  calls against a real test key, no reachable webhook needed.
+  webhook path, not just the outbound call) is still open. The reconciliation report is now built
+  (`src/lib/reconciliation.ts`, see the Done entry above) but has never been run against a real
+  Paystack account's actual transaction history — only against a mocked response — since doing so
+  needs a Paystack account with real transactions to compare against, not just a working key.
 - Phase 6 remainder: automated refund **requests** through Paystack are now built
   (`requestProviderRefund`, see the Done entry above) — the owner no longer has to go to the
   Paystack dashboard by hand to start a refund. Still open: automatic refund *completion* (the
