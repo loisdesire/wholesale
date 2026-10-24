@@ -37,12 +37,22 @@ const OPEN_ORDER_STATUSES: OrderStatus[] = [
 
 const PER_RULE_CAP = 100;
 
+export type AttentionResult = {
+  items: AttentionItem[];
+  /** True if any one rule hit PER_RULE_CAP — some overdue records may not be shown. */
+  truncated: boolean;
+};
+
 /**
  * Everything that needs a person right now, most urgent first. Each record appears
  * once, with every reason it is on the list (a confirmed order can be both
  * unpaid-for-days and past its due date). Thresholds live in ops-config.ts.
+ *
+ * Each rule is capped at PER_RULE_CAP so one runaway backlog can't make this query
+ * unbounded; `truncated` says whether that cap was actually hit by any rule, so the
+ * page can say so rather than silently showing an incomplete list as if it were whole.
  */
-export async function getAttentionItems(organizationId: string, now = new Date()): Promise<AttentionItem[]> {
+export async function getAttentionItems(organizationId: string, now = new Date()): Promise<AttentionResult> {
   const db = tenantDb(organizationId);
   const ago = (h: number) => new Date(now.getTime() - h * HOUR_MS);
   const hoursSince = (d: Date) => (now.getTime() - d.getTime()) / HOUR_MS;
@@ -199,9 +209,13 @@ export async function getAttentionItems(organizationId: string, now = new Date()
     add({ ...returnBase(r, r.decidedAt!), severity: tiered(h, SLA.refundPayCriticalHours), reason: `Refund approved ${formatAge(h)} ago and still unpaid` });
   }
 
-  return [...items.values()].sort(
-    (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.ageHours - a.ageHours
+  const truncated = [conversations, drafts, unpaid, unshipped, partial, pastDue, returnsWaiting, returnsToReceive, refundsToPay].some(
+    (rows) => rows.length === PER_RULE_CAP
   );
+  return {
+    items: [...items.values()].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.ageHours - a.ageHours),
+    truncated,
+  };
 }
 
 export type Metric = {
@@ -244,7 +258,7 @@ export async function getOperationalMetrics(
   organizationId: string,
   range: { from: Date; to: Date },
   now = new Date()
-): Promise<{ metrics: Metric[]; attentionCounts: Record<Severity, number>; workload: WorkloadRow[] }> {
+): Promise<{ metrics: Metric[]; attentionCounts: Record<Severity, number>; attentionTruncated: boolean; workload: WorkloadRow[] }> {
   const db = tenantDb(organizationId);
   const { from, to } = range;
   const inRange = { gte: from, lte: to };
@@ -308,7 +322,7 @@ export async function getOperationalMetrics(
   ]);
 
   const attentionCounts: Record<Severity, number> = { critical: 0, warning: 0, info: 0 };
-  for (const item of attention) attentionCounts[item.severity] += 1;
+  for (const item of attention.items) attentionCounts[item.severity] += 1;
 
   const refundCents = refundAgg._sum.refundCents ?? 0;
   const paidCents = paidAgg._sum.totalCents ?? 0;
@@ -329,7 +343,9 @@ export async function getOperationalMetrics(
       label: "Overdue now",
       value: String(attentionCounts.critical + attentionCounts.warning),
       raw: attentionCounts.critical + attentionCounts.warning,
-      detail: `${attentionCounts.critical} critical and ${attentionCounts.warning} warning items past their allowed wait (right now, not just this period).`,
+      detail: `${attentionCounts.critical} critical and ${attentionCounts.warning} warning items past their allowed wait (right now, not just this period).${
+        attention.truncated ? " At least one category has more than can be shown here — narrow it down below." : ""
+      }`,
       href: "/operations#attention",
     },
     {
@@ -440,7 +456,7 @@ export async function getOperationalMetrics(
     openConversations: countFor(openConversationsBy, m.userId),
   }));
 
-  return { metrics, attentionCounts, workload };
+  return { metrics, attentionCounts, attentionTruncated: attention.truncated, workload };
 }
 
 /** Active products with nothing left to sell — shown as a heads-up on the control room. */

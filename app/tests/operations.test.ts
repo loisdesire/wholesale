@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { StockMovementReason } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { tenantDb } from "@/lib/db";
 import { phoneKeyOf } from "@/lib/phone";
 import { recordStockMovement } from "@/lib/stock";
 import { confirmOrder, createDraftOrder, markOrderFulfilled, markOrderPaid } from "@/lib/orders";
@@ -9,7 +8,7 @@ import { decideReturn, markRefunded, requestReturn } from "@/lib/returns";
 import { AssignmentError, assignWork, bulkAssignOrders } from "@/lib/assignment";
 import { listNotifications, markAllRead, markRead, notify, ownerUserIds, unreadCount } from "@/lib/notifications";
 import { getAttentionItems, getOutOfStockProducts } from "@/lib/operations";
-import { HOUR_MS } from "@/lib/ops-config";
+import { HOUR_MS, SLA } from "@/lib/ops-config";
 import { getProductDemand, getSalesReport, getStockMovementSummary, parseRange, toCsv } from "@/lib/reports";
 import { transaction } from "@/lib/db";
 
@@ -185,8 +184,8 @@ describe("operations: assignment, notifications, attention, reports", () => {
       await transaction(organizationId, (tx) =>
         notify(tx, { organizationId, userIds: [owner.id], kind: "TEST", title: "Second (should not duplicate)", dedupeKey: "dedupe-test-1" })
       );
-      const count = await tenantDb(organizationId).notification.count({ where: { organizationId, userId: owner.id, dedupeKey: "dedupe-test-1" } });
-      expect(count).toBe(1);
+      const notes = await listNotifications(organizationId, owner.id);
+      expect(notes.filter((note) => note.dedupeKey === "dedupe-test-1")).toHaveLength(1);
     });
 
     it("unread count, listing, mark-read and mark-all-read only ever touch the caller's own notices", async () => {
@@ -261,7 +260,7 @@ describe("operations: assignment, notifications, attention, reports", () => {
       const unshipped = await order("PAID");
       await prisma.order.update({ where: { id: unshipped.id }, data: { paidAt: past(49) } });
 
-      const items = await getAttentionItems(organizationId);
+      const { items } = await getAttentionItems(organizationId);
       const byId = Object.fromEntries(items.map((i) => [i.id, i]));
       expect(byId[draft.id]).toMatchObject({ severity: "info" });
       expect(byId[unpaidWarn.id]).toMatchObject({ severity: "warning" });
@@ -279,7 +278,7 @@ describe("operations: assignment, notifications, attention, reports", () => {
         where: { id: o.id },
         data: { confirmedAt: new Date(Date.now() - 49 * HOUR_MS), dueAt: new Date(Date.now() - HOUR_MS) },
       });
-      const items = await getAttentionItems(organizationId);
+      const { items } = await getAttentionItems(organizationId);
       const matches = items.filter((i) => i.id === o.id);
       expect(matches).toHaveLength(1);
       expect(matches[0].severity).toBe("critical"); // past-due always critical
@@ -289,7 +288,7 @@ describe("operations: assignment, notifications, attention, reports", () => {
     it("a waiting customer conversation is flagged with the right tier, and its name isn't duplicated", async () => {
       const c = await prisma.customer.findUniqueOrThrow({ where: { id: await customer() } });
       const convo = await prisma.conversation.create({ data: { organizationId, customerId: c.id, status: "AWAITING_STAFF", lastMessageAt: new Date(Date.now() - 3 * HOUR_MS) } });
-      const items = await getAttentionItems(organizationId);
+      const { items } = await getAttentionItems(organizationId);
       const found = items.find((i) => i.id === convo.id);
       expect(found).toMatchObject({ kind: "conversation", severity: "warning", reference: c.name, customer: null });
     });
@@ -301,14 +300,14 @@ describe("operations: assignment, notifications, attention, reports", () => {
       await decideReturn({ organizationId, returnId: ret.id, actor: owner, approve: true });
       await prisma.orderReturn.update({ where: { id: ret.id }, data: { decidedAt: new Date(Date.now() - 24 * 11 * HOUR_MS), assignedToId: staff.id } });
 
-      const items = await getAttentionItems(organizationId);
+      const { items } = await getAttentionItems(organizationId);
       const found = items.find((i) => i.id === ret.id);
       expect(found).toMatchObject({ kind: "return", severity: "critical", assignee: { id: staff.id } });
     });
 
     it("nothing recent or already resolved is flagged, and items sort most-severe/oldest first", async () => {
       const fresh = await order("PAID"); // just paid, not overdue
-      const items = await getAttentionItems(organizationId);
+      const { items } = await getAttentionItems(organizationId);
       expect(items.find((i) => i.id === fresh.id)).toBeUndefined();
 
       for (let i = 1; i < items.length; i++) {
@@ -318,6 +317,31 @@ describe("operations: assignment, notifications, attention, reports", () => {
       }
     });
 
+    it("says so when a rule has more overdue records than it can show, instead of silently dropping them", async () => {
+      const { truncated: before } = await getAttentionItems(organizationId);
+      expect(before).toBe(false);
+
+      // One rule (stale drafts), well past its cap — a real backlog, not the usual handful.
+      // These bypass createDraftOrder on purpose: the rule only reads status/createdAt/customer,
+      // and 101 real draft orders (with items, stock reservations, ...) would be needlessly slow.
+      const c = await customer();
+      const stale = new Date(Date.now() - (SLA.draftStaleWarnHours + 1) * HOUR_MS);
+      await prisma.order.createMany({
+        data: Array.from({ length: 101 }, (_, i) => ({
+          organizationId,
+          reference: `TRUNC-${n}-${i}`,
+          customerId: c,
+          status: "DRAFT" as const,
+          createdAt: stale,
+        })),
+      });
+
+      const { items, truncated } = await getAttentionItems(organizationId);
+      expect(truncated).toBe(true);
+      // The cap still holds — this isn't "show everything once truncated is true".
+      expect(items.length).toBeLessThan(201);
+    });
+
     it("never crosses organizations", async () => {
       await order("DRAFT"); // in this org
       const foreignCustomer = await customer(otherOrganizationId);
@@ -325,9 +349,9 @@ describe("operations: assignment, notifications, attention, reports", () => {
       const foreignDraft = await createDraftOrder({ organizationId: otherOrganizationId, customerId: foreignCustomer, createdById: otherStaff.id, items: [{ productId: foreignProduct, quantity: 1 }] });
       await prisma.order.update({ where: { id: foreignDraft.id }, data: { createdAt: new Date(Date.now() - 30 * HOUR_MS) } });
 
-      const mine = await getAttentionItems(organizationId);
+      const { items: mine } = await getAttentionItems(organizationId);
       expect(mine.every((i) => i.id !== foreignDraft.id)).toBe(true);
-      const theirs = await getAttentionItems(otherOrganizationId);
+      const { items: theirs } = await getAttentionItems(otherOrganizationId);
       expect(theirs.some((i) => i.id === foreignDraft.id)).toBe(true);
     });
   });

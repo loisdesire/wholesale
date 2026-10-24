@@ -33,6 +33,23 @@ application's own checks as a second layer.
    *role per organization*. The session's active organization and role are re-read from
    `Membership` on every request, so removing someone or changing their role takes effect on their
    next request, and a user can only ever switch to an organization they hold.
+5. **Per-recipient tables go one level further.** `Notification` belongs to one *person* within
+   the organization, not the organization as a whole, so it needs a second check beyond
+   `organizationId`. `userScopedDb(organizationId, userId)` (also in `src/lib/db.ts`) sets a
+   second setting, `app.user_id`, alongside `app.organization_id`; `Notification`'s SELECT and
+   UPDATE policies require *both* to match (its INSERT policy only requires the organization —
+   `notify()` legitimately creates a notification for someone other than whoever triggered it, so
+   writing can't require "you are the recipient"). With `app.user_id` unset, the same fails-closed
+   behaviour applies: no rows, not an error.
+
+   | | needs | used for |
+   |---|---|---|
+   | `tenantDb(organizationId)` / `transaction(organizationId, fn)` | `app.organization_id` | every ordinary tenant table |
+   | `userScopedDb(organizationId, userId)` | both settings | reading/marking **your own** notifications |
+
+   Creating a notification for someone else (`notify()`, called with the acting user's own
+   org-scoped transaction) still goes through the ordinary `transaction()` — only reading or
+   marking your own notifications needs the extra layer.
 
 ## What is *not* tenant-scoped
 

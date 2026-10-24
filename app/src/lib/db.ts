@@ -11,6 +11,10 @@ import { tenantRoot } from "@/lib/prisma";
  * database itself — not just a `where` clause somebody has to remember —
  * guarantees one organization can't read or write another's data. A query that
  * forgets to say which organization it is for sees no rows at all (fails closed).
+ *
+ * `userScopedDb` extends the same idea one level down, for the handful of tables
+ * (notifications) whose rows also belong to a specific *person* within the
+ * organization, not just the organization as a whole.
  */
 
 /** The model API a query helper needs; satisfied by a transaction client and by tenantDb(). */
@@ -46,6 +50,48 @@ export function tenantDb(organizationId: string): DbClient {
     if (cache.size > 1000) cache.clear();
     db = scoped(tenantRoot, organizationId);
     cache.set(organizationId, db);
+  }
+  return db;
+}
+
+function userScoped(client: PrismaClient, organizationId: string, userId: string): DbClient {
+  const extended = client.$extends({
+    name: "user-scope",
+    query: {
+      $allModels: {
+        async $allOperations({ args, query }) {
+          const [, , result] = await client.$transaction([
+            client.$executeRaw`SELECT set_config('app.organization_id', ${organizationId}, true)`,
+            client.$executeRaw`SELECT set_config('app.user_id', ${userId}, true)`,
+            query(args) as Prisma.PrismaPromise<unknown>,
+          ]);
+          return result;
+        },
+      },
+    },
+  });
+  return extended as unknown as DbClient;
+}
+
+const userCache = new Map<string, DbClient>();
+
+/**
+ * A client confined to one organization *and* one user — for tables (today, just
+ * `Notification`) whose row-level security also checks `app.user_id`, so a forgotten
+ * `where userId` can't leak one person's rows to another member of the same
+ * organization. Writing a notification *for* someone else still goes through the
+ * ordinary org-scoped `transaction()` (see `notify()` in `src/lib/notifications.ts`) —
+ * only reading or marking your own notifications needs this.
+ */
+export function userScopedDb(organizationId: string, userId: string): DbClient {
+  if (!organizationId) throw new Error("userScopedDb needs an organization id.");
+  if (!userId) throw new Error("userScopedDb needs a user id.");
+  const key = `${organizationId}:${userId}`;
+  let db = userCache.get(key);
+  if (!db) {
+    if (userCache.size > 1000) userCache.clear();
+    db = userScoped(tenantRoot, organizationId, userId);
+    userCache.set(key, db);
   }
   return db;
 }

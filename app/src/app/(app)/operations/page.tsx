@@ -18,7 +18,7 @@ export default async function OperationsPage({
   const isOwner = session!.user.role === "OWNER";
   const range = parseRange(from, to);
 
-  const [attention, { metrics, workload }, outOfStock, members] = await Promise.all([
+  const [{ items: attention, truncated: attentionTruncated }, { metrics, workload }, outOfStock, members] = await Promise.all([
     getAttentionItems(organizationId),
     getOperationalMetrics(organizationId, range),
     getOutOfStockProducts(organizationId),
@@ -69,6 +69,12 @@ export default async function OperationsPage({
             Needs attention {attention.length > 0 && <span className="text-text-muted">({attention.length})</span>}
           </h2>
         </div>
+        {attentionTruncated && (
+          <p className="mb-3 rounded-md border border-line bg-status-attention-bg px-3 py-2 text-xs text-status-attention-fg">
+            At least one category below has more overdue items than fit here — some aren&apos;t shown. Clear the ones
+            you see and check back, rather than assuming this is everything.
+          </p>
+        )}
         {attention.length === 0 ? (
           <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
             Nothing is overdue right now.

@@ -219,6 +219,79 @@ describe("tenant isolation (row-level security)", () => {
   });
 });
 
+describe("notifications: per-recipient row-level security", () => {
+  let organizationId: string;
+  let ownerId: string;
+  let staffId: string;
+  let noteId: string;
+
+  /** Run raw SQL as the restricted role with an organization *and* a specific user context. */
+  async function asUser<T>(organizationId: string, userId: string, fn: (tx: typeof prisma) => Promise<T>): Promise<T> {
+    return tenantRoot.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.organization_id', ${organizationId}, true)`;
+      await tx.$executeRaw`SELECT set_config('app.user_id', ${userId}, true)`;
+      return fn(tx as unknown as typeof prisma);
+    });
+  }
+
+  beforeAll(async () => {
+    const org = await prisma.organization.create({ data: { name: "Notification RLS Org" } });
+    organizationId = org.id;
+    const owner = await prisma.user.create({ data: { email: "notif-rls-owner@iso.example", passwordHash: "x", name: "Owner" } });
+    const staff = await prisma.user.create({ data: { email: "notif-rls-staff@iso.example", passwordHash: "x", name: "Staff" } });
+    ownerId = owner.id;
+    staffId = staff.id;
+    const note = await prisma.notification.create({
+      data: { organizationId, userId: ownerId, kind: "TEST", title: "For the owner only", dedupeKey: "notif-rls-1" },
+    });
+    noteId = note.id;
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("the recipient can read their own notification", async () => {
+    const rows = await asUser(organizationId, ownerId, (tx) => tx.$queryRawUnsafe<{ id: string }[]>(`SELECT "id" FROM "Notification" WHERE "id" = '${noteId}'`));
+    expect(rows).toHaveLength(1);
+  });
+
+  it("another member of the SAME organization cannot read it, even with the right organizationId", async () => {
+    const rows = await asUser(organizationId, staffId, (tx) => tx.$queryRawUnsafe<{ id: string }[]>(`SELECT "id" FROM "Notification" WHERE "id" = '${noteId}'`));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("a query with no user context sees no notifications at all (fails closed), even with the right organization", async () => {
+    const rows = await tenantRoot.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.organization_id', ${organizationId}, true)`;
+      // app.user_id deliberately left unset.
+      return tx.$queryRawUnsafe<{ id: string }[]>(`SELECT "id" FROM "Notification" WHERE "id" = '${noteId}'`);
+    });
+    expect(rows).toHaveLength(0);
+  });
+
+  it("another member cannot mark it read, even by id", async () => {
+    const updated = await asUser(organizationId, staffId, (tx) => tx.$executeRawUnsafe(`UPDATE "Notification" SET "readAt" = now() WHERE "id" = '${noteId}'`));
+    expect(updated).toBe(0);
+    const stillUnread = await asUser(organizationId, ownerId, (tx) => tx.$queryRawUnsafe<{ readAt: Date | null }[]>(`SELECT "readAt" FROM "Notification" WHERE "id" = '${noteId}'`));
+    expect(stillUnread[0].readAt).toBeNull();
+  });
+
+  it("creating a notification for someone else only needs the organization context (the writer isn't the recipient)", async () => {
+    const created = await tenantRoot.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.organization_id', ${organizationId}, true)`;
+      // app.user_id deliberately left unset — notify() writes from inside a plain
+      // org-scoped transaction(), on behalf of recipients who are not the actor.
+      return tx.$executeRawUnsafe(
+        `INSERT INTO "Notification" ("id","organizationId","userId","kind","title","dedupeKey") VALUES ('notif-rls-written-for-staff','${organizationId}','${staffId}','TEST','Written for staff','notif-rls-2')`
+      );
+    });
+    expect(created).toBe(1);
+    const staffSeesIt = await asUser(organizationId, staffId, (tx) => tx.$queryRawUnsafe<{ id: string }[]>(`SELECT "id" FROM "Notification" WHERE "id" = 'notif-rls-written-for-staff'`));
+    expect(staffSeesIt).toHaveLength(1);
+  });
+});
+
 describe("memberships", () => {
   let org1: string;
   let org2: string;

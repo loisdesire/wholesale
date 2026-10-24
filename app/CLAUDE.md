@@ -123,11 +123,19 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   dedupeKey)` — build the key from the triggering event's id, not a timestamp, so a retried job
   can't double-notify. Client code that must run an effect exactly once (e.g. `MarkReadOnView`)
   should key the effect on a value derived from its real dependency, not a `useRef` "have I fired"
-  guard — see the Gotchas section below for why that broke silently.
+  guard — see the Gotchas section below for why that broke silently. Reading/marking your own
+  notifications goes through `userScopedDb(organizationId, userId)` (`src/lib/db.ts`), not
+  `tenantDb` — `Notification` is isolated to its *recipient* by row-level security too (a second
+  `app.user_id` setting, same fails-closed shape as `app.organization_id`), not just an app-level
+  `where userId`. Writing a notification *for* someone else (`notify()`) still uses the ordinary
+  `transaction()`, since the actor isn't the recipient. See `docs/ISOLATION.md`.
 - **Operations thresholds live in one place** (`src/lib/ops-config.ts`, `SLA`): the needs-attention
   queue (`src/lib/operations.ts`), the dashboard and the metrics all read the same numbers, so
   "overdue" never means something different in two places. A record that trips several rules
-  appears once with every reason, not once per rule.
+  appears once with every reason, not once per rule. Each rule is capped (`PER_RULE_CAP`) so the
+  query stays bounded; `getAttentionItems` returns `{ items, truncated }`, not a bare array — the
+  Operations page shows a banner when `truncated` is true rather than silently presenting a
+  partial list as if it were complete.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -281,3 +289,14 @@ npm run dev
   pg_ctl -D /var/pgdata -o '-p 5433 -k /tmp' -l /var/pgdata/log start"` before anything else
   (migrations, tests, `npm run dev`) will work. Check this first if commands that touched the
   database start failing right after a restart.
+- **Destructuring a `client.$transaction([a, b, c])` array result by position is exactly as
+  fragile as it looks — one added statement silently shifts every index after it.** `userScoped()`
+  (`src/lib/db.ts`) added a second `set_config` call ahead of the real query but kept the original
+  two-statement destructure, `const [, result] = await client.$transaction([...])` — index 1,
+  which is now the *second* `set_config`'s result (always row-count 1), not index 2, the actual
+  query. Every read through it returned that `1` reshaped as if it were real data instead of the
+  query result, which looked enough like success that it took an actual assertion on real counts
+  (`tests/operations.test.ts`) to notice. Fixed by destructuring the *last* element, which also
+  made the bug impossible to reintroduce by adding a fourth statement later. When a tuple's shape
+  depends on how many statements precede the one you want, index from the end or name every
+  element — don't leave a hardcoded position that only happened to be correct for the old length.

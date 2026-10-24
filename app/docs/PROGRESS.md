@@ -610,6 +610,47 @@ reviews, one per angle), before moving past Phase 4.
   nothing here changed behaviour except the two described fixes (catalogue CSV formula-injection
   guard; no other output changed).
 
+## Done (2026-10-24, one more pass — the two altitude findings from the cleanup sweep)
+
+Both deliberately-deferred findings from the cleanup sweep above, fixed properly rather than left
+as known gaps.
+
+- **Per-recipient row-level security on notifications.** `userScopedDb(organizationId, userId)`
+  (`src/lib/db.ts`) sets a second setting, `app.user_id`, alongside `app.organization_id`.
+  `Notification`'s single policy is now three command-specific ones (migration
+  `20261024040000_notification_user_rls`): SELECT and UPDATE require *both* settings to match —
+  so `unreadCount`/`listNotifications`/`markRead`/`markAllRead` now go through `userScopedDb`, not
+  `tenantDb` — while INSERT only requires the organization, since `notify()` legitimately writes a
+  notification for someone other than whoever triggered it. With `app.user_id` unset, the same
+  fails-closed behaviour applies as everywhere else: no rows, not an error. See the expanded
+  "How it works" in `docs/ISOLATION.md`.
+  - **Caught while building this**: the extension's `$transaction([setOrg, setUser, query])` array
+    has three elements, and the first draft destructured `const [, result] = await ...` — index 1,
+    the *second* statement's result (`set_config('app.user_id', …)`, always count 1) — not index 2,
+    the real query. Every read silently returned garbage instead of the actual rows, which
+    `tests/operations.test.ts` caught immediately (wrong counts, "cannot be read across
+    organizations" seeing a row that shouldn't exist) once the new policy was in place. Fixed by
+    destructuring the last element; `tests/isolation.test.ts` now also exercises the policy
+    directly over raw SQL (own notification readable; another org member's is not, even by id;
+    no `app.user_id` sees nothing; another member can't mark it read; writing *for* someone else
+    still only needs the organization context) — the same lesson as the earlier two bugs in this
+    file: a thing that type-checks and "looks right" can still be structurally wrong, so prove it
+    against real behaviour, not just that it compiles.
+- **The needs-attention queue now says when a rule is truncated.** `getAttentionItems` returns
+  `{ items, truncated }` — `truncated` is true if any one of the nine rules returned exactly
+  `PER_RULE_CAP` (100) rows, the signal that there may be more that didn't fit. The cap itself is
+  unchanged (still 100 per rule, not "show everything once truncated"); `getOperationalMetrics`
+  threads `attentionTruncated` through to its own result, and the Operations page shows a banner
+  above the list rather than silently presenting a partial list as if it were complete.
+  `tests/operations.test.ts` has a dedicated case: 101 raw stale-draft rows (bypassing
+  `createDraftOrder` on purpose — the rule only reads status/createdAt/customer, and 101 real
+  orders with items and stock reservations would be needlessly slow) trips `truncated: true`
+  while the returned list still respects the cap.
+- Re-verified: `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass clean; `npm run test`
+  is 260/260 (5 new isolation tests, 1 new truncation test); the migration-drift check
+  (`prisma migrate diff --exit-code`) reports no difference; the full Playwright script is still
+  33/33, including the notification-badge checks now exercising `userScopedDb` live in a browser.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -621,22 +662,9 @@ reviews, one per angle), before moving past Phase 4.
   payloads and a mocked model client — correct by construction and by test, but not yet run against
   Meta's or Anthropic's actual infrastructure. Nothing in the app pretends otherwise: every screen
   shows a clear "not configured" state instead of failing silently or faking success.
-- Vitest is configured (`npm run test`, 254 tests / 19 files). VISION.md's remaining
+- Vitest is configured (`npm run test`, 260 tests / 19 files). VISION.md's remaining
   testing-discipline scenario not yet covered — a duplicate payment webhook — has no payment
   gateway to have webhooks from yet (explicitly deferred); applies once that exists.
-- **Notifications are isolated to their recipient by an app-level `where: { userId }` clause, not
-  by the database** the way organization isolation is (`docs/ISOLATION.md`). Found during the
-  Phase 4 cleanup sweep, deliberately not fixed there since it's a schema change (a second session
-  variable alongside `app.organization_id`, an RLS policy on `Notification` keyed on it), not a
-  tidy-up. Worst case today is one staff member seeing another's notification title within the
-  *same* organization — never a cross-tenant leak — but it's the same "forgotten filter fails open,
-  not closed" shape the RLS work exists to rule out, one level down.
-- **The needs-attention queue's per-rule cap (`PER_RULE_CAP = 100` in `src/lib/operations.ts`) has
-  no "showing 100 of N" signal.** If any single rule (e.g. overdue conversations) is ever genuinely
-  over 100 open items, the excess quietly doesn't appear — on the one page whose job is to surface
-  overdue work, with nothing saying anything was left off. Flagged during the Phase 4 cleanup
-  sweep; fixing it well means tracking a true count alongside the capped list and surfacing it in
-  the UI, not just raising the cap.
 - **Returns/refunds scope limits (deliberate):** a return is only possible against units that have
   actually shipped (not the unshipped remainder of a part-shipped order, which goes through "close
   short" instead); no payment-gateway integration (the owner records a refund as paid by hand, like

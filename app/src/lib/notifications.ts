@@ -1,6 +1,6 @@
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { tenantDb, type DbClient } from "@/lib/db";
+import { userScopedDb, type DbClient } from "@/lib/db";
 
 /**
  * In-app notices. Creation is idempotent per (user, dedupeKey): an event that fires
@@ -46,20 +46,20 @@ export async function ownerUserIds(organizationId: string): Promise<string[]> {
 }
 
 export async function unreadCount(organizationId: string, userId: string) {
-  return tenantDb(organizationId).notification.count({ where: { organizationId, userId, readAt: null } });
+  return userScopedDb(organizationId, userId).notification.count({ where: { organizationId, userId, readAt: null } });
 }
 
 export async function listNotifications(organizationId: string, userId: string, take = 50) {
-  return tenantDb(organizationId).notification.findMany({
+  return userScopedDb(organizationId, userId).notification.findMany({
     where: { organizationId, userId },
     orderBy: { createdAt: "desc" },
     take,
   });
 }
 
-/** Marks the given notices read — only ever the caller's own. */
+/** Marks the given notices read — only ever the caller's own (the database enforces it, not just this `where`). */
 export async function markRead(organizationId: string, userId: string, ids: string[]) {
-  const result = await tenantDb(organizationId).notification.updateMany({
+  const result = await userScopedDb(organizationId, userId).notification.updateMany({
     where: { organizationId, userId, id: { in: ids }, readAt: null },
     data: { readAt: new Date() },
   });
@@ -67,7 +67,7 @@ export async function markRead(organizationId: string, userId: string, ids: stri
 }
 
 export async function markAllRead(organizationId: string, userId: string) {
-  const result = await tenantDb(organizationId).notification.updateMany({
+  const result = await userScopedDb(organizationId, userId).notification.updateMany({
     where: { organizationId, userId, readAt: null },
     data: { readAt: new Date() },
   });
