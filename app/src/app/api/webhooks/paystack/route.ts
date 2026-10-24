@@ -6,12 +6,17 @@ import {
   recordProviderPayment,
   PaymentError,
 } from "@/lib/payments";
+import { parseSubscriptionPaymentReference, recordSubscriptionPayment, BillingError } from "@/lib/billing";
 
 /**
- * Paystack sends the organization and order directly in the reference WE
- * generated at `initializePayment` time (see parsePaymentReference) — no
- * lookup is needed, or possible, before the organization is known (Payment is
- * tenant data, so nothing can be queried before that).
+ * One endpoint for every Paystack event this app cares about — a real Paystack
+ * integration has a single webhook URL, not one per feature. An order payment
+ * and a subscription payment both arrive as `charge.success`; which one a given
+ * event is about is told apart by the reference's prefix (see
+ * parsePaymentReference / parseSubscriptionPaymentReference) — the organization
+ * and (for a subscription) the plan are embedded directly in that reference WE
+ * generated, since nothing can be looked up before the organization is known
+ * (both Payment and SubscriptionPayment are tenant data).
  */
 export async function POST(req: NextRequest) {
   // Signature verification needs the exact raw bytes Paystack sent — read as
@@ -40,6 +45,25 @@ export async function POST(req: NextRequest) {
     // Any other event (a failed attempt, a refund notice, …) leaves no evidence
     // of a successful payment to record — acknowledged, nothing stored.
     return new Response("OK (not a successful charge)", { status: 200 });
+  }
+
+  const subscriptionRef = parseSubscriptionPaymentReference(event.reference);
+  if (subscriptionRef) {
+    try {
+      const result = await recordSubscriptionPayment({
+        organizationId: subscriptionRef.organizationId,
+        plan: subscriptionRef.plan,
+        amountCents: event.amountCents,
+        providerReference: event.reference,
+      });
+      return new Response(result ? "OK" : "OK (already processed)", { status: 200 });
+    } catch (err) {
+      if (err instanceof BillingError) {
+        console.error(`Paystack webhook: could not apply subscription payment for org ${subscriptionRef.organizationId}: ${err.message}`);
+        return new Response(`OK (${err.message})`, { status: 200 });
+      }
+      throw err;
+    }
   }
 
   const parsed = parsePaymentReference(event.reference);

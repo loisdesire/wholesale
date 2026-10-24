@@ -36,6 +36,13 @@ const REFUND_STATUS: Record<string, { label: string; tone: Tone }> = {
   REFUNDED: { label: "Refunded", tone: "success" },
 };
 
+const SUBSCRIPTION_STATUS: Record<string, { label: string; tone: Tone }> = {
+  TRIALING: { label: "Trialing", tone: "progress" },
+  ACTIVE: { label: "Active", tone: "success" },
+  PAST_DUE: { label: "Past due", tone: "attention" },
+  CANCELED: { label: "Canceled", tone: "neutral" },
+};
+
 const SEVERITY: Record<string, { label: string; tone: Tone }> = {
   critical: { label: "Critical", tone: "attention" },
   warning: { label: "Warning", tone: "progress" },
@@ -74,5 +81,10 @@ export function ReturnStatusBadge({ status }: { status: string }) {
 
 export function RefundStatusBadge({ status }: { status: string }) {
   const entry = REFUND_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge {...entry} />;
+}
+
+export function SubscriptionStatusBadge({ status }: { status: string }) {
+  const entry = SUBSCRIPTION_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
   return <Badge {...entry} />;
 }

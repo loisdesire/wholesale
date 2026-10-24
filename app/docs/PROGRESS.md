@@ -850,6 +850,56 @@ now backed by a real payment ledger that an automated provider webhook writes to
 - `npm run lint`, `npm run build`, `npm run test` (324/324) and the migration-drift check all pass
   clean.
 
+## Done (2026-10-24)
+
+Phase 7 (commercial launch), first slice — billing/subscriptions scaffolding:
+
+- **Schema**: `Organization` gains `plan` (STARTER/GROWTH/SCALE — illustrative tiers only, see
+  below), `subscriptionStatus` (TRIALING/ACTIVE/PAST_DUE/CANCELED), `trialEndsAt`,
+  `currentPeriodEnd`. New `SubscriptionPayment` model — same ledger shape as `Payment`: a row only
+  exists once there's verified evidence of a successful charge, never edited in place, RLS-isolated
+  per organization like every other tenant table.
+- **`src/lib/billing.ts`**: `startTrial`/`isTrialExpired`, `currentBillingPeriod` (calendar month),
+  `getUsage`/`getEntitlementStatus` (derived, never stored — staff seats from `Membership` count,
+  orders from `Order.count`, AI replies from outbound AI `Message.count`, same "derive, don't
+  store" rule as stock figures), `PLAN_LIMITS` (clearly labelled placeholders — VISION.md is
+  explicit that final pricing/limits wait for real customer needs and costs, not invented here),
+  `initializeSubscriptionPayment` (starts a Paystack hosted-page charge for one period),
+  `recordSubscriptionPayment` (writes the ledger row + activates the organization on that plan).
+- **One shared Paystack webhook, two payment types**: `/api/webhooks/paystack` now dispatches a
+  `charge.success` event between an order payment and a subscription payment by the reference's
+  prefix (`pay_` vs `subpay_`) — reusing `verifyPaystackSignature`/`PaystackError` from
+  `src/lib/payments.ts` rather than re-implementing the generic Paystack plumbing a second time.
+  The subscription reference embeds both organizationId *and* plan (`buildSubscriptionPaymentReference`),
+  since — unlike an order, which carries its own total — a bare charge event gives no indication of
+  which plan it was for; parsed back out only after the signature checks out.
+- **Entitlement checks are informational only** — `EntitlementStatus.overLimit` is surfaced on the
+  `/billing` page (a plan-limit table, red when exceeded) but never blocks anything. VISION.md is
+  explicit that hard enforcement waits for real pricing.
+- **`/billing` page** (owner-only, same refusal pattern as `/operations/settings`): current plan +
+  status badge, trial/past-due countdown and a clear "keep using everything without interruption"
+  nudge when relevant, the usage-vs-limit table, a plan-selector "Get payment link" button, and a
+  payment-history table. Nav gains an owner-only Billing link.
+- **Seed data**: Adaeze Fashion Wholesale seeded as an active GROWTH subscriber with one
+  `SubscriptionPayment` row; Lagos Spice Traders seeded as TRIALING on STARTER — the two demo
+  organizations now show both billing states live.
+- **Tests:** 15 new (339 total) — trial start/expiry edge cases (non-trialing status, null
+  `trialEndsAt`, future vs. past `trialEndsAt`), subscription-payment-reference round trip and
+  strict-shape rejection (including never being confused with an order-payment reference), derived
+  usage correctness (staff seats tracks `Membership` count live, orders tracks real `Order` rows),
+  over-limit flagged as informational only (never throws, never blocks), `recordSubscriptionPayment`
+  idempotency (a redelivered webhook with the same `providerReference` is a silent no-op, confirmed
+  by row count) and that it correctly activates the organization, and a webhook-route-level test
+  proving the *same* endpoint correctly routes a `subpay_` reference to subscription handling and a
+  `pay_` reference to order handling without cross-contaminating either ledger. **Verified live in a
+  browser** (Playwright, 54/54 checks including 7 new billing ones, screenshots reviewed): the
+  billing page shows plan/status/usage/payment-history correctly for the owner; "Get payment link"
+  refuses cleanly since Paystack isn't configured in this environment; staff get a plain refusal
+  both from the nav (no Billing link) and visiting `/billing` directly; Lagos Spice Traders (a
+  second organization) correctly shows its own Starter/Trialing state, not Adaeze's.
+- `npm run lint`, `npm run build`, `npm run test` (339/339) and the migration-drift check all pass
+  clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -911,7 +961,12 @@ These are natural follow-ons, flagged here rather than started unprompted:
   marks a refund paid by hand) — automated refund verification/payout through Paystack would be
   the refund-side mirror of what payment verification just became; live courier/delivery-tracking
   integration needs real carrier credentials this environment doesn't have.
-- Phase 7 (commercial launch): billing/subscriptions (including solving per-organization payment
-  provider accounts, rather than the one global `PAYSTACK_SECRET_KEY` this phase used), platform
-  super-admin, monitoring/backups, security review, pilot onboarding — once there's a real pilot
-  business ready to run on this.
+- Phase 7 (commercial launch) remainder: get a real `PAYSTACK_SECRET_KEY` and confirm a
+  subscription webhook end-to-end (same "built and tested against synthetic payloads, not yet run
+  for real" gap as order payments); decide real pricing/limits before turning the current
+  informational entitlement checks into actual enforcement; per-organization Paystack accounts
+  rather than the one global key billing scaffolding used; Paystack's tokenized Subscriptions API
+  for true auto-recurring billing once pricing is final (today's flow is a one-off charge per
+  30-day period, started manually); platform super-admin, monitoring/backups, a formal deployment
+  pipeline and docs, a security review, pilot onboarding — once there's a real pilot business ready
+  to run on this.

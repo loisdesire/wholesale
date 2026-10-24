@@ -119,16 +119,61 @@ model Organization {
   slaOverrides          Json?
   createdAt             DateTime @default(now())
 
-  memberships    Membership[]
-  products       Product[]
-  stockMovements StockMovement[]
-  customers      Customer[]
-  conversations  Conversation[]
-  orders         Order[]
-  returns        OrderReturn[]
-  auditLogs      AuditLog[]
-  shipments      Shipment[]
-  payments       Payment[]
+  // Subscription/billing status — foundations only, not final pricing (see
+  // src/lib/billing.ts's PLAN_LIMITS). A fresh organization starts TRIALING; call
+  // startTrial() to set trialEndsAt (a schema default can't compute "now + N days").
+  plan               Plan               @default(STARTER)
+  subscriptionStatus SubscriptionStatus @default(TRIALING)
+  trialEndsAt        DateTime?
+  currentPeriodEnd   DateTime?
+
+  memberships          Membership[]
+  products             Product[]
+  stockMovements       StockMovement[]
+  customers            Customer[]
+  conversations        Conversation[]
+  orders               Order[]
+  returns              OrderReturn[]
+  auditLogs            AuditLog[]
+  shipments            Shipment[]
+  payments             Payment[]
+  subscriptionPayments SubscriptionPayment[]
+}
+
+// Illustrative tiers only — VISION.md is explicit that final pricing/limits wait for
+// real customer needs and costs, not invented here. See src/lib/billing.ts.
+enum Plan {
+  STARTER
+  GROWTH
+  SCALE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+// The platform billing an organization for its subscription — entirely separate from
+// Payment (a customer paying that organization for an order). Same "a row only exists
+// once there is verified evidence" rule as Payment: no pending/failed rows, an
+// unsuccessful charge attempt leaves no evidence and the period simply isn't paid for.
+model SubscriptionPayment {
+  id                String       @id @default(cuid())
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id])
+  plan              Plan
+  amountCents       Int
+  currency          String       @default("NGN")
+  periodStart       DateTime
+  periodEnd         DateTime
+  // Paystack's transaction reference — globally unique (we generate it), the
+  // idempotency key a redelivered webhook is detected and ignored by.
+  providerReference String?      @unique
+  createdAt         DateTime     @default(now())
+
+  @@index([organizationId])
 }
 
 // A user belongs to one or more organizations, with a role in each. The session

@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/operations", label: "Operations" },
   { href: "/reports", label: "Reports" },
   { href: "/search", label: "Search" },
+  { href: "/billing", label: "Billing", ownerOnly: true },
 ];
 
 export function Nav({
@@ -77,7 +78,7 @@ export function Nav({
               )}
             </Link>
           </li>
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => !item.ownerOnly || userRole === "OWNER").map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (

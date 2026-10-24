@@ -58,6 +58,7 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     await prisma.shipment.deleteMany();
     await prisma.returnItem.deleteMany();
     await prisma.orderReturn.deleteMany();
+    await prisma.subscriptionPayment.deleteMany();
     await prisma.payment.deleteMany();
     await prisma.orderItem.deleteMany();
     await prisma.order.deleteMany();

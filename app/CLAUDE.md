@@ -172,6 +172,31 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   One scoped simplification, matching `WHATSAPP_ACCESS_TOKEN`'s existing pattern: `PAYSTACK_SECRET_KEY`
   is a single global env var for now, not a per-organization credential — real multi-tenant
   payment-provider accounts are Phase 7 territory.
+- **Billing/subscriptions are a ledger too** (`src/lib/billing.ts`, `SubscriptionPayment` model,
+  entirely separate from `Payment` — a platform charge to an organization, not a customer paying
+  that organization for an order). Same "a row only exists once there is verified evidence" rule:
+  no pending/failed rows, an unsuccessful charge attempt leaves no evidence and the period just
+  isn't paid for. The shared Paystack webhook (`/api/webhooks/paystack`) dispatches a single
+  `charge.success` event between order payments and subscription payments by the reference's
+  prefix (`pay_` vs `subpay_`) — a real Paystack account has one webhook URL total, not one per
+  feature, so the app's own generated reference (`buildSubscriptionPaymentReference`, embedding
+  organizationId *and* plan, since the charge itself carries no indication of which plan it was for)
+  is how the handler tells them apart, parsed back out only after the signature checks out, exactly
+  like the order-payment reference. `recordSubscriptionPayment` writes the ledger row (tenant data,
+  via `transaction()`) and updates `Organization.subscriptionStatus`/`plan`/`currentPeriodEnd`
+  (identity data, via root `prisma`) as two separate operations, not one atomic transaction —
+  deliberate, matching the tenant/identity boundary elsewhere; the ledger stays the source of truth
+  if the second write is ever missed. **Usage is derived, never a stored counter**
+  (`getUsage`/`getEntitlementStatus`): staff seats = `Membership` count, orders this period =
+  `Order.count` in the calendar month, AI replies this period = outbound AI `Message.count` — same
+  "derive, don't store" rule as stock figures. `PLAN_LIMITS` (`src/lib/billing.ts`) are clearly
+  labelled illustrative placeholders per VISION.md — final pricing/limits wait for real customer
+  needs and costs. Entitlement over-limit checks (`EntitlementStatus.overLimit`) are
+  **informational only**, surfaced on `/billing`, never hard-blocking anything. Same scoped
+  simplification as `WHATSAPP_ACCESS_TOKEN`/`PAYSTACK_SECRET_KEY`: one global Paystack account for
+  now, not per-organization. Real auto-recurring billing (Paystack's tokenized Subscriptions API)
+  is also deferred — what's built here is a one-off charge per 30-day period, started manually from
+  `/billing`.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -268,20 +293,26 @@ isolation enforcement, customer-merge logic, bulk operations (order bulk-assign,
 reporting, in-app notifications, an email notification channel layered on top of them,
 per-organization SLA configuration, WhatsApp delivery-status tracking (sent/delivered/read/
 failed on outbound messages — VISION.md's Phase 5 "ingestion/delivery tracking"), a formal AI
-eval harness (`src/lib/ai/eval.ts`, `npm run ai:eval`), and automated payment verification
-(Paystack, `src/lib/payments.ts` — VISION.md's Phase 6 "payment records, provider integration,
-verification") — see `docs/PROGRESS.md` for what shipped and what's still intentionally narrower
-than VISION.md's full Phase 4/5/6/Part 1 ambition. Still deferred: billing, platform super-admin,
-reconciliation reporting (comparing what the provider says was paid against what's recorded — a
-natural follow-on to the payment-provider integration above, not built yet), an SMS channel (email
-is the only push channel so far), non-WhatsApp messaging channels, saved/scheduled reports, live
-*courier/physical* delivery-tracking integration (not to be confused with the WhatsApp message
-delivery-status tracking above — a different "delivery" entirely; needs real carrier credentials
-this environment doesn't have, and per-organization Paystack accounts rather than one global key
-(real multi-tenant SaaS billing territory, Phase 7)), the full configurable-automation engine
-VISION.md describes (triggers/conditions/actions/execution logs/retry) — what shipped is narrower:
-one fixed trigger (a new/changed notification-worthy event) with one fixed action (notify), not a
-general rule builder.
+eval harness (`src/lib/ai/eval.ts`, `npm run ai:eval`), automated payment verification (Paystack,
+`src/lib/payments.ts` — VISION.md's Phase 6 "payment records, provider integration, verification"),
+and billing/subscription foundations (`src/lib/billing.ts`, `/billing` — plans, trials, derived
+usage metering, informational entitlement checks, subscription payments through the same Paystack
+webhook as order payments — VISION.md's Phase 7 "billing/subscriptions") — see `docs/PROGRESS.md`
+for what shipped and what's still intentionally narrower than VISION.md's full Phase 4/5/6/7/Part 1
+ambition. Still deferred: platform super-admin, security review, monitoring/backups, a formal
+deployment pipeline and docs, pilot onboarding (the rest of Phase 7), reconciliation reporting
+(comparing what the provider says was paid against what's recorded — a natural follow-on to the
+payment-provider integration above, not built yet), an SMS channel (email is the only push channel
+so far), non-WhatsApp messaging channels, saved/scheduled reports, live *courier/physical*
+delivery-tracking integration (not to be confused with the WhatsApp message delivery-status
+tracking above — a different "delivery" entirely; needs real carrier credentials this environment
+doesn't have), per-organization Paystack accounts rather than one global key, real auto-recurring
+billing via Paystack's tokenized Subscriptions API rather than the one-off-per-period charge built
+here, and hard entitlement enforcement (blocking once a plan limit is exceeded) — all real
+multi-tenant SaaS billing territory that waits on final pricing decisions. The full
+configurable-automation engine VISION.md describes (triggers/conditions/actions/execution
+logs/retry) also remains narrower than the vision: one fixed trigger (a new/changed
+notification-worthy event) with one fixed action (notify), not a general rule builder.
 
 ## First-time setup (new machine or cloud session)
 
@@ -310,10 +341,10 @@ npm run dev
   its own data wiped in `beforeAll` first, or another test file's leftover orgs break the
   fallback — see `tests/end-to-end-flow.test.ts`.
 - **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
-  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten three times now — most recently
-  for `Payment` — it only fails when the full suite runs, because other test files leave rows
-  behind.) Missing this once caused an FK failure that only appeared when the full suite ran, not
-  in isolation.
+  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten three times before — most
+  recently for `Payment`; `SubscriptionPayment` got this added proactively — it only fails when the
+  full suite runs, because other test files leave rows behind.) Missing this once caused an FK
+  failure that only appeared when the full suite ran, not in isolation.
 - **Stale Turbopack cache** can produce phantom runtime errors ("X is not a function") for exports
   that are correct and pass tests. Kill the dev server, delete `.next/`, restart.
 - **Chrome extension screenshots** (`Page.captureScreenshot`) can hang for a whole session while

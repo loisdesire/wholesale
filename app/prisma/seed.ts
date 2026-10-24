@@ -28,6 +28,7 @@ async function main() {
   await prisma.shipment.deleteMany();
   await prisma.returnItem.deleteMany();
   await prisma.orderReturn.deleteMany();
+  await prisma.subscriptionPayment.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
@@ -42,6 +43,10 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
 
+  // Paying, active subscriber — demos the "already paying" billing state.
+  const periodStart = new Date();
+  const periodEnd = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+
   const org = await prisma.organization.create({
     data: {
       name: "Adaeze Fashion Wholesale",
@@ -49,6 +54,20 @@ async function main() {
       returnSeq: 1001,
       // The WhatsApp business number this organization receives on (Meta's phone_number_id).
       whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "100000000000001",
+      plan: "GROWTH",
+      subscriptionStatus: "ACTIVE",
+      currentPeriodEnd: periodEnd,
+    },
+  });
+
+  await prisma.subscriptionPayment.create({
+    data: {
+      organizationId: org.id,
+      plan: "GROWTH",
+      amountCents: 3_500_000,
+      periodStart,
+      periodEnd,
+      providerReference: `subpay_seed_${org.id}_growth`,
     },
   });
 
@@ -406,7 +425,14 @@ async function main() {
   // order. Lois belongs to it too — as STAFF, so switching organizations also changes what
   // she may do — and Ife owns it and can't see anything of Adaeze's.
   const spice = await prisma.organization.create({
-    data: { name: "Lagos Spice Traders", orderSeq: 1001, whatsappPhoneNumberId: "100000000000002" },
+    data: {
+      name: "Lagos Spice Traders",
+      orderSeq: 1001,
+      whatsappPhoneNumberId: "100000000000002",
+      plan: "STARTER",
+      subscriptionStatus: "TRIALING",
+      trialEndsAt: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
+    },
   });
   const ife = await prisma.user.create({
     data: {
