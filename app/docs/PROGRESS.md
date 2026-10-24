@@ -949,6 +949,25 @@ without cross-checking it against `PLAN_LIMITS[plan].monthlyFeeCents` — not ex
 since nothing lets an outside party mint a transaction against an arbitrary reference without the
 app's own `PAYSTACK_SECRET_KEY`, but worth re-checking if discount/proration logic is ever added.
 
+## Done (2026-10-24, continued)
+
+Phase 7, fifth slice — monitoring and backups documentation (`docs/MONITORING_AND_BACKUPS.md`):
+an honest inventory of what exists today (the startup isolation check in
+`src/instrumentation.ts`, which fails the process in production if tenant isolation isn't
+enforced — an effective health gate on a host that restarts crashed processes, but not ongoing
+monitoring; eight narrow `console.error`/`console.warn` call sites total, no aggregation, no
+alerting, no error-tracking SDK, no APM, no backup job of any kind yet), why the ledger-based data
+model (`StockMovement`/`Payment`/`SubscriptionPayment`/`AuditLog` are append-only) makes
+continuous WAL-based point-in-time-recovery backups both valuable and low-risk here (a restore
+reconstructs an internally-consistent state, not a half-applied one), and a priority-ordered setup
+list for before a pilot depends on this: managed Postgres with automated backups first (comes free
+with most providers, just needs a provider chosen), an error-tracking SDK wired into
+`src/instrumentation.ts`'s existing Next.js hooks second (highest-value single addition — today an
+uncaught error is invisible unless someone is tailing logs), alerting on the two webhook routes
+third (the app's only unattended entry points, already logging enough detail to act on), a
+documented restore drill fourth, then uptime monitoring and APM last. No code changed;
+documentation only, nothing to test or verify live.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1016,16 +1035,17 @@ These are natural follow-ons, flagged here rather than started unprompted:
   informational entitlement checks into actual enforcement; per-organization Paystack accounts
   rather than the one global key billing scaffolding used; Paystack's tokenized Subscriptions API
   for true auto-recurring billing once pricing is final (today's flow is a one-off charge per
-  30-day period, started manually); platform super-admin, monitoring/backups — once there's a
-  real pilot business ready to run on this. Deployment documentation (`docs/DEPLOYMENT.md`) and a
-  pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`) are now written, but the actual
-  hosting/managed-Postgres decision the former depends on hasn't been made, and nothing in either
-  has been exercised for a real deploy or a real pilot yet. The onboarding runbook documents
-  today's actual process honestly (a manual DB-level script, no self-serve sign-up) rather than
-  assuming a UI that doesn't exist — building that UI is listed in the runbook itself as
-  deliberately deferred until a couple of real pilots show which parts of it are actually worth
-  automating first. A security review of the whole branch is now done (no HIGH/MEDIUM findings —
-  see the Done entry above) but should be re-run once platform super-admin and real payment
-  provider credentials land, since both expand the attack surface this review covered. A CI/CD
-  pipeline automating `docs/DEPLOYMENT.md`'s steps is
-  still to build, once a host is chosen.
+  30-day period, started manually); platform super-admin — once there's a real pilot business
+  ready to run on this. Deployment documentation (`docs/DEPLOYMENT.md`), a pilot onboarding
+  runbook (`docs/PILOT_ONBOARDING.md`), and a monitoring/backups plan (`docs/MONITORING_AND_BACKUPS.md`)
+  are now written, but the actual hosting/managed-Postgres/error-tracking-vendor decisions they
+  depend on haven't been made, and nothing in any of them has been exercised for real yet. The
+  onboarding runbook documents today's actual process honestly (a manual DB-level script, no
+  self-serve sign-up) rather than assuming a UI that doesn't exist — building that UI is listed in
+  the runbook itself as deliberately deferred until a couple of real pilots show which parts of it
+  are actually worth automating first. A security review of the whole branch is now done (no
+  HIGH/MEDIUM findings — see the Done entry above) but should be re-run once platform super-admin
+  and real payment provider credentials land, since both expand the attack surface this review
+  covered. A CI/CD pipeline automating `docs/DEPLOYMENT.md`'s steps, and the error-tracking SDK and
+  webhook alerting `docs/MONITORING_AND_BACKUPS.md` recommends, are still to build, once a host and
+  vendors are chosen.
