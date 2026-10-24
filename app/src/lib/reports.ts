@@ -1,7 +1,7 @@
-import Papa from "papaparse";
 import { OrderStatus } from "@prisma/client";
 import { tenantDb, transaction } from "@/lib/db";
 import { getCustomerBalances } from "@/lib/balances";
+import { parseDay } from "@/lib/search";
 
 export type Range = { from: Date; to: Date };
 
@@ -9,14 +9,20 @@ const COMMITTED: OrderStatus[] = [OrderStatus.CONFIRMED, OrderStatus.PAID, Order
 
 /** Parses yyyy-mm-dd query parameters into an inclusive UTC range (default: the last 30 days). */
 export function parseRange(from: string | undefined, to: string | undefined, now = new Date()): Range {
-  const parse = (value: string | undefined, endOfDay: boolean) => {
-    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-    const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
-    return Number.isNaN(date.getTime()) ? null : date;
-  };
-  const end = parse(to, true) ?? now;
-  const start = parse(from, false) ?? new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const end = parseDay(to, true) ?? now;
+  const start = parseDay(from, false) ?? new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
   return start <= end ? { from: start, to: end } : { from: end, to: start };
+}
+
+/** A `Range` boundary as the yyyy-mm-dd a `<input type="date">` or query string wants. */
+export function dateInput(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+/** "24 Oct 2026 – 23 Nov 2026" for a range, in the app's locale. */
+export function formatRangeLabel(range: Range) {
+  const fmt = new Intl.DateTimeFormat("en-NG", { dateStyle: "medium" });
+  return `${fmt.format(range.from)} – ${fmt.format(range.to)}`;
 }
 
 export type SalesReport = {
@@ -192,18 +198,4 @@ export async function getOutstandingBalances(organizationId: string): Promise<Ou
     .sort((a, b) => b.netCents - a.netCents);
 }
 
-/**
- * A spreadsheet that opens a CSV may treat a cell starting with = + - @ as a formula —
- * and a customer name, a product name or a note is text anyone could have typed. Prefixing
- * such cells with a quote makes them inert text, so exporting data can't turn into running
- * somebody's formula on the finance person's laptop.
- */
-export function csvSafe(value: string | number | null | undefined): string | number {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "number") return value;
-  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-}
-
-export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]) {
-  return Papa.unparse({ fields: headers, data: rows.map((row) => row.map(csvSafe)) });
-}
+export { csvSafe, toCsv } from "@/lib/csv";

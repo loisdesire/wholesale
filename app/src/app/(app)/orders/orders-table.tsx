@@ -35,6 +35,7 @@ export function OrdersTable({
   const [preview, setPreview] = useState<BulkAssignOutcome | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const okCount = preview?.filter((r) => r.ok).length ?? 0;
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -99,7 +100,7 @@ export function OrdersTable({
                 disabled={pending}
                 className="rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-paper hover:bg-ink-2 disabled:opacity-60"
               >
-                {pending ? "Applying…" : `Apply to ${preview.filter((r) => r.ok).length} order${preview.filter((r) => r.ok).length === 1 ? "" : "s"}`}
+                {pending ? "Applying…" : `Apply to ${okCount} order${okCount === 1 ? "" : "s"}`}
               </button>
             )}
           </div>

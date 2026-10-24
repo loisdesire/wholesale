@@ -27,21 +27,24 @@ export async function assignAction(
 ): Promise<FormState> {
   const session = await requireSession();
   const raw = String(formData.get("assigneeId") ?? "");
+  let href: string;
   try {
-    await assignWork({
-      organizationId: session.user.organizationId,
-      kind,
-      id,
-      assigneeId: raw === "" ? null : raw,
-      actor: { id: session.user.id, role: session.user.role },
-    });
+    href = (
+      await assignWork({
+        organizationId: session.user.organizationId,
+        kind,
+        id,
+        assigneeId: raw === "" ? null : raw,
+        actor: { id: session.user.id, role: session.user.role },
+      })
+    ).href;
   } catch (err) {
     return { error: friendly(err) };
   }
   revalidatePath("/operations");
   revalidatePath("/orders");
-  revalidatePath(`/orders/${kind === "order" || kind === "return" ? id : ""}`, "page");
   revalidatePath("/inbox");
+  revalidatePath(href, "page");
   return { error: null, saved: true };
 }
 

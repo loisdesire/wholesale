@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { tenantDb, transaction } from "@/lib/db";
 import { HOUR_MS, SEVERITY_RANK, SLA, type Severity } from "@/lib/ops-config";
 import { getStockByProduct } from "@/lib/stock";
+import { formatMoney } from "@/lib/format";
+import { dateInput } from "@/lib/reports";
 
 /** "3h", "2 days" — how long something has been waiting. */
 export function formatAge(hours: number) {
@@ -56,15 +58,10 @@ export async function getAttentionItems(organizationId: string, now = new Date()
       items.set(base.key, { ...rest, severity, reasons: [reason] });
       return;
     }
-    existing.reasons.push(reason);
-    if (SEVERITY_RANK[severity] < SEVERITY_RANK[existing.severity]) {
-      existing.severity = severity;
-      // We just pushed `reason` as the last element; move that same element (by
-      // position, not by re-matching the string) to the front so the most severe
-      // reason reads first.
-      existing.reasons.pop();
-      existing.reasons.unshift(reason);
-    }
+    // A more severe rule's reason leads; otherwise reasons read in the order they were added.
+    const upgraded = SEVERITY_RANK[severity] < SEVERITY_RANK[existing.severity];
+    existing.reasons = upgraded ? [reason, ...existing.reasons] : [...existing.reasons, reason];
+    if (upgraded) existing.severity = severity;
     existing.ageHours = Math.max(existing.ageHours, rest.ageHours);
   };
 
@@ -137,6 +134,17 @@ export async function getAttentionItems(organizationId: string, now = new Date()
     amountCents: o.totalCents,
     assignee: o.assignedTo,
   });
+  const returnBase = (r: (typeof returnsWaiting)[number], ageFrom: Date) => ({
+    key: `return:${r.id}`,
+    kind: "return" as const,
+    id: r.id,
+    reference: r.reference,
+    customer: who(r.customer),
+    ageHours: hoursSince(ageFrom),
+    href: `/orders/${r.orderId}`,
+    amountCents: r.refundCents,
+    assignee: r.assignedTo,
+  });
   const tiered = (hours: number, critical: number): Severity => (hours >= critical ? "critical" : "warning");
 
   for (const c of conversations) {
@@ -180,27 +188,15 @@ export async function getAttentionItems(organizationId: string, now = new Date()
   }
   for (const r of returnsWaiting) {
     const h = hoursSince(r.createdAt);
-    add({
-      key: `return:${r.id}`, kind: "return", id: r.id, reference: r.reference, customer: who(r.customer), ageHours: h,
-      href: `/orders/${r.orderId}`, amountCents: r.refundCents, assignee: r.assignedTo,
-      severity: tiered(h, SLA.returnDecisionCriticalHours), reason: `Return waiting ${formatAge(h)} for the owner's decision`,
-    });
+    add({ ...returnBase(r, r.createdAt), severity: tiered(h, SLA.returnDecisionCriticalHours), reason: `Return waiting ${formatAge(h)} for the owner's decision` });
   }
   for (const r of returnsToReceive) {
     const h = hoursSince(r.decidedAt!);
-    add({
-      key: `return:${r.id}`, kind: "return", id: r.id, reference: r.reference, customer: who(r.customer), ageHours: h,
-      href: `/orders/${r.orderId}`, amountCents: r.refundCents, assignee: r.assignedTo,
-      severity: "warning", reason: `Approved ${formatAge(h)} ago but the goods haven't been booked in`,
-    });
+    add({ ...returnBase(r, r.decidedAt!), severity: "warning", reason: `Approved ${formatAge(h)} ago but the goods haven't been booked in` });
   }
   for (const r of refundsToPay) {
     const h = hoursSince(r.decidedAt!);
-    add({
-      key: `return:${r.id}`, kind: "return", id: r.id, reference: r.reference, customer: who(r.customer), ageHours: h,
-      href: `/orders/${r.orderId}`, amountCents: r.refundCents, assignee: r.assignedTo,
-      severity: tiered(h, SLA.refundPayCriticalHours), reason: `Refund approved ${formatAge(h)} ago and still unpaid`,
-    });
+    add({ ...returnBase(r, r.decidedAt!), severity: tiered(h, SLA.refundPayCriticalHours), reason: `Refund approved ${formatAge(h)} ago and still unpaid` });
   }
 
   return [...items.values()].sort(
@@ -230,8 +226,6 @@ export type WorkloadRow = {
   openConversations: number;
 };
 
-const dateParam = (d: Date) => d.toISOString().slice(0, 10);
-
 function formatDuration(hours: number) {
   if (hours < 1) return `${Math.round(hours * 60)}m`;
   if (hours < 48) return `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m`;
@@ -254,7 +248,7 @@ export async function getOperationalMetrics(
   const db = tenantDb(organizationId);
   const { from, to } = range;
   const inRange = { gte: from, lte: to };
-  const period = `from=${dateParam(from)}&to=${dateParam(to)}`;
+  const period = `from=${dateInput(from)}&to=${dateInput(to)}`;
 
   const [
     created,
@@ -318,7 +312,6 @@ export async function getOperationalMetrics(
 
   const refundCents = refundAgg._sum.refundCents ?? 0;
   const paidCents = paidAgg._sum.totalCents ?? 0;
-  const naira = (cents: number) => `₦${(cents / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
   const answered = Number(medians.response?.answered ?? 0);
   const unanswered = Number(medians.response?.unanswered ?? 0);
   const aiHandled = Number(medians.ai?.handled ?? 0);
@@ -398,7 +391,7 @@ export async function getOperationalMetrics(
       detail:
         paidCents === 0
           ? "No orders were paid in this period."
-          : `${naira(refundCents)} refunded or owed (${refundAgg._count} request${refundAgg._count === 1 ? "" : "s"}) against ${naira(paidCents)} of orders paid in the period.`,
+          : `${formatMoney(refundCents)} refunded or owed (${refundAgg._count} request${refundAgg._count === 1 ? "" : "s"}) against ${formatMoney(paidCents)} of orders paid in the period.`,
       href: `/returns?${period}`,
     },
     {
@@ -414,26 +407,28 @@ export async function getOperationalMetrics(
     },
   ];
 
-  const memberships = await prisma.membership.findMany({ where: { organizationId }, include: { user: true }, orderBy: { createdAt: "asc" } });
-  const openOrdersBy = await db.order.groupBy({
-    by: ["assignedToId"],
-    where: { organizationId, assignedToId: { not: null }, status: { in: OPEN_ORDER_STATUSES } },
-    _count: true,
-  });
-  const openReturnsBy = await db.orderReturn.groupBy({
-    by: ["assignedToId"],
-    where: {
-      organizationId,
-      assignedToId: { not: null },
-      OR: [{ status: { in: ["REQUESTED", "APPROVED"] } }, { refundStatus: "PENDING" }],
-    },
-    _count: true,
-  });
-  const openConversationsBy = await db.conversation.groupBy({
-    by: ["assignedToId"],
-    where: { organizationId, assignedToId: { not: null }, status: { not: "RESOLVED" } },
-    _count: true,
-  });
+  const [memberships, openOrdersBy, openReturnsBy, openConversationsBy] = await Promise.all([
+    prisma.membership.findMany({ where: { organizationId }, include: { user: true }, orderBy: { createdAt: "asc" } }),
+    db.order.groupBy({
+      by: ["assignedToId"],
+      where: { organizationId, assignedToId: { not: null }, status: { in: OPEN_ORDER_STATUSES } },
+      _count: true,
+    }),
+    db.orderReturn.groupBy({
+      by: ["assignedToId"],
+      where: {
+        organizationId,
+        assignedToId: { not: null },
+        OR: [{ status: { in: ["REQUESTED", "APPROVED"] } }, { refundStatus: "PENDING" }],
+      },
+      _count: true,
+    }),
+    db.conversation.groupBy({
+      by: ["assignedToId"],
+      where: { organizationId, assignedToId: { not: null }, status: { not: "RESOLVED" } },
+      _count: true,
+    }),
+  ]);
   const countFor = (rows: { assignedToId: string | null; _count: number }[], id: string) =>
     rows.find((r) => r.assignedToId === id)?._count ?? 0;
   const workload: WorkloadRow[] = memberships.map((m) => ({

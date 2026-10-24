@@ -2,6 +2,8 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import {
+  dateInput,
+  formatRangeLabel,
   getOutstandingBalances,
   getProductDemand,
   getSalesReport,
@@ -213,13 +215,4 @@ export default async function ReportsPage({
 
 function signed(n: number) {
   return n === 0 ? "—" : n > 0 ? `+${n}` : String(n);
-}
-
-function dateInput(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-function formatRangeLabel(range: { from: Date; to: Date }) {
-  const fmt = new Intl.DateTimeFormat("en-NG", { dateStyle: "medium" });
-  return `${fmt.format(range.from)} – ${fmt.format(range.to)}`;
 }

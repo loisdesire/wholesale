@@ -562,6 +562,54 @@ notifications, reporting."
   organizations (Ife's Operations/Reports/CSV exports contain none of Adaeze's data).
 - `npm run lint`, `npm run build`, `npm run test` all pass clean.
 
+## Done (2026-10-24, continued once more — Phase 4 cleanup sweep)
+
+A dedicated reuse/simplification/efficiency/altitude pass over the Phase 4 commit (four parallel
+reviews, one per angle), before moving past Phase 4.
+
+- **Reuse**: `src/lib/operations.ts` and `src/lib/reports.ts` each had their own local date/range
+  helpers (`dateParam`, and duplicate `dateInput`/`formatRangeLabel` copy-pasted into both the
+  Operations and Reports pages) instead of one shared implementation; `reports.ts`'s `parseRange`
+  re-derived the exact yyyy-mm-dd parsing `search.ts`'s `parseDay` already had (now exported and
+  reused). `operations.ts` had its own `₦1,234`-style money formatter duplicating `formatMoney`
+  (`src/lib/format.ts`) for the same human-display purpose — swapped over. `reports.ts`'s
+  formula-injection-safe CSV writer (`csvSafe`/`toCsv`) and `csv.ts`'s hand-rolled catalogue
+  exporter were two separate CSV mechanisms that disagreed on method, and **only the newer one
+  had the formula-injection guard** — `csvSafe`/`toCsv` now live in `csv.ts` as the one canonical
+  implementation (`reports.ts` re-exports them), and `serializeProductsCsv`'s cells now go through
+  the same guard, closing a real gap: a product name or SKU typed by someone else could previously
+  run as a formula when the catalogue CSV export was opened in a spreadsheet, the exact risk the
+  reports export was already built to prevent.
+- **Simplification**: merged `assignment.ts`'s two identical `TABLE`/`ENTITY` maps into one;
+  collapsed `getAttentionItems`'s severity-reorder (`push` then `pop`/`unshift` to move an element
+  back to the front) into a plain conditional array build; added a `returnBase()` helper mirroring
+  the existing `orderBase()` so the three return-rule loops stop repeating the same object literal;
+  `orders-table.tsx` computed `preview.filter(...).length` twice in one template literal, now once;
+  **unified `assignWork` and the bulk-assign preview path** — `previewOne` was a hand-maintained
+  near-duplicate of `assignWork`'s load/permission/closed-check logic with the write, audit and
+  notify left out; `assignWork` now takes a `dryRun` flag and does exactly that itself, so there is
+  one assignment code path, not two to keep in sync by hand.
+- **Efficiency**: `getOperationalMetrics`'s four independent trailing queries (membership list plus
+  three `groupBy`s) ran sequentially after an already-batched `Promise.all` block — batched them
+  too. `assignWork` fetched the previous assignee's name with a separate `prisma.user.findUnique`
+  purely for the audit log; `load()` now includes it in the same query it already runs, for free.
+  `bulkAssignOrders` ran up to 100 orders' transactions one at a time; now runs them in bounded
+  batches of 10 concurrently (each order's work was already independent, in its own transaction —
+  nothing relied on the sequential ordering).
+- **Altitude** (reviewed, deliberately not changed in this pass — flagged below instead of rushed
+  into a cleanup commit): in-app notifications are isolated to their recipient by an app-level
+  `where: { userId }` clause, not by the database the way organization isolation is — the same
+  "a forgotten filter leaks data silently" shape `docs/ISOLATION.md` exists to rule out for tenants,
+  just one level down, for users within the same tenant. The attention queue's per-rule cap (100)
+  has no accompanying "showing 100 of N" signal if a rule is ever genuinely over it — a record
+  would quietly vanish from the one page whose job is to show what needs attention, with nothing
+  saying so. Both are real, both are schema/behaviour changes rather than code tidying, and both
+  are listed below rather than folded into this sweep.
+- Re-verified after the sweep: `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm run test`
+  (254/254) and the full Playwright script (33/33) all still pass against the refactored code —
+  nothing here changed behaviour except the two described fixes (catalogue CSV formula-injection
+  guard; no other output changed).
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -573,9 +621,22 @@ notifications, reporting."
   payloads and a mocked model client — correct by construction and by test, but not yet run against
   Meta's or Anthropic's actual infrastructure. Nothing in the app pretends otherwise: every screen
   shows a clear "not configured" state instead of failing silently or faking success.
-- Vitest is configured (`npm run test`, 253 tests / 19 files). VISION.md's remaining
+- Vitest is configured (`npm run test`, 254 tests / 19 files). VISION.md's remaining
   testing-discipline scenario not yet covered — a duplicate payment webhook — has no payment
   gateway to have webhooks from yet (explicitly deferred); applies once that exists.
+- **Notifications are isolated to their recipient by an app-level `where: { userId }` clause, not
+  by the database** the way organization isolation is (`docs/ISOLATION.md`). Found during the
+  Phase 4 cleanup sweep, deliberately not fixed there since it's a schema change (a second session
+  variable alongside `app.organization_id`, an RLS policy on `Notification` keyed on it), not a
+  tidy-up. Worst case today is one staff member seeing another's notification title within the
+  *same* organization — never a cross-tenant leak — but it's the same "forgotten filter fails open,
+  not closed" shape the RLS work exists to rule out, one level down.
+- **The needs-attention queue's per-rule cap (`PER_RULE_CAP = 100` in `src/lib/operations.ts`) has
+  no "showing 100 of N" signal.** If any single rule (e.g. overdue conversations) is ever genuinely
+  over 100 open items, the excess quietly doesn't appear — on the one page whose job is to surface
+  overdue work, with nothing saying anything was left off. Flagged during the Phase 4 cleanup
+  sweep; fixing it well means tracking a true count alongside the capped list and surfacing it in
+  the UI, not just raising the cap.
 - **Returns/refunds scope limits (deliberate):** a return is only possible against units that have
   actually shipped (not the unshipped remainder of a part-shipped order, which goes through "close
   short" instead); no payment-gateway integration (the owner records a refund as paid by hand, like

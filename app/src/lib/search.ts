@@ -54,7 +54,8 @@ export function parseOrderStatus(value: string | undefined): OrderStatus | undef
   return value && (Object.values(OrderStatus) as string[]).includes(value) ? (value as OrderStatus) : undefined;
 }
 
-function parseDay(value: string | undefined, endOfDay: boolean) {
+/** Parses a yyyy-mm-dd query parameter into a UTC start- or end-of-day instant. */
+export function parseDay(value: string | undefined, endOfDay: boolean) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
   const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
   return Number.isNaN(date.getTime()) ? undefined : date;

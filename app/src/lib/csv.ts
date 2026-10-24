@@ -224,6 +224,22 @@ function csvEscape(value: string): string {
   return value;
 }
 
+/**
+ * A spreadsheet that opens a CSV may treat a cell starting with = + - @ as a formula —
+ * and a customer/product name or note is text anyone could have typed. Prefixing such a
+ * cell with a quote makes it inert text, so an export can't run as somebody's formula on
+ * the finance person's laptop.
+ */
+export function csvSafe(value: string | number | null | undefined): string | number {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return value;
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
+export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]) {
+  return Papa.unparse({ fields: headers, data: rows.map((row) => row.map(csvSafe)) });
+}
+
 export function serializeProductsCsv(
   products: {
     sku: string;
@@ -257,7 +273,9 @@ export function serializeProductsCsv(
       p.active ? "true" : "false",
       p.stock.toString(),
     ];
-    lines.push(row.map((v) => csvEscape(String(v))).join(","));
+    // Formula-safe first (a SKU or name is free text someone else typed), then escape
+    // quotes/commas/newlines for the CSV cell itself.
+    lines.push(row.map((v) => csvEscape(String(csvSafe(v)))).join(","));
   }
 
   return lines.join("\n");

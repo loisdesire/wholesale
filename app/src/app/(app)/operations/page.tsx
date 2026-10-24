@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getAttentionItems, getOperationalMetrics, getOutOfStockProducts } from "@/lib/operations";
-import { parseRange } from "@/lib/reports";
+import { dateInput, formatRangeLabel, parseRange } from "@/lib/reports";
 import { listOrganizationMembers } from "@/lib/membership";
 import { formatMoney } from "@/lib/format";
 import { SeverityBadge } from "@/components/status-badge";
@@ -196,13 +196,4 @@ export default async function OperationsPage({
       </section>
     </div>
   );
-}
-
-function dateInput(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-function formatRangeLabel(range: { from: Date; to: Date }) {
-  const fmt = new Intl.DateTimeFormat("en-NG", { dateStyle: "medium" });
-  return `${fmt.format(range.from)} – ${fmt.format(range.to)}`;
 }
