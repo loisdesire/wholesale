@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
-import { formatDateTime, formatMoney } from "@/lib/format";
-import { OrderStatusBadge } from "@/components/status-badge";
 import { buildOrderWhere, parseOrderStatus } from "@/lib/search";
+import { listOrganizationMembers } from "@/lib/membership";
+import { OrdersTable, type OrderRow } from "./orders-table";
 
 const PAGE_SIZE = 50;
 const STATUS_FILTERS = [
@@ -19,11 +19,12 @@ const STATUS_FILTERS = [
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; from?: string; to?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; from?: string; to?: string; page?: string; assignee?: string }>;
 }) {
   const params = await searchParams;
   const session = await auth();
   const organizationId = session!.user.organizationId;
+  const isOwner = session!.user.role === "OWNER";
   const db = tenantDb(organizationId);
 
   const filters = {
@@ -31,29 +32,43 @@ export default async function OrdersPage({
     status: parseOrderStatus(params.status),
     from: params.from || undefined,
     to: params.to || undefined,
+    assignee: params.assignee || undefined,
   };
   const where = buildOrderWhere(organizationId, filters);
   const page = Math.max(1, Number(params.page) || 1);
-  const filtered = Boolean(filters.q || filters.status || filters.from || filters.to);
+  const filtered = Boolean(filters.q || filters.status || filters.from || filters.to || filters.assignee);
 
-  const [orders, totalCount] = await Promise.all([
+  const [orders, totalCount, members] = await Promise.all([
     db.order.findMany({
       where,
-      include: { customer: true, items: true },
+      include: { customer: true, items: true, assignedTo: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
     db.order.count({ where }),
+    listOrganizationMembers(organizationId),
   ]);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const link = (overrides: Record<string, string | undefined>) => {
     const next = new URLSearchParams();
-    const merged = { q: filters.q, status: filters.status, from: filters.from, to: filters.to, ...overrides };
+    const merged = { q: filters.q, status: filters.status, from: filters.from, to: filters.to, assignee: filters.assignee, ...overrides };
     for (const [key, value] of Object.entries(merged)) if (value) next.set(key, value);
     const qs = next.toString();
     return qs ? `/orders?${qs}` : "/orders";
   };
+  const rows: OrderRow[] = orders.map((o) => ({
+    id: o.id,
+    reference: o.reference,
+    customerName: o.customer.name,
+    customerPhone: o.customer.phone,
+    units: o.items.reduce((sum, i) => sum + i.quantity, 0),
+    status: o.status,
+    createdAt: o.createdAt,
+    totalCents: o.totalCents,
+    currency: o.currency,
+    assignedToName: o.assignedTo?.name ?? null,
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -127,6 +142,24 @@ export default async function OrdersPage({
             );
           })}
         </nav>
+        <nav aria-label="Filter by assignee" className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-text-muted">Assigned:</span>
+          {[{ value: undefined, label: "Anyone" }, { value: "none", label: "Unassigned" }, ...members.map((m) => ({ value: m.id, label: m.name }))].map((f) => {
+            const active = filters.assignee === f.value;
+            return (
+              <Link
+                key={f.label}
+                href={link({ assignee: f.value, page: undefined })}
+                aria-current={active ? "true" : undefined}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  active ? "bg-ink text-paper" : "border border-line text-text-muted hover:text-ink"
+                }`}
+              >
+                {f.label}
+              </Link>
+            );
+          })}
+        </nav>
         {filtered && (
           <p className="text-xs text-text-muted">
             {totalCount} {totalCount === 1 ? "order matches" : "orders match"}
@@ -147,45 +180,7 @@ export default async function OrdersPage({
           .
         </p>
       ) : (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-              <th className="py-2 pr-4">Reference</th>
-              <th className="py-2 pr-4">Customer</th>
-              <th className="py-2 pr-4">Items</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Created</th>
-              <th className="py-2 pr-4 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id} className="border-b border-line last:border-0">
-                <td className="py-3 pr-4 font-tabular">
-                  <Link href={`/orders/${o.id}`} className="text-ink hover:underline">
-                    {o.reference}
-                  </Link>
-                </td>
-                <td className="py-3 pr-4">
-                  <p className="text-ink">{o.customer.name ?? "Unnamed"}</p>
-                  <p className="font-tabular text-xs text-text-muted">{o.customer.phone}</p>
-                </td>
-                <td className="py-3 pr-4 text-text-muted">
-                  {o.items.reduce((sum, i) => sum + i.quantity, 0)} units
-                </td>
-                <td className="py-3 pr-4">
-                  <OrderStatusBadge status={o.status} />
-                </td>
-                <td className="py-3 pr-4 text-xs text-text-muted">
-                  {formatDateTime(o.createdAt)}
-                </td>
-                <td className="py-3 pr-4 text-right font-tabular text-ink">
-                  {formatMoney(o.totalCents, o.currency)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <OrdersTable orders={rows} members={members} canBulkAssign={isOwner} />
       )}
 
       {totalPages > 1 && (

@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { href: "/orders", label: "Orders" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/customers", label: "Customers" },
+  { href: "/operations", label: "Operations" },
+  { href: "/reports", label: "Reports" },
   { href: "/search", label: "Search" },
 ];
 
@@ -19,12 +21,14 @@ export function Nav({
   userRole,
   organizations,
   activeOrganizationId,
+  unreadNotifications,
 }: {
   orgName: string;
   userName: string;
   userRole: string;
   organizations: { id: string; name: string; role: string }[];
   activeOrganizationId: string;
+  unreadNotifications: number;
 }) {
   const pathname = usePathname();
 
@@ -56,6 +60,23 @@ export function Nav({
 
       <nav className="flex-1 px-3">
         <ul className="flex flex-col gap-0.5">
+          <li>
+            <Link
+              href="/notifications"
+              className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
+                pathname.startsWith("/notifications")
+                  ? "bg-white/10 font-medium text-white"
+                  : "text-white/65 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              Notifications
+              {unreadNotifications > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-medium text-accent-ink">
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              )}
+            </Link>
+          </li>
           {NAV_ITEMS.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);

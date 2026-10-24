@@ -12,6 +12,7 @@ import { transaction, type DbClient } from "@/lib/db";
 import { recordAudit } from "@/lib/audit";
 import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
 import { lockRow } from "@/lib/locks";
+import { notify, ownerUserIds } from "@/lib/notifications";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -150,6 +151,16 @@ export async function requestReturn(params: {
       },
       tx
     );
+    // The owners decide on returns, so they are the ones to tell.
+    await notify(tx, {
+      organizationId: params.organizationId,
+      userIds: (await ownerUserIds(params.organizationId)).filter((id) => id !== params.actor.id),
+      kind: "RETURN_REQUESTED",
+      title: `Return ${created.reference} needs a decision`,
+      body: reason,
+      href: `/orders/${order.id}`,
+      dedupeKey: `return-requested:${created.id}`,
+    });
     return created;
   });
 }
@@ -224,6 +235,29 @@ export async function decideReturn(params: {
       },
       tx
     );
+    // Tell whoever asked for the return what was decided; if it was approved, tell the
+    // owners there is a refund to pay.
+    if (ret.requestedById && ret.requestedById !== params.actor.id) {
+      await notify(tx, {
+        organizationId: params.organizationId,
+        userIds: [ret.requestedById],
+        kind: "RETURN_DECIDED",
+        title: `Return ${ret.reference} was ${params.approve ? "approved" : "rejected"}`,
+        body: params.note?.trim() || undefined,
+        href: `/orders/${ret.orderId}`,
+        dedupeKey: `return-decided:${ret.id}`,
+      });
+    }
+    if (params.approve) {
+      await notify(tx, {
+        organizationId: params.organizationId,
+        userIds: (await ownerUserIds(params.organizationId)).filter((id) => id !== params.actor.id),
+        kind: "REFUND_DUE",
+        title: `Refund of ₦${(refundCents / 100).toLocaleString("en-NG")} to pay for ${ret.reference}`,
+        href: `/orders/${ret.orderId}`,
+        dedupeKey: `refund-due:${ret.id}`,
+      });
+    }
     return updated;
   });
 }

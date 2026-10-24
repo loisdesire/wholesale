@@ -36,6 +36,7 @@ async function main() {
   await prisma.priceTier.deleteMany();
   await prisma.product.deleteMany();
   await prisma.customer.deleteMany();
+  await prisma.notification.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
@@ -316,7 +317,9 @@ async function main() {
     ],
   });
 
-  // A return waiting on the owner: two of Ngozi's black Ankara sets arrived with a split seam.
+  // A return waiting on the owner: two of Ngozi's black Ankara sets arrived with a split
+  // seam. Left at 30 hours so it reads as overdue on Operations (past the 24h warning
+  // threshold, short of the 72h critical one) rather than just-requested.
   const order1BlackItem = await prisma.orderItem.findFirstOrThrow({
     where: { orderId: order1.id, productId: bySku("ANK-2PC-BLK-M").id },
   });
@@ -330,7 +333,7 @@ async function main() {
       valueCents: 2 * order1BlackItem.unitPriceCents,
       refundCents: 2 * order1BlackItem.unitPriceCents,
       requestedById: staff.id,
-      createdAt: hoursAgo(3),
+      createdAt: hoursAgo(30),
       items: { create: [{ orderItemId: order1BlackItem.id, quantity: 2, condition: "DAMAGED" }] },
     },
   });
@@ -342,7 +345,7 @@ async function main() {
       action: "RETURN_REQUESTED",
       actorId: staff.id,
       after: { return: seededReturn.reference, refundCents: seededReturn.refundCents, reason: seededReturn.reason },
-      createdAt: hoursAgo(3),
+      createdAt: hoursAgo(30),
     },
   });
 
@@ -362,6 +365,40 @@ async function main() {
       name: "Ngozi Eze",
       notes: "Probably Ngozi's UK number — check before merging anything.",
     },
+  });
+
+  // Phase 4 data: assignment, overdue work and notifications, so Operations has
+  // something real to show on first login.
+  await prisma.order.update({ where: { id: order2.id }, data: { assignedToId: staff.id } });
+  await prisma.conversation.update({ where: { id: convo2.id }, data: { assignedToId: staff.id } });
+  await prisma.orderReturn.update({ where: { id: seededReturn.id }, data: { assignedToId: staff.id } });
+  // ORD-1003 confirmed 5 hours ago is fine; back-date it so it reads as overdue (and past its due date).
+  await prisma.order.update({
+    where: { id: order3.id },
+    data: { confirmedAt: hoursAgo(24 * 3), createdAt: hoursAgo(24 * 3 + 0.2), dueAt: hoursAgo(12) },
+  });
+  await prisma.notification.createMany({
+    data: [
+      {
+        organizationId: org.id,
+        userId: owner.id,
+        kind: "RETURN_REQUESTED",
+        title: `Return ${seededReturn.reference} needs a decision`,
+        body: seededReturn.reason,
+        href: `/orders/${order1.id}`,
+        dedupeKey: `return-requested:${seededReturn.id}`,
+        createdAt: hoursAgo(30),
+      },
+      {
+        organizationId: org.id,
+        userId: staff.id,
+        kind: "ASSIGNED",
+        title: "You were assigned order ORD-1002",
+        href: `/orders/${order2.id}`,
+        dedupeKey: `assigned:order:${order2.id}:${staff.id}:seed`,
+        createdAt: hoursAgo(2),
+      },
+    ],
   });
 
   // A second organization, to show tenants are isolated: its own catalogue, customers and

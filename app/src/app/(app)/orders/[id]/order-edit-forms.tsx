@@ -51,12 +51,14 @@ export function OrderDetailsForm({
   orderId,
   notes,
   deliveryAddress,
+  dueAt,
   addressOptions,
   editable,
 }: {
   orderId: string;
   notes: string | null;
   deliveryAddress: string | null;
+  dueAt: Date | null;
   addressOptions: { id: string; label: string | null; text: string }[];
   editable: boolean;
 }) {
@@ -67,7 +69,7 @@ export function OrderDetailsForm({
 
   if (!editable) {
     return (
-      <dl className="grid gap-4 rounded-md border border-line bg-surface p-4 text-sm md:grid-cols-2">
+      <dl className="grid gap-4 rounded-md border border-line bg-surface p-4 text-sm md:grid-cols-3">
         <div>
           <dt className="text-xs text-text-muted">Delivery address</dt>
           <dd className="mt-1 whitespace-pre-wrap text-ink">{deliveryAddress ?? "—"}</dd>
@@ -76,13 +78,17 @@ export function OrderDetailsForm({
           <dt className="text-xs text-text-muted">Notes</dt>
           <dd className="mt-1 whitespace-pre-wrap text-ink">{notes ?? "—"}</dd>
         </div>
+        <div>
+          <dt className="text-xs text-text-muted">Due</dt>
+          <dd className="mt-1 text-ink">{dueAt ? dueAt.toLocaleDateString("en-NG", { dateStyle: "medium" }) : "—"}</dd>
+        </div>
       </dl>
     );
   }
 
   return (
     <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="deliveryAddress" className="text-sm font-medium text-ink">
             Delivery address
@@ -106,6 +112,19 @@ export function OrderDetailsForm({
             Notes
           </label>
           <textarea id="notes" name="notes" rows={3} defaultValue={notes ?? ""} className={inputClass} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="dueAt" className="text-sm font-medium text-ink">
+            Due date
+          </label>
+          <input
+            id="dueAt"
+            name="dueAt"
+            type="date"
+            defaultValue={dueAt ? dueAt.toISOString().slice(0, 10) : ""}
+            className={inputClass}
+          />
+          <p className="text-xs text-text-muted">Shows up on Operations once it&apos;s passed.</p>
         </div>
       </div>
       {state.error && (

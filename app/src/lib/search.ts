@@ -46,6 +46,8 @@ export type OrderFilters = {
   /** Inclusive ISO dates (yyyy-mm-dd). */
   from?: string;
   to?: string;
+  /** A user id, or "none" for unassigned work. */
+  assignee?: string;
 };
 
 export function parseOrderStatus(value: string | undefined): OrderStatus | undefined {
@@ -66,6 +68,7 @@ export function buildOrderWhere(organizationId: string, filters: OrderFilters): 
   return {
     organizationId,
     ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.assignee ? { assignedToId: filters.assignee === "none" ? null : filters.assignee } : {}),
     ...(from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
     ...(text
       ? {

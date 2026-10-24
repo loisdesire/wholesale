@@ -92,6 +92,47 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   deliberately create identical orders must pass `allowDuplicate: true`.
 - **User-typed search text goes through `ci()` / `escapeLike()`** (`src/lib/search.ts`): Prisma's
   `contains` doesn't escape `%`/`_`, so a bare "%" would match everything.
+- **Shipments** (`Shipment`/`ShipmentItem`, `src/lib/orders.ts`'s `shipOrderItems`): an order can
+  ship in pieces; each dispatch moves its own units out of physical+reserved together. An order is
+  `PARTIALLY_FULFILLED` until everything has shipped. Returns are limited to what has *shipped*
+  (`getReturnableQuantities` sums `ShipmentItem`, not `OrderItem.quantity`) — the unshipped
+  remainder of a part-shipped order can't be "returned", it goes through `closeOrderShort`
+  (owner-only: releases the reservation, creates an `UNSHIPPED`-kind refund for its value).
+- **Amending a CONFIRMED (unpaid) order** (`amendConfirmedOrder`): a deliberate exception to "agreed
+  terms lock at confirmation" — requires a reason, re-prices only the lines that actually changed
+  (untouched lines keep their locked price), and re-reserves stock by the net difference,
+  all-or-nothing. Once PAID, the amount is settled — cancel instead.
+- **Partial refunds**: `OrderReturn.valueCents` is the goods' value at locked prices;
+  `refundCents` is what the owner actually approved (may be less, with a required reason). Default
+  (no `refundCents` passed to `decideReturn`) is the full value.
+- **Customer merge** (`src/lib/customer-merge.ts`, owner-only): `previewMerge` → `mergeCustomers` →
+  optionally `undoMerge`. Never deletes — the losing record is marked `mergedIntoId` and hidden from
+  lists/search/duplicate-detection, never overwrites the kept record's existing name/email/notes,
+  and a price conflict is won by the kept record (the loser's price stays on the archived record,
+  not discarded). `resolveSurvivor` follows the merge chain, so a message from a merged-away number
+  (and `createCustomer` on that number) resolves to wherever it currently points — call it, never
+  look a customer up by id/phone and assume the row you get is the live one if it might be archived.
+- **Assignment** (`src/lib/assignment.ts`): orders/returns/conversations can be assigned. An owner
+  may assign anyone; staff may only move work between "unassigned" and "assigned to themselves" —
+  never touch an assignment currently held by somebody else, in either direction
+  (`permissionProblem` checks the *current* assignee, not just the requested new one — a staff
+  member assigning *to themselves* is not automatically allowed if someone else already holds it).
+  Bulk assignment (`bulkAssignOrders`) always previews (`dryRun: true`) before applying; each order
+  succeeds or is refused independently, never partially-applies without saying which.
+- **Notifications** (`src/lib/notifications.ts`): `notify()` is idempotent per `(userId,
+  dedupeKey)` — build the key from the triggering event's id, not a timestamp, so a retried job
+  can't double-notify. Client code that must run an effect exactly once (e.g. `MarkReadOnView`)
+  should key the effect on a value derived from its real dependency, not a `useRef` "have I fired"
+  guard — see the Gotchas section below for why that broke silently.
+- **Operations thresholds live in one place** (`src/lib/ops-config.ts`, `SLA`): the needs-attention
+  queue (`src/lib/operations.ts`), the dashboard and the metrics all read the same numbers, so
+  "overdue" never means something different in two places. A record that trips several rules
+  appears once with every reason, not once per rule.
+- **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
+  unless at least one sold line's product has `costCents` set, and when it is present the report
+  states what share of the period's revenue it actually covers — never silently treats a missing
+  cost as zero. CSV export quote-prefixes any cell starting with `= + - @` (`csvSafe`/`toCsv`) so a
+  customer/product name typed by someone else can't run as a formula when opened in a spreadsheet.
 - **Customer balances are computed, never stored** (`src/lib/balances.ts`): owes-us = CONFIRMED
   unpaid orders; we-owe = approved-unpaid refunds; cash received = paid orders minus refunds paid.
   Revenue/cash/receivables stay separate — never label any of it profit.
@@ -139,6 +180,7 @@ npm run dev           # dev server
 npm run db:migrate    # prisma migrate dev
 npm run db:seed       # reset + reseed realistic fixture data
 npm run db:studio     # prisma studio
+npm run db:check-isolation  # confirm the live DATABASE_URL connection is actually subject to RLS
 npm run test          # vitest — runs against a throwaway Postgres database (TEST_DATABASE_URL), never dev data
 ```
 
@@ -158,10 +200,13 @@ signed payloads / mocked responses in `tests/`, not against the real services. S
 
 ## What's deferred (do not build yet)
 
-See VISION.md Part 2 "Explicitly deferred": multi-tenant isolation enforcement, billing,
-platform super-admin, automated payment verification, the automation/notification engine,
-non-WhatsApp channels, a formal AI eval harness, advanced reporting, bulk operations,
-customer-merge logic.
+See VISION.md Part 2 "Explicitly deferred". Built since that list was written: multi-tenant
+isolation enforcement, customer-merge logic, bulk operations (order bulk-assign, previewed), basic
+reporting, and in-app notifications — see `docs/PROGRESS.md` for what shipped and what's still
+intentionally narrower than VISION.md's full Phase 4/Part 1 ambition. Still deferred: billing,
+platform super-admin, automated payment verification, a push/email/SMS notification *channel*
+(today's notifications are in-app only), non-WhatsApp channels, a formal AI eval harness,
+saved/scheduled reports, live delivery-tracking integration.
 
 ## First-time setup (new machine or cloud session)
 
@@ -185,9 +230,10 @@ npm run dev
   to `/` before any credentials can be submitted.
 - **Tests share one Postgres test database** (`TEST_DATABASE_URL`; the name must end in `_test` —
   setup refuses anything else — and it is wiped and re-migrated each run; `fileParallelism: false`).
-  Code that depends
-  on "the one organization" (the WhatsApp webhook resolves its org via `organization.findFirst()`)
-  needs its test to wipe all data in `beforeAll` first — see `tests/end-to-end-flow.test.ts`.
+  A test that creates an `Organization` with no `whatsappPhoneNumberId` and relies on being "the
+  only one" for webhook routing (`resolveOrganizationForWhatsApp`'s single-tenant fallback) needs
+  its own data wiped in `beforeAll` first, or another test file's leftover orgs break the
+  fallback — see `tests/end-to-end-flow.test.ts`.
 - **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
   `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten twice now — it only fails when the
   full suite runs, because other test files leave rows behind.) Missing this once caused an FK failure
@@ -213,3 +259,25 @@ npm run dev
   immediately; use `(?!new)`.
 - **`prisma migrate reset` is blocked for agents** (needs the user's consent), and the test harness
   doesn't use it — it drops and recreates the `_test` schema itself.
+- **A permission check on a mutable "ownership" field must look at the *current* value, not just
+  the requested new one.** `assignWork`'s first draft let staff reassign work to themselves even
+  when someone else currently held it (`toSelf` was checked alone) — a real privilege-escalation
+  bug, caught by a test (`tests/operations.test.ts`) before it shipped, not found by inspection.
+  When reviewing an authorization check, ask "what if the *current* state, not just the requested
+  one, belongs to someone else?"
+- **A `useEffect` "run exactly once" guard built from a `useRef` set synchronously inside the
+  effect is broken under React's dev-mode double-invoke** (mount → cleanup → remount, same
+  component instance, same ref). The ref survives the cycle already `true`, so the second
+  (surviving) effect bails out before scheduling anything, and the first (real) effect's work was
+  already undone by the cleanup — the effect silently never runs. Happened to `MarkReadOnView`
+  (visiting `/notifications` never actually marked anything read); fixed by keying the effect on a
+  value derived from its real dependency instead of a fire-once ref. This class of bug doesn't show
+  up in Vitest (no effect timing) or in a plain `tsc`/`lint` pass — only live in a browser.
+  Screenshots also caught a real UI bug this way: a conversation's attention-queue row showed the
+  customer's name twice (two fields were both set to it) — eyeball what a page actually renders,
+  not just that it renders without an error.
+- **Local Postgres in this sandbox doesn't survive a session/worker restart.** If `pg_isready -h
+  localhost -p 5433` doesn't respond, restart it with `su pgrun -c "/usr/lib/postgresql/16/bin/
+  pg_ctl -D /var/pgdata -o '-p 5433 -k /tmp' -l /var/pgdata/log start"` before anything else
+  (migrations, tests, `npm run dev`) will work. Check this first if commands that touched the
+  database start failing right after a restart.

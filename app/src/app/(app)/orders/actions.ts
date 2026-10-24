@@ -272,6 +272,13 @@ export async function updateItemQuantityAction(
   return { error: null };
 }
 
+function parseDueDate(value: string): Date | null | undefined {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(`${value}T23:59:59.999Z`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 export async function updateOrderDetailsAction(
   orderId: string,
   _prevState: FormState,
@@ -285,6 +292,8 @@ export async function updateOrderDetailsAction(
       actorId: session.user.id,
       notes: String(formData.get("notes") ?? ""),
       deliveryAddress: String(formData.get("deliveryAddress") ?? ""),
+      // A blank date field clears the deadline; yyyy-mm-dd is the end of that day, UTC.
+      dueAt: parseDueDate(String(formData.get("dueAt") ?? "")),
     });
   } catch (err) {
     return { error: friendlyError(err) };

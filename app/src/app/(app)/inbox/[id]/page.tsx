@@ -6,6 +6,8 @@ import { formatDateTime } from "@/lib/format";
 import { ConversationStatusBadge, OrderStatusBadge } from "@/components/status-badge";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isAIConfigured } from "@/lib/ai/engine";
+import { listOrganizationMembers } from "@/lib/membership";
+import { AssigneeControl } from "@/components/assignee-control";
 import { markResolvedAction } from "../actions";
 import { ReplyForm } from "./reply-form";
 import { AIAssistButton } from "./ai-assist-button";
@@ -35,6 +37,8 @@ export default async function ConversationDetailPage({ params }: { params: Promi
 
   const whatsappReady = isWhatsAppConfigured();
   const aiReady = isAIConfigured();
+  const members = await listOrganizationMembers(organizationId);
+  const isOwner = session!.user.role === "OWNER";
 
   return (
     <div className="flex flex-col gap-8">
@@ -50,6 +54,17 @@ export default async function ConversationDetailPage({ params }: { params: Promi
             <p className="mt-1 font-tabular text-sm text-text-muted">{conversation.customer.phone}</p>
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              Assigned to
+              <AssigneeControl
+                kind="conversation"
+                id={conversation.id}
+                currentAssigneeId={conversation.assignedToId}
+                members={members}
+                isOwner={isOwner}
+                currentUserId={session!.user.id}
+              />
+            </div>
             <ConversationStatusBadge status={conversation.status} />
             {conversation.status !== "RESOLVED" && (
               <form action={markResolvedAction.bind(null, conversation.id)}>

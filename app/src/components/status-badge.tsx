@@ -36,6 +36,17 @@ const REFUND_STATUS: Record<string, { label: string; tone: Tone }> = {
   REFUNDED: { label: "Refunded", tone: "success" },
 };
 
+const SEVERITY: Record<string, { label: string; tone: Tone }> = {
+  critical: { label: "Critical", tone: "attention" },
+  warning: { label: "Warning", tone: "progress" },
+  info: { label: "Info", tone: "neutral" },
+};
+
+export function SeverityBadge({ severity }: { severity: string }) {
+  const entry = SEVERITY[severity] ?? { label: severity, tone: "neutral" as Tone };
+  return <Badge {...entry} />;
+}
+
 function Badge({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span

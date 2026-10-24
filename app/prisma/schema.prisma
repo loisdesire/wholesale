@@ -129,6 +129,26 @@ model Organization {
 
 // A user belongs to one or more organizations, with a role in each. The session
 // carries the active one; it is re-checked against this table on every request.
+// An in-app notice for one user. `dedupeKey` makes creation idempotent: a retried
+// job (or a double-fired event) asks for the same notice again and gets no duplicate.
+model Notification {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  kind           String
+  title          String
+  body           String?
+  href           String?
+  dedupeKey      String
+  createdAt      DateTime  @default(now())
+  readAt         DateTime?
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt])
+  @@index([organizationId])
+}
+
 model Membership {
   id             String       @id @default(cuid())
   userId         String
@@ -156,6 +176,9 @@ model User {
   decidedReturns        OrderReturn[]   @relation("ReturnDecidedBy")
   auditLogs             AuditLog[]
   memberships           Membership[]
+  assignedOrders        Order[]         @relation("OrderAssignee")
+  assignedReturns       OrderReturn[]   @relation("ReturnAssignee")
+  notifications         Notification[]
 }
 
 model Product {
@@ -366,6 +389,10 @@ model Order {
   currency        String        @default("NGN")
   notes           String?
   deliveryAddress String?
+  // Who is responsible for moving this order along, and when it is due (delivery deadline).
+  assignedToId    String?
+  assignedTo      User?         @relation("OrderAssignee", fields: [assignedToId], references: [id])
+  dueAt           DateTime?
   createdById     String?
   createdBy       User?         @relation(fields: [createdById], references: [id])
   confirmedAt     DateTime?
@@ -381,6 +408,7 @@ model Order {
 
   @@unique([organizationId, reference])
   @@index([organizationId, status])
+  @@index([organizationId, assignedToId])
 }
 
 // unitPriceCents is locked at order-confirmation time — a later catalogue price
@@ -461,6 +489,8 @@ model OrderReturn {
   requestedBy    User?        @relation("ReturnRequestedBy", fields: [requestedById], references: [id])
   decidedById    String?
   decidedBy      User?        @relation("ReturnDecidedBy", fields: [decidedById], references: [id])
+  assignedToId   String?
+  assignedTo     User?        @relation("ReturnAssignee", fields: [assignedToId], references: [id])
   decisionNote   String?
   decidedAt      DateTime?
   receivedAt     DateTime?

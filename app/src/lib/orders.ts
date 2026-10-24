@@ -276,15 +276,21 @@ export async function updateOrderDetails(params: {
   actorId: string;
   notes: string | null;
   deliveryAddress: string | null;
+  /** The delivery deadline. Omit to leave it as it is; null clears it. */
+  dueAt?: Date | null;
 }) {
   return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
     if (order.status === OrderStatus.FULFILLED || order.status === OrderStatus.CANCELLED) {
       throw new OrderStateError("A fulfilled or cancelled order can no longer be changed.");
     }
+    if (params.dueAt instanceof Date && Number.isNaN(params.dueAt.getTime())) {
+      throw new OrderStateError("That due date isn't a valid date.");
+    }
     const next = {
       notes: params.notes?.trim() || null,
       deliveryAddress: params.deliveryAddress?.trim() || null,
+      ...(params.dueAt !== undefined ? { dueAt: params.dueAt } : {}),
     };
     await tx.order.update({ where: { id: order.id }, data: next });
     await recordAudit(
@@ -294,7 +300,7 @@ export async function updateOrderDetails(params: {
         entityId: order.id,
         action: "ORDER_DETAILS_UPDATED",
         actorId: params.actorId,
-        before: { notes: order.notes, deliveryAddress: order.deliveryAddress },
+        before: { notes: order.notes, deliveryAddress: order.deliveryAddress, dueAt: order.dueAt },
         after: next,
       },
       tx

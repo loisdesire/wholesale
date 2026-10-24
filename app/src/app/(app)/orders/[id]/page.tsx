@@ -8,6 +8,8 @@ import { OrderStepper } from "@/components/order-stepper";
 import { RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
 import { getReturnableQuantities } from "@/lib/returns";
 import { findDuplicateOrders } from "@/lib/orders";
+import { listOrganizationMembers } from "@/lib/membership";
+import { AssigneeControl } from "@/components/assignee-control";
 import { removeOrderItemAction } from "../actions";
 import { OrderActions } from "./order-actions";
 import { OrderDetailsForm, QuantityForm } from "./order-edit-forms";
@@ -98,7 +100,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   );
   const canShip = order.status === "PAID" || order.status === "PARTIALLY_FULFILLED";
 
-  const [auditLog, activeProducts, stockMap] = await Promise.all([
+  const [auditLog, activeProducts, stockMap, members] = await Promise.all([
     db.auditLog.findMany({
       where: { organizationId, entity: "Order", entityId: order.id },
       include: { actor: true },
@@ -108,6 +110,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       ? db.product.findMany({ where: { organizationId, active: true }, orderBy: { name: "asc" } })
       : Promise.resolve([]),
     order.status === "DRAFT" ? getStockByProduct(organizationId, db) : Promise.resolve(new Map()),
+    listOrganizationMembers(organizationId),
   ]);
 
   const productOptions = activeProducts.map((p) => {
@@ -150,8 +153,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             {formatMoney(order.totalCents, order.currency)}
           </p>
         </div>
-        <div className="mt-4">
+        <div className="mt-4 flex items-center justify-between">
           <OrderStepper status={order.status} />
+          <div className="flex items-center gap-2 text-sm text-text-muted">
+            Assigned to
+            <AssigneeControl
+              kind="order"
+              id={order.id}
+              currentAssigneeId={order.assignedToId}
+              members={members}
+              isOwner={isOwner}
+              currentUserId={session!.user.id}
+            />
+          </div>
         </div>
       </header>
 
@@ -296,6 +310,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           orderId={order.id}
           notes={order.notes}
           deliveryAddress={order.deliveryAddress}
+          dueAt={order.dueAt}
           addressOptions={order.customer.addresses}
           editable={order.status !== "FULFILLED" && order.status !== "CANCELLED"}
         />
@@ -368,13 +383,26 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 </p>
               )}
 
-              <ReturnActions
-                returnId={ret.id}
-                status={ret.status}
-                refundStatus={ret.refundStatus}
-                isOwner={isOwner}
-                valueNaira={ret.valueCents / 100}
-              />
+              <div className="flex items-center justify-between gap-4">
+                <ReturnActions
+                  returnId={ret.id}
+                  status={ret.status}
+                  refundStatus={ret.refundStatus}
+                  isOwner={isOwner}
+                  valueNaira={ret.valueCents / 100}
+                />
+                <div className="flex items-center gap-2 text-xs text-text-muted">
+                  Assigned to
+                  <AssigneeControl
+                    kind="return"
+                    id={ret.id}
+                    currentAssigneeId={ret.assignedToId}
+                    members={members}
+                    isOwner={isOwner}
+                    currentUserId={session!.user.id}
+                  />
+                </div>
+              </div>
             </div>
           ))}
 

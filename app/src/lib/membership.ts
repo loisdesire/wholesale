@@ -16,3 +16,13 @@ export async function resolveActiveMembership(userId: string, wantedOrganization
     (await prisma.membership.findFirst({ where: { userId }, orderBy: { createdAt: "asc" } }))
   );
 }
+
+/** Everyone who belongs to this organization — for assignment pickers etc. Identity data, root client. */
+export async function listOrganizationMembers(organizationId: string) {
+  const memberships = await prisma.membership.findMany({
+    where: { organizationId },
+    include: { user: true },
+    orderBy: { user: { name: "asc" } },
+  });
+  return memberships.map((m) => ({ id: m.userId, name: m.user.name, role: m.role }));
+}

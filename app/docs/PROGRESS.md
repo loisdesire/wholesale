@@ -410,6 +410,158 @@ buildable without real payments or multi-tenancy.
   and no agreed-price form, global search by phone.
 - `npm run lint`, `npm run build`, `npm run test` all pass clean.
 
+## Done (2026-10-24 — partial fulfilment, partial refunds, confirmed-order amendments)
+
+The three biggest items left on the "Phase 3 not done" list above, closed in one pass.
+
+- **Shipments**: `Shipment`/`ShipmentItem` — an order can ship in one or several pieces, each a
+  real record (carrier, tracking reference, which lines, how many). Each dispatch moves its units
+  out of physical and reserved stock together; the order is `PARTIALLY_FULFILLED` until every unit
+  has shipped, then `FULFILLED`. Migration backfills one shipment per already-fulfilled order
+  (tested on a legacy-shaped scratch DB).
+- **Closing an order short** (owner-only): when the rest of a part-shipped order won't ship, the
+  unshipped reservation is released and its value becomes a refund owed (`UNSHIPPED`-kind
+  `OrderReturn`, same pay-out step as any other refund — no "goods received" step exists for it to
+  wrongly restock). Returns are limited to what actually *shipped*, never the unshipped remainder.
+- **Partial refunds**: the owner may approve less than the goods' value (a reason is required);
+  `OrderReturn.valueCents` keeps the goods' value, `refundCents` is what was actually approved.
+- **Amending a confirmed (unpaid) order**: change quantities, remove or add lines, with a required
+  reason. Only the lines that actually changed are re-priced (today's tiers/agreed prices); stock is
+  re-reserved by the exact difference, all-or-nothing — an amendment that can't be covered by
+  available stock changes nothing, not even the parts that could succeed.
+- **Found and fixed:** `loadOrderForUpdate`'s row lock existed but a second one didn't cover the
+  new ship/amend paths the same way the old confirm/cancel paths did — caught by a mutation test
+  (double-confirm and double-pay tests fail with the lock removed) and extended consistently.
+- **Forms bug, fixed everywhere:** React 19 clears every uncontrolled `<form action>` input after a
+  submit, even a refused one — a staff member who typed a partial-refund amount and got "say why
+  it's less" would find the amount gone, and a retry would silently submit a blank (a *full*
+  refund). New `useSubmitAction` hook (`src/lib/use-submit-action.ts`) keeps what was typed on
+  error and clears only on confirmed success; every input-taking form in the app uses it now.
+- **Tests:** 30 new (177 total). **Verified live in a browser**, including the retained-input case
+  (typed a reduced refund, got refused, confirmed the amount was still in the box, then completed it).
+
+## Done (2026-10-24, continued — customer merge tool)
+
+- `previewMerge` reports exactly what a merge would move (orders, conversations, returns,
+  addresses, agreed prices, which fields would be filled in) and warnings to read first (different
+  phone lines, different names) — **changes nothing**.
+- `mergeCustomers` (owner-only) moves everything to the kept record, never overwrites its existing
+  name/email/notes, lets its price win a conflict (the losing price stays on the archived record,
+  not discarded), and archives the source — hidden from lists/search, never deleted. A message from
+  the archived number now files under the survivor (following merge chains); creating a customer
+  with that number is refused and points at the survivor.
+- `undoMerge` reverses it exactly: only what is still with the survivor moves back (something
+  created for them *after* the merge stays with them), and a field is restored only if nobody
+  edited it since the merge.
+- Row locks on both customers (sorted, to avoid deadlocks) make racing merges safe — tested: the
+  same source merged into two targets at once, A-into-B racing B-into-A.
+- UI: a preview/confirm page (with a direction swap), merge history with Undo, a banner on an
+  archived record linking to where it went.
+- **Tests:** 22 new (199 total). **Verified live in a browser** as owner and as staff (no merge
+  controls offered to staff, not even by typing the URL directly).
+
+## Done (2026-10-24, continued — tenant isolation: memberships + Postgres row-level security)
+
+Isolation is now enforced **by the database**, not only by a `where organizationId` clause an
+engineer has to remember every time.
+
+- **Row-level security** (enabled and forced) on every tenant table, including child tables
+  (visible only through their parent). A query run with no organization context sees **no rows at
+  all** — fails closed, not open.
+- **`src/lib/db.ts`**: `tenantDb(organizationId)` / `transaction(organizationId, fn)` set
+  `app.organization_id` on the connection before every query; this is now the *only* way
+  application code reaches tenant data. The bare `prisma` export is for the identity/tenant
+  registry only (`User`, `Membership`, `Organization`) — through it a tenant table looks empty.
+  A source-scan test (`tests/isolation.test.ts`) fails if `prisma.<tenant model>` appears anywhere
+  in `src/`.
+- **The app connects as a restricted role** (`wholesale_app` — no superuser, no `BYPASSRLS`, either
+  of which silently skips RLS); migrations and the seed use the database owner (`DIRECT_URL`).
+  `npm run db:check-isolation` reports whether the live connection is actually subject to RLS; the
+  server refuses to start in production if it isn't (`src/instrumentation.ts`). The whole test
+  suite runs its application-layer queries as the restricted role too, so every domain test also
+  exercises RLS, not just the dedicated isolation suite.
+- **Membership model**: a user can belong to several organizations, with a role per organization;
+  the active organization and role are re-read from the database on every request (not trusted from
+  the session token), so a removal or role change takes effect on the user's very next request. An
+  organization switcher appears in the nav when someone belongs to more than one. Seed data: Lois
+  is Owner of Adaeze and Staff of a second organization (Lagos Spice Traders, owned by Ife), so
+  switching and cross-tenant isolation are both real to click through, not just asserted in tests.
+- **WhatsApp webhooks route by the registered number** (`Organization.whatsappPhoneNumberId`
+  against Meta's `metadata.phone_number_id`), never "the first organization" — a message that can't
+  be attributed to exactly one organization is acknowledged (so Meta doesn't retry forever) but
+  **not stored**, rather than guessed into the wrong tenant's inbox.
+- **Closed an unauthenticated stock lookup** (`getCurrentStock`) found while doing this pass — it
+  took a bare product id with no session or organization check.
+- **Tests:** the isolation suite talks to Postgres as the restricted role directly and proves
+  cross-tenant reads/writes/moves/child-attachments are refused, that every tenant table has
+  enforced RLS (so a forgotten new table fails the suite, not silently ships unprotected), and that
+  removing a membership or changing a role takes effect immediately (225 total). **Verified live in
+  a browser**: switching organizations changes the whole workspace and the role held there; an
+  order's URL from one organization 404s when opened from another; a CSV export contains only the
+  exporting organization's rows; revoking a membership mid-session removes the switcher and, with no
+  membership left anywhere, ends the session on the next request.
+- See `docs/ISOLATION.md` for the full design and "how to add a table" checklist.
+
+## Done (2026-10-24, continued further — Phase 4: operations control room)
+
+VISION.md Phase 4: "actionable dashboard, queues, assignment, fulfillment workflows, exceptions,
+notifications, reporting."
+
+- **Needs-attention queue** (`src/lib/operations.ts`, `/operations`): every stale draft, overdue
+  payment, unshipped paid order, stalled part-shipment, past-due order, waiting customer
+  conversation, undecided return, unreceived approved return and unpaid refund — each a plain rule
+  in `src/lib/ops-config.ts` (one place thresholds live, so the dashboard, Operations and the
+  metrics all agree on what "overdue" means), each severity-tiered (critical/warning/info), each a
+  link to the real record behind it. A record on several rules at once appears **once**, with every
+  reason. Nothing here is invented — it's a direct read of order/return/conversation state.
+- **Assignment** (`src/lib/assignment.ts`): orders, returns and conversations can be assigned to a
+  person. Owners may assign anyone; staff may only take unassigned work for themselves or put back
+  their own — never touch another person's assignment. **Caught by a test before shipping**: the
+  first version let staff "steal" a colleague's assigned order by assigning it to themselves (the
+  permission check only looked at the new assignee, not who currently held it).
+- **Bulk assignment** (owner-only, orders list): select up to 100 orders, **preview** the exact
+  per-order outcome (assigned / no change needed / refused, with why) before anything changes, then
+  apply — each order succeeds or is refused on its own, so one that can't be assigned (already
+  fulfilled, say) doesn't block the rest, and the preview never half-applies.
+- **In-app notifications** (`src/lib/notifications.ts`, `/notifications`, unread badge in the nav):
+  idempotent per (user, event) so a retried job can't double-notify. A return request notifies the
+  owners; a decision notifies whoever requested it; an approval notifies the owners there's a
+  refund to pay; an assignment notifies the assignee. Visiting the page marks that batch read after
+  a short pause (so a bounce-off doesn't silently clear a notice nobody actually read) or all at
+  once with one click.
+- **Operational metrics** (`/operations`, date-ranged): time to ship after payment, time to payment
+  after confirmation, first response time, cancellation rate, return rate, refunds as a share of
+  cash paid, AI conversations needing a person — each computed straight from timestamps on the real
+  records, each stating exactly what it counted, each linking to those records, and reading "—"
+  rather than a fabricated zero when there is nothing to measure yet (no orders fulfilled in the
+  period, say).
+- **Reports** (`/reports` + `/api/reports` CSV export): sales summary with order value, cash
+  received, refunds paid, net cash, receivables and refunds owed to-date kept strictly apart —
+  **margin only appears where a product cost is on record**, and says what share of the period's
+  revenue it actually covers, rather than silently treating missing cost data as zero cost; product
+  demand; stock movement by reason; outstanding balances. CSV cells that start with `= + - @` are
+  quote-prefixed so a customer or product name typed by someone else can't run as a formula when
+  the export is opened in a spreadsheet.
+- **Workload table**: open orders/returns/conversations per team member, from the same assignment
+  data — not a separate thing to keep in sync.
+- **Found and fixed along the way:**
+  - The staff-assignment permission bug above (caught by `tests/operations.test.ts`, not in the wild).
+  - `MarkReadOnView`'s "only fire once" ref guard was incompatible with React's dev-mode
+    mount→cleanup→remount double-invoke: the guard, set synchronously, survived the cycle and
+    silently stopped the real (surviving) timer from ever being scheduled, so visiting
+    `/notifications` never actually marked anything read. Caught live in the browser, not by a unit
+    test (effect timing doesn't run under Vitest) — fixed by keying the effect on the notice-id list
+    itself instead of a fire-once ref.
+  - A conversation's attention-queue row showed the customer's name twice (`reference` and
+    `customer` were both set to it) — caught by eyeballing a screenshot, not a check; `customer` is
+    now `null` for conversation rows since the reference already is the name.
+- **Tests:** 28 new (253 total), covering permissions (including the staff-steal case), idempotent
+  notifications, every attention rule and its severity tier, bulk preview/apply, and the sales
+  report's cost-coverage honesty. **Verified live in a browser** (28 checks) as owner, as staff
+  (read access to Operations, no bulk controls, a self-only assignment dropdown) and across
+  organizations (Ife's Operations/Reports/CSV exports contain none of Adaeze's data).
+- `npm run lint`, `npm run build`, `npm run test` all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -418,28 +570,28 @@ buildable without real payments or multi-tenancy.
   lock; fine at this volume, revisit if that ever becomes a hotspot.
 - **No real WhatsApp or Anthropic credentials in this environment.** Webhook ingestion, reply
   sending, and AI product-matching are all built and tested against synthetic-but-realistic signed
-  payloads and a mocked model client (see the step 4/5/6 "Done" sections) — correct by construction
-  and by test, but not yet run against Meta's or Anthropic's actual infrastructure. Nothing in the
-  app pretends otherwise: every screen shows a clear "not configured" state instead of failing
-  silently or faking success.
-- Vitest is configured (`npm run test`, 87 tests / 12 files). VISION.md's remaining testing-discipline
-  scenarios not yet covered (a duplicate payment webhook — no payment gateway exists yet to have
-  webhooks from, per "explicitly deferred"; a cross-tenant access attempt, which needs Phase 3's
-  real tenant isolation to be meaningful) apply once their underlying features exist.
-- **Returns/refunds scope limits (deliberate):** one refund per return, always the full value of the
-  returned lines at their locked prices — no partial refunds, restocking fees or credit notes; no
-  payment-gateway integration (the owner records that a refund was paid, by hand, like marking an
-  order paid); a return is only possible after fulfilment (cancelling a paid-but-unfulfilled order is
-  still out of scope). The balance is "orders vs refunds" only — there are no partial/instalment
-  payments yet, so "owes us" means a whole confirmed order awaiting payment.
-- **Phase 3 not done / deliberately left:** partial fulfilment (an order shipping in pieces) and
-  partial refunds / credit notes; customer *merging* (duplicates are only surfaced); multi-tenant
-  isolation enforcement (every query is org-scoped and tested for cross-org access, but there is no
-  DB-level isolation or membership model); delivery-address validation (free text on purpose);
-  order amendments after confirmation other than cancelling (a confirmed order can't have lines
-  edited — cancel and redraft); a global search box in the header (it's a nav page).
-- **`DAMAGE` meaning changed.** Pre-existing `DAMAGE` rows (which meant "written off") were converted
-  to `MANUAL_ADJUSTMENT` with an explanatory note by the migration so history keeps its meaning.
+  payloads and a mocked model client — correct by construction and by test, but not yet run against
+  Meta's or Anthropic's actual infrastructure. Nothing in the app pretends otherwise: every screen
+  shows a clear "not configured" state instead of failing silently or faking success.
+- Vitest is configured (`npm run test`, 253 tests / 19 files). VISION.md's remaining
+  testing-discipline scenario not yet covered — a duplicate payment webhook — has no payment
+  gateway to have webhooks from yet (explicitly deferred); applies once that exists.
+- **Returns/refunds scope limits (deliberate):** a return is only possible against units that have
+  actually shipped (not the unshipped remainder of a part-shipped order, which goes through "close
+  short" instead); no payment-gateway integration (the owner records a refund as paid by hand, like
+  marking an order paid). The balance model is still "orders vs refunds" — there is no
+  partial/instalment payment on an order itself, so "owes us" means a whole confirmed order awaiting
+  payment.
+- **Phase 4 not done / deliberately left:** scheduled/automated notification delivery (email, SMS,
+  push) — today's notifications are in-app only, read on request, which is what VISION.md's Phase 1
+  non-negotiables actually call for; a push channel is a real feature, not a one-line add. SLA
+  thresholds (`src/lib/ops-config.ts`) are global, not yet per-organization-configurable. No
+  saved/shared report views — date range only. Delivery tracking integrations (VISION Phase 6) are
+  still out of scope; shipments record a carrier and tracking *reference* as free text, not a live
+  tracking status.
+- **`DAMAGE` meaning changed** (Phase 2). Pre-existing `DAMAGE` rows (which meant "written off")
+  were converted to `MANUAL_ADJUSTMENT` with an explanatory note by the migration so history keeps
+  its meaning.
 
 ## Suggested next steps (not started)
 
@@ -447,12 +599,13 @@ These are natural follow-ons, flagged here rather than started unprompted:
 
 - Get real WhatsApp Business + Anthropic credentials into `.env` and do a live smoke test of
   webhook ingestion, reply sending, and AI product-matching against actual traffic. (Customer
-  matching on the normalized phone matters most here — it's the first thing real traffic exercises.)
+  matching on the normalized phone, and webhook routing by registered number, matter most here —
+  they're the first things real multi-tenant traffic exercises.)
 - Decide on and set up deployment (hosting, managed Postgres, env vars, running `prisma migrate
-  deploy` in CI/CD).
-- Phase 3 remainder: partial fulfilment + partial refunds, a safe customer-merge tool (explicit,
-  previewed, reversible), real multi-tenant membership/isolation.
-- Phase 4 (operations control room): operational metrics — return/refund rate, overdue orders,
-  response times — now that there are real records to compute them from; assignment and queues.
+  deploy` in CI/CD, and setting `wholesale_app`'s real password there — `docs/ISOLATION.md`).
+- Phase 4 remainder: a push notification channel (email/SMS) layered on the existing in-app
+  notifications; per-organization SLA configuration.
 - Phase 6 (payments & delivery): automated payment verification would let "mark paid" and "refund
-  paid" rest on evidence instead of a manual click.
+  paid" rest on evidence instead of a manual click; live delivery-tracking integration.
+- Phase 7 (commercial launch): billing/subscriptions, platform super-admin, monitoring/backups,
+  security review, pilot onboarding — once there's a real pilot business ready to run on this.

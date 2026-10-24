@@ -62,13 +62,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <header>
-        <h1 className="text-xl font-medium text-ink">
-          Good to see you, {session!.user.name?.split(" ")[0]}
-        </h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Here&apos;s what&apos;s moving through Adaeze Wholesale today.
-        </p>
+      <header className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-medium text-ink">
+            Good to see you, {session!.user.name?.split(" ")[0]}
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">Here&apos;s what&apos;s moving through the business today.</p>
+        </div>
+        <Link
+          href="/operations"
+          className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
+        >
+          Operations &amp; metrics →
+        </Link>
       </header>
 
       <section>
