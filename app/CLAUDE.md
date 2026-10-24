@@ -180,6 +180,18 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   catalogue-depth build (see `docs/PROGRESS.md`'s Phase 2 section for what broke and why). Don't
   reintroduce an unbounded `product.findMany({ where: { organizationId, active: true } })` with no
   `take` in a search path.
+- **The AI eval harness is not the engine's own tests.** `tests/ai-engine.test.ts` scripts the
+  model's responses to test the *engine's* orchestration (tool loop, draft-order wiring, error
+  handling) — it needs no real judgment from the model at all. `src/lib/ai/eval.ts` (cases in
+  `eval-cases.ts`, run live via `npm run ai:eval`, gated on a real `ANTHROPIC_API_KEY`) grades the
+  model's *actual* judgment against defined acceptance criteria: does it match the right
+  product/variant/quantity, ask instead of guessing when genuinely ambiguous, never fabricate a
+  discount/confirmation/claim, incorporate a customer's correction. It has no dedicated
+  "escalated" state to check (the engine always sets `AI_HANDLING` whether it drafted an order or
+  asked a question) — "escalated," for grading purposes, is operationalized as "did not create a
+  confident draft order." Price accuracy is always 100% by construction, not something the model
+  can get wrong: `createDraftOrder` resolves price server-side regardless of what the model
+  states — still reported, since VISION.md names it as a metric to track.
 
 ## Design system
 
@@ -206,6 +218,8 @@ npm run db:seed       # reset + reseed realistic fixture data
 npm run db:studio     # prisma studio
 npm run db:check-isolation  # confirm the live DATABASE_URL connection is actually subject to RLS
 npm run test          # vitest — runs against a throwaway Postgres database (TEST_DATABASE_URL), never dev data
+npm run ai:eval        # AI eval harness against the REAL model — needs ANTHROPIC_API_KEY; writes
+                       # throwaway organizations to DATABASE_URL (reseed afterward in dev)
 ```
 
 Dev login (from seed): owner `flomglobal@gmail.com` / `owner-dev-pass` (also STAFF in the second
@@ -229,17 +243,17 @@ exactly what's been verified vs. what needs real credentials to confirm.
 See VISION.md Part 2 "Explicitly deferred". Built since that list was written: multi-tenant
 isolation enforcement, customer-merge logic, bulk operations (order bulk-assign, previewed), basic
 reporting, in-app notifications, an email notification channel layered on top of them,
-per-organization SLA configuration, and WhatsApp delivery-status tracking (sent/delivered/read/
-failed on outbound messages — VISION.md's Phase 5 "ingestion/delivery tracking") — see
-`docs/PROGRESS.md` for what shipped and what's still intentionally narrower than VISION.md's full
-Phase 4/5/Part 1 ambition. Still deferred: billing, platform super-admin, automated payment
-verification, an SMS channel (email is the only push channel so far), non-WhatsApp messaging
-channels, a formal AI eval harness, saved/scheduled reports, live *courier/physical* delivery-
-tracking integration (not to be confused with the WhatsApp message delivery-status tracking above
-— that's Phase 6 territory, a different "delivery" entirely), the full configurable-automation
-engine VISION.md describes (triggers/conditions/actions/execution logs/retry) — what shipped is
-narrower: one fixed trigger (a new/changed notification-worthy event) with one fixed action
-(notify), not a
+per-organization SLA configuration, WhatsApp delivery-status tracking (sent/delivered/read/
+failed on outbound messages — VISION.md's Phase 5 "ingestion/delivery tracking"), and a formal AI
+eval harness (`src/lib/ai/eval.ts`, `npm run ai:eval`) — see `docs/PROGRESS.md` for what shipped
+and what's still intentionally narrower than VISION.md's full Phase 4/5/Part 1 ambition. Still
+deferred: billing, platform super-admin, automated payment verification, an SMS channel (email is
+the only push channel so far), non-WhatsApp messaging channels, saved/scheduled reports, live
+*courier/physical* delivery-tracking integration (not to be confused with the WhatsApp message
+delivery-status tracking above — that's Phase 6 territory, a different "delivery" entirely), the
+full configurable-automation engine VISION.md describes (triggers/conditions/actions/execution
+logs/retry) — what shipped is narrower: one fixed trigger (a new/changed notification-worthy
+event) with one fixed action (notify), not a
 general rule builder.
 
 ## First-time setup (new machine or cloud session)

@@ -731,6 +731,61 @@ outbound message's actual delivery state is now real, not assumed.
 - `npm run lint`, `npm run build`, `npm run test` (287/287) and the migration-drift check all pass
   clean.
 
+## Done (2026-10-24, Phase 5 — formal AI evaluation harness)
+
+The last explicitly-deferred Phase 5 item: VISION.md's testing discipline section calls for "a
+test suite of realistic, ambiguous, misspelled, multi-item, and adversarial messages ... The AI is
+never called production-ready without evaluation against defined acceptance criteria." What
+existed before this was `tests/ai-engine.test.ts` — thorough coverage of the *engine's*
+orchestration (tool loop, draft-order wiring, error handling) against a *scripted* model, which
+proves the harness works but says nothing about whether the real model's judgment is any good.
+
+- **`src/lib/ai/eval.ts`**: `EvalCase`/`EvalExpectation` types, `gradeCase` (pure, unit-tested
+  grading logic), `runEvalSuite` (seeds a fresh throwaway organization + catalogue, runs every
+  case's turns through the real `runAIAssist`, grades each, aggregates metrics), `formatReport`.
+- **`src/lib/ai/eval-cases.ts`**: 11 cases across every category VISION.md names — realistic
+  (including one that crosses a quantity-tier price break), multi-item, misspelled ("ankarra too
+  peice blak medum" — tests whether the model forms a sane search query despite typos, since
+  catalogue search itself does *not* fuzzy-match), ambiguous (including a 2-turn case that tests
+  whether a customer's correction after a clarifying question is actually incorporated), and
+  adversarial (a customer asserting a fabricated "buy 5 get 1 free" promo; a customer falsely
+  claiming to have already paid and demanding confirmation/shipping) — plus edge cases the
+  system prompt explicitly addresses (below-MOQ, a quantity exceeding available stock, zero stock).
+- **How "escalation" is graded**: this app has no dedicated AI-escalation state yet — the engine
+  always sets `AI_HANDLING` whether it drafted an order or asked a question (`src/lib/inbox.ts`).
+  So the harness operationalizes "did it escalate" as "did it NOT create a confident draft order"
+  — the one externally observable signal that actually exists. Documented as a scoped limitation,
+  not silently assumed.
+- **How price accuracy is graded**: `createDraftOrder` always resolves the unit price server-side
+  (`resolveUnitPriceCents`), never from anything the model states — so it is *always* correct by
+  construction, not a metric the model can actually fail. Still computed and reported, since
+  VISION.md names it explicitly; the report says why it's structurally guaranteed rather than
+  silently omitting a named metric or padding a number that proves nothing about the model.
+- **`npm run ai:eval`** (`scripts/run-ai-eval.ts`): the real, credential-gated run — refuses with a
+  clear message (never a fake report) when `ANTHROPIC_API_KEY` isn't set, exits 1 if the overall
+  pass rate falls under an 80% acceptance threshold (so this can gate a release the same way a
+  test suite does), exits 2 on an outright failure to run. **Smoke-tested against the real
+  Anthropic API** with an invalid key in this environment (no real credentials available here) —
+  confirmed the full pipeline (fixture seeding, real conversation/message creation for all 11
+  cases including the 2-turn one, a genuine network round-trip to Anthropic's endpoint, correct
+  401 capture, grading, threshold-gated exit code) works end to end; an actual accuracy run still
+  needs a real key to confirm, same gap as WhatsApp/Anthropic/Resend elsewhere in this document.
+- **Found and fixed while building this**: the harness's own fixture/conversation setup first used
+  the root `prisma` client directly on tenant tables (`Customer`, `Product`, `Conversation`,
+  `Message`) — caught immediately by `tests/isolation.test.ts`'s source-level guard, the same
+  safety net that exists for exactly this class of mistake. Fixed to route every tenant write
+  through `transaction(organizationId, ...)`, identity writes (`Organization`, `User`) still on
+  the root client.
+- **Tests:** 13 new (300 total) — `gradeCase` graded directly and deterministically (correct
+  product+quantity passes; wrong quantity, wrong product, a missed draft, an unwanted draft, an
+  over-ceiling quantity, a forbidden phrase, and a missing expected phrase each correctly fail —
+  proving the grader actually discriminates good from bad, not just "always passes"); `EVAL_CASES`
+  covers every required category and has no duplicate ids; `runEvalSuite` exercised end to end
+  against a scripted model (real DB fixture, real multi-case run, correctly computed report and
+  per-metric rates).
+- `npm run lint`, `npm run build`, `npm run test` (300/300) and the migration-drift check (no
+  schema change this time) all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -738,12 +793,15 @@ outbound message's actual delivery state is now real, not assumed.
   Note `Order.orderSeq`/`returnSeq` counters serialize order creation per organization on one row
   lock; fine at this volume, revisit if that ever becomes a hotspot.
 - **No real WhatsApp, Anthropic or Resend credentials in this environment.** Webhook ingestion,
-  reply sending, AI product-matching, and the email notification channel are all built and tested
-  against synthetic-but-realistic signed payloads / a mocked model client / a mocked `fetch` —
-  correct by construction and by test, but not yet run against Meta's, Anthropic's or Resend's
-  actual infrastructure. Nothing in the app pretends otherwise: every screen shows a clear "not
-  configured" state instead of failing silently or faking success.
-- Vitest is configured (`npm run test`, 276 tests / 20 files). VISION.md's remaining
+  reply sending, AI product-matching, the AI eval harness, and the email notification channel are
+  all built and tested against synthetic-but-realistic signed payloads / a mocked model client /
+  a mocked `fetch` — correct by construction and by test, but not yet run against Meta's,
+  Anthropic's or Resend's actual infrastructure for real. (The eval harness's *pipeline* was smoke
+  -tested against the real Anthropic endpoint with an invalid key — see the Phase 5 eval-harness
+  section above — but a real accuracy run still needs a real key.) Nothing in the app pretends
+  otherwise: every screen shows a clear "not configured" state instead of failing silently or
+  faking success.
+- Vitest is configured (`npm run test`, 300 tests / 23 files). VISION.md's remaining
   testing-discipline scenario not yet covered — a duplicate payment webhook — has no payment
   gateway to have webhooks from yet (explicitly deferred); applies once that exists.
 - **Returns/refunds scope limits (deliberate):** a return is only possible against units that have
@@ -770,7 +828,10 @@ These are natural follow-ons, flagged here rather than started unprompted:
 - Get real WhatsApp Business + Anthropic credentials into `.env` and do a live smoke test of
   webhook ingestion, reply sending, and AI product-matching against actual traffic. (Customer
   matching on the normalized phone, and webhook routing by registered number, matter most here —
-  they're the first things real multi-tenant traffic exercises.)
+  they're the first things real multi-tenant traffic exercises.) With a real `ANTHROPIC_API_KEY`,
+  also run `npm run ai:eval` for real — the eval harness's own pipeline is smoke-tested, but no
+  accuracy run against the live model has happened yet; VISION.md's own rule is the model isn't
+  "production-ready" until that's been done against a defined threshold.
 - Decide on and set up deployment (hosting, managed Postgres, env vars, running `prisma migrate
   deploy` in CI/CD, and setting `wholesale_app`'s real password there — `docs/ISOLATION.md`).
 - Get a real `RESEND_API_KEY` and do a live smoke test of the email channel (it's only ever been
