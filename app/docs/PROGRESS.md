@@ -912,6 +912,22 @@ undecided (hosting/managed-Postgres choice, CI/CD pipeline, backups, monitoring)
 this is documentation only, written from what's already true of the running app and its existing
 docs (`docs/ISOLATION.md`, `.env.example`), not a new feature — nothing to test or verify live.
 
+## Done (2026-10-24, continued)
+
+Phase 7, third slice — pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`): documents the
+actual process for bringing a real wholesale business onto the platform today, honestly — there is
+no self-serve sign-up flow, so onboarding is a manual, ops-run script against `DIRECT_URL`
+(organization + owner user + membership, mirroring `prisma/seed.ts`'s own pattern), followed by
+`startTrial()` (written and tested in `src/lib/billing.ts`/`tests/billing.test.ts`, but not yet
+wired into any automatic flow — confirmed by grep that nothing calls it outside tests), loading the
+real catalogue through the app (never a direct stock-column write, so the ledger stays meaningful
+from day one), registering the WhatsApp number, adding staff, and a live walkthrough. Closes with
+"What's missing for self-serve" (sign-up page, email verification/password reset, auto-started
+trials, WhatsApp self-registration, platform super-admin) ranked by how blocking each is, framed
+explicitly as deliberately not built yet rather than an oversight — VISION.md's own build order
+calls for proving the product with a hands-on pilot before automating onboarding. No code changed;
+documentation only, nothing to test or verify live.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -979,8 +995,13 @@ These are natural follow-ons, flagged here rather than started unprompted:
   informational entitlement checks into actual enforcement; per-organization Paystack accounts
   rather than the one global key billing scaffolding used; Paystack's tokenized Subscriptions API
   for true auto-recurring billing once pricing is final (today's flow is a one-off charge per
-  30-day period, started manually); platform super-admin, monitoring/backups, a security review,
-  pilot onboarding — once there's a real pilot business ready to run on this. Deployment
-  documentation (`docs/DEPLOYMENT.md`) is now written, but the actual hosting/managed-Postgres
-  decision it depends on hasn't been made, and nothing in it has been exercised against a real
-  host yet — a CI/CD pipeline automating the steps it documents is still to build.
+  30-day period, started manually); platform super-admin, monitoring/backups, a security review —
+  once there's a real pilot business ready to run on this. Deployment documentation
+  (`docs/DEPLOYMENT.md`) and a pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`) are now
+  written, but the actual hosting/managed-Postgres decision the former depends on hasn't been
+  made, and nothing in either has been exercised for a real deploy or a real pilot yet. The
+  onboarding runbook documents today's actual process honestly (a manual DB-level script, no
+  self-serve sign-up) rather than assuming a UI that doesn't exist — building that UI is listed in
+  the runbook itself as deliberately deferred until a couple of real pilots show which parts of it
+  are actually worth automating first. A CI/CD pipeline automating `docs/DEPLOYMENT.md`'s steps is
+  still to build, once a host is chosen.
