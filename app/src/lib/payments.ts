@@ -105,6 +105,45 @@ export async function initializePayment(params: {
   return { authorizationUrl: json.data.authorization_url, reference };
 }
 
+/**
+ * Asks Paystack to refund a previously verified transaction. Paystack's own docs are explicit
+ * that a 200 here means the request was *accepted*, not that the refund has *completed* — actual
+ * settlement to the customer can take Paystack up to 10 business days. The caller (returns.ts's
+ * requestProviderRefund) therefore never treats this as the "refund paid" evidence itself; it
+ * only records that the request was made. Does not touch our database.
+ */
+export async function createPaystackRefund(params: {
+  transactionReference: string;
+  amountCents: number;
+  note?: string;
+}): Promise<{ paystackStatus: string }> {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret) throw new PaystackError("Paystack isn't configured (missing PAYSTACK_SECRET_KEY).");
+  if (params.amountCents <= 0) throw new PaystackError("Nothing to refund — the amount is zero.");
+
+  const res = await fetch("https://api.paystack.co/refund", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      transaction: params.transactionReference,
+      amount: params.amountCents,
+      merchant_note: params.note,
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new PaystackError(`Could not request the refund (${res.status}): ${detail.slice(0, 300)}`);
+  }
+
+  const json = (await res.json()) as { status?: boolean; message?: string; data?: { status?: string } };
+  if (!json.status) {
+    throw new PaystackError(json.message || "Paystack rejected the refund request.");
+  }
+
+  return { paystackStatus: json.data?.status ?? "pending" };
+}
+
 export type PaystackWebhookEvent = {
   event: string;
   reference: string;

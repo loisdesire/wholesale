@@ -968,6 +968,62 @@ third (the app's only unattended entry points, already logging enough detail to 
 documented restore drill fourth, then uptime monitoring and APM last. No code changed;
 documentation only, nothing to test or verify live.
 
+## Done (2026-10-24, continued)
+
+Phase 6 remainder, first slice — automated refund requests through Paystack
+(`createPaystackRefund` in `src/lib/payments.ts`, `requestProviderRefund` in `src/lib/returns.ts`):
+the refund-side mirror of Phase 6's payment verification, requested from the Paystack docs
+(POST `/refund` with `transaction` + `amount`) rather than guessed, since getting a financial
+integration's contract wrong is worse than not building it. Mirrors `initializePayment`'s own
+shape exactly: Paystack accepting the request (its own docs say a 200 response means *accepted*,
+not *completed* — settlement can take up to 10 business days) is not treated as evidence the
+refund happened, so `refundStatus` stays `PENDING` until the owner still confirms via the existing
+`markRefunded` once funds are confirmed to have landed — same "only verified evidence" rule as
+every other ledger-touching action in this app. Only usable when the order has exactly one
+Paystack payment covering at least the refund amount; a manually-paid order, an order with more
+than one Paystack payment, or a refund bigger than that one payment all refuse in favour of the
+existing manual path rather than guessing which transaction to refund. Deliberately **not**
+built: automatic completion via Paystack's `refund.processed` webhook — the exact payload shape
+for matching a webhook event back to a specific return wasn't confirmed in the official docs (only
+`refund.pending`'s payload sample was found), and building a cross-tenant-sensitive webhook
+dispatch on an unconfirmed contract risks silently never firing or misattributing a refund to the
+wrong return, which is worse than the owner confirming by hand as they do today.
+- **Tests:** 8 new (347 total, `tests/provider-refund.test.ts`) — refuses when Paystack isn't
+  configured, owner-only, refuses a return with no refund pending, refuses when the order wasn't
+  paid through Paystack, refuses when the order has more than one Paystack payment, refuses when
+  the refund exceeds the one Paystack payment's amount, a successful request records an audit
+  entry and leaves `refundStatus` at `PENDING` (mocked Paystack response, confirming the actual
+  HTTP call shape sent), and Paystack's own rejection message surfaces cleanly without touching
+  `refundStatus`.
+- **UI**: a "Request Paystack refund" button next to the existing "Mark refund as paid" action on
+  an approved return, with a caption explaining the two-step nature of the flow, and a live
+  confirmation of Paystack's own status string once the request succeeds.
+- **Verified live in a browser** (a one-off script built a real fulfilled order with a Paystack
+  provider payment and an approved return against the seeded dev database, reseeded afterward):
+  the button and caption render correctly; clicking it with no `PAYSTACK_SECRET_KEY` configured
+  (true of this environment) shows the real refusal, and the refund stays at "Mark refund as paid"
+  afterward — screenshots reviewed, no visual bugs. A real Paystack test secret key
+  (`sk_test_…`, supplied by the user) was confirmed working with one live, non-mutating API call
+  (`/transaction/initialize`) before this work started, but was not wired into this feature's live
+  verification — doing so would need a real fulfilled Paystack transaction (completing a hosted
+  checkout and waiting for a reachable webhook), which this environment can't do cheaply; the
+  mocked-fetch tests above are what actually exercise the request/response shape.
+- `npm run lint`, `npm run build`, and `npm run test` (347/347) all pass clean on a freshly
+  provisioned local Postgres (Docker Desktop + `docker compose up -d db`, migrated and seeded from
+  scratch) — confirming the whole migration history and seed still work end to end on a clean
+  machine, not just the one they were originally built on.
+- **Two unrelated test-suite fixes found by a second review tool and applied here**:
+  `tests/billing.test.ts`'s `startTrial` test compared `trialEndsAt` against a `before` timestamp
+  captured *before* the call, while `startTrial` itself takes a *later* `Date.now()` reading
+  internally — so `trialEndsAt` was always very slightly more than `TRIAL_DAYS` days past `before`
+  by construction, not actually flaky; fixed by bounding it between `before` and an `after`
+  timestamp taken post-call instead, which holds regardless of how long the call itself takes.
+  Separately, `vitest.config.ts` now sets `testTimeout: 10_000` (was the 5s default) — DB-heavy
+  integration tests have little headroom under real I/O load (a slower disk, Docker Desktop's VM
+  layer, or a second process contending for the same shared test database, which is what was
+  actually happening when this was flagged — a concurrent test run from the other tool's own
+  sweep).
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1021,14 +1077,21 @@ These are natural follow-ons, flagged here rather than started unprompted:
   exercised against a mocked `fetch`, per the same "credentials needed to confirm against the
   real service" gap as WhatsApp/Anthropic above). An SMS channel, if ever wanted, follows the same
   `isXConfigured()`/dedicated-error-class shape as `email.ts`/`whatsapp.ts`.
-- Get a real `PAYSTACK_SECRET_KEY` and do a live smoke test of automated payment verification —
-  same "built and tested against synthetic payloads, not yet run for real" gap as WhatsApp/
-  Anthropic/Resend above. A reconciliation report (what the provider says was paid vs. what's
-  recorded) is the natural next piece once that's confirmed working.
-- Phase 6 remainder: refunds currently pay out exactly the same way they always have (the owner
-  marks a refund paid by hand) — automated refund verification/payout through Paystack would be
-  the refund-side mirror of what payment verification just became; live courier/delivery-tracking
-  integration needs real carrier credentials this environment doesn't have.
+- A real Paystack **test-mode** secret key was confirmed working against the live API
+  (`/transaction/initialize`, one non-mutating call) during this session's Phase 6 remainder work,
+  but was not persisted anywhere (not committed, not saved to memory) and not wired into a full
+  webhook round trip — that still needs a publicly reachable callback URL (tunnel/ngrok) this
+  environment doesn't have set up. A full live smoke test of automated payment verification (the
+  webhook path, not just the outbound call) is still open. A reconciliation report (what the
+  provider says was paid vs. what's recorded) is the natural next piece, and — unlike the webhook
+  round trip — is buildable and even live-testable now with only read-only `GET /transaction`
+  calls against a real test key, no reachable webhook needed.
+- Phase 6 remainder: automated refund **requests** through Paystack are now built
+  (`requestProviderRefund`, see the Done entry above) — the owner no longer has to go to the
+  Paystack dashboard by hand to start a refund. Still open: automatic refund *completion* (the
+  `refund.processed` webhook path was deliberately not built — see the Done entry for why), and
+  live courier/delivery-tracking integration, which needs real carrier credentials this
+  environment doesn't have.
 - Phase 7 (commercial launch) remainder: get a real `PAYSTACK_SECRET_KEY` and confirm a
   subscription webhook end-to-end (same "built and tested against synthetic payloads, not yet run
   for real" gap as order payments); decide real pricing/limits before turning the current

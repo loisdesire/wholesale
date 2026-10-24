@@ -9,11 +9,14 @@ import {
   decideReturn,
   markRefunded,
   receiveReturn,
+  requestProviderRefund,
   requestReturn,
 } from "@/lib/returns";
 import { InsufficientStockError, StockInvariantError } from "@/lib/stock";
+import { PaystackError } from "@/lib/payments";
 
 export type FormState = { error: string | null };
+export type RequestProviderRefundState = { error: string | null; paystackStatus?: string };
 
 async function requireActor() {
   const session = await auth();
@@ -29,7 +32,8 @@ function friendlyError(err: unknown): string {
     err instanceof ReturnStateError ||
     err instanceof ReturnPermissionError ||
     err instanceof InsufficientStockError ||
-    err instanceof StockInvariantError
+    err instanceof StockInvariantError ||
+    err instanceof PaystackError
   ) {
     return err.message;
   }
@@ -119,6 +123,21 @@ export async function receiveReturnAction(returnId: string): Promise<FormState> 
   }
   refresh(orderId);
   return { error: null };
+}
+
+export async function requestProviderRefundAction(returnId: string): Promise<RequestProviderRefundState> {
+  const { organizationId, actor } = await requireActor();
+  let orderId: string | undefined;
+  let paystackStatus: string | undefined;
+  try {
+    const result = await requestProviderRefund({ organizationId, returnId, actor });
+    orderId = result.orderId;
+    paystackStatus = result.paystackStatus;
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+  refresh(orderId);
+  return { error: null, paystackStatus };
 }
 
 export async function markRefundedAction(

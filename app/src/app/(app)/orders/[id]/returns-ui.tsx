@@ -1,13 +1,16 @@
 "use client";
 
 
+import { useActionState } from "react";
 import { useSubmitAction } from "@/lib/use-submit-action";
 import {
   decideReturnAction,
   markRefundedAction,
   receiveReturnAction,
+  requestProviderRefundAction,
   requestReturnAction,
   type FormState,
+  type RequestProviderRefundState,
 } from "../returns-actions";
 
 const inputClass =
@@ -163,6 +166,30 @@ function ReceiveGoodsButton({ returnId }: { returnId: string }) {
   );
 }
 
+function RequestProviderRefundButton({ returnId }: { returnId: string }) {
+  const [state, formAction, pending] = useActionState<RequestProviderRefundState, FormData>(
+    async () => requestProviderRefundAction(returnId),
+    { error: null }
+  );
+  return (
+    <form action={formAction} className="flex flex-col gap-1">
+      <div className="flex items-center gap-3">
+        <button type="submit" disabled={pending} className={secondaryButton}>
+          {pending ? "Requesting…" : "Request Paystack refund"}
+        </button>
+        {state.paystackStatus && !state.error && (
+          <span className="text-sm text-status-success-fg">Requested — Paystack says “{state.paystackStatus}.”</span>
+        )}
+        <ErrorLine error={state.error} />
+      </div>
+      <p className="text-xs text-text-muted">
+        Only works if this order was paid through Paystack. Paystack accepting the request isn’t
+        the same as the money landing — once it has, confirm with “Mark refund as paid” below.
+      </p>
+    </form>
+  );
+}
+
 /** The next step(s) available on a return, depending on its state and who is looking. */
 function ApproveReturnForm({ returnId, valueNaira }: { returnId: string; valueNaira: number }) {
   const { state, pending, formProps } = useSubmitAction(decideReturnAction.bind(null, returnId, true), {
@@ -230,12 +257,15 @@ export function ReturnActions({
 
       {refundStatus === "PENDING" &&
         (isOwner ? (
-          <NoteAction
-            action={markRefundedAction.bind(null, returnId)}
-            label="Mark refund as paid"
-            pendingLabel="Saving…"
-            placeholder="How it was paid (e.g. bank transfer ref)"
-          />
+          <div className="flex flex-col gap-2">
+            <RequestProviderRefundButton returnId={returnId} />
+            <NoteAction
+              action={markRefundedAction.bind(null, returnId)}
+              label="Mark refund as paid"
+              pendingLabel="Saving…"
+              placeholder="How it was paid (e.g. bank transfer ref)"
+            />
+          </div>
         ) : (
           nothingForStaff("This refund is waiting to be paid out")
         ))}

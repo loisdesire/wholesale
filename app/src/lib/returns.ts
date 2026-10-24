@@ -13,6 +13,7 @@ import { recordAudit } from "@/lib/audit";
 import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
 import { lockRow } from "@/lib/locks";
 import { notify, ownerUserIds } from "@/lib/notifications";
+import { createPaystackRefund } from "@/lib/payments";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -356,6 +357,62 @@ export async function markRefunded(params: {
     );
     return updated;
   });
+}
+
+/**
+ * Asks Paystack to refund the order's provider payment for an approved return, instead of the
+ * owner recording a manual payout by hand. Mirrors the "initialize, wait for verified evidence"
+ * shape of initializePayment/recordProviderPayment: Paystack's acceptance of the request is not
+ * itself evidence the refund completed (see createPaystackRefund's own doc comment), so this does
+ * NOT set refundStatus to REFUNDED — the owner still confirms that via markRefunded once the
+ * funds are confirmed to have reached the customer. Only usable when the order has exactly one
+ * Paystack payment covering at least the refund amount; anything more ambiguous (no provider
+ * payment, more than one, or a refund larger than it) is refused in favour of the manual path.
+ */
+export async function requestProviderRefund(params: { organizationId: string; returnId: string; actor: Actor }) {
+  requireOwner(params.actor, "request a Paystack refund");
+
+  const { ret, payment } = await transaction(params.organizationId, async (tx) => {
+    const ret = await loadReturn(tx, params.organizationId, params.returnId);
+    if (ret.refundStatus !== RefundStatus.PENDING) {
+      throw new ReturnStateError("Only an approved return has a refund to pay.");
+    }
+
+    const payments = await tx.payment.findMany({ where: { orderId: ret.orderId, method: "PROVIDER" } });
+    if (payments.length === 0) {
+      throw new ReturnStateError("This order wasn't paid through Paystack — record the refund as paid by hand instead.");
+    }
+    if (payments.length > 1) {
+      throw new ReturnStateError("This order has more than one Paystack payment — record this refund as paid by hand instead.");
+    }
+    const payment = payments[0];
+    if (ret.refundCents > payment.amountCents) {
+      throw new ReturnStateError("The refund is more than the original Paystack payment — record it as paid by hand instead.");
+    }
+    return { ret, payment };
+  });
+
+  const result = await createPaystackRefund({
+    transactionReference: payment.providerReference!,
+    amountCents: ret.refundCents,
+    note: `Refund for ${ret.reference}`,
+  });
+
+  await transaction(params.organizationId, (tx) =>
+    recordAudit(
+      {
+        organizationId: params.organizationId,
+        entity: "Order",
+        entityId: ret.orderId,
+        action: "REFUND_REQUESTED_PROVIDER",
+        actorId: params.actor.id,
+        after: { return: ret.reference, refundCents: ret.refundCents, paystackStatus: result.paystackStatus },
+      },
+      tx
+    )
+  );
+
+  return { orderId: ret.orderId, paystackStatus: result.paystackStatus };
 }
 
 /**

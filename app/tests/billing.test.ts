@@ -34,14 +34,19 @@ describe("startTrial / isTrialExpired", () => {
   });
 
   it("starts a trial on the starter plan with a trialEndsAt roughly TRIAL_DAYS out", async () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
     const before = Date.now();
     const org = await startTrial(organizationId);
+    const after = Date.now();
     expect(org.plan).toBe("STARTER");
     expect(org.subscriptionStatus).toBe("TRIALING");
     expect(org.trialEndsAt).not.toBeNull();
-    const diffDays = (org.trialEndsAt!.getTime() - before) / (24 * 60 * 60 * 1000);
-    expect(diffDays).toBeGreaterThan(TRIAL_DAYS - 1);
-    expect(diffDays).toBeLessThanOrEqual(TRIAL_DAYS);
+    // startTrial takes its own Date.now() reading strictly between `before` and `after`, so
+    // trialEndsAt is bounded by TRIAL_DAYS out from each end — unlike comparing against a single
+    // `before` timestamp, this holds regardless of how much time the call itself takes.
+    const trialEndsAtMs = org.trialEndsAt!.getTime();
+    expect(trialEndsAtMs).toBeGreaterThanOrEqual(before + TRIAL_DAYS * DAY_MS);
+    expect(trialEndsAtMs).toBeLessThanOrEqual(after + TRIAL_DAYS * DAY_MS);
   });
 
   it("is not expired while trialEndsAt is in the future", () => {
