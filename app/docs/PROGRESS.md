@@ -928,6 +928,27 @@ explicitly as deliberately not built yet rather than an oversight — VISION.md'
 calls for proving the product with a hands-on pilot before automating onboarding. No code changed;
 documentation only, nothing to test or verify live.
 
+## Done (2026-10-24, continued)
+
+Phase 7, fourth slice — security review of the whole branch (every phase built so far, vs. main):
+focused on tenant isolation (every tenant-data query confirmed to go through
+`tenantDb()`/`transaction()`/`userScopedDb()` in `src/lib/db.ts`, not the root `prisma` client;
+identity tables correctly use the root client per `src/lib/prisma.ts`'s documented split), raw SQL
+use (every `$queryRaw`/`$executeRaw` is a parameterized tagged template except `lockRow()` in
+`src/lib/locks.ts`'s `$queryRawUnsafe`, which only interpolates a closed table-name union with the
+id itself bound as a parameter — not injectable), both webhooks (Paystack's HMAC-SHA512 signature
+check uses `crypto.timingSafeEqual` with a length check first; WhatsApp's single-tenant routing
+fallback only fires pre-multi-tenant), reference-forgery risk in the billing/payment flow
+(organizationId/orderId/plan are embedded server-side at initialization time, not attacker-
+controlled), and authorization boundaries (every owner-only action checks the actor's role inside
+the library function itself, not just the UI, and IDOR is blocked by every lookup filtering on
+both `id` and `organizationId`, in addition to RLS). **No HIGH or MEDIUM findings.** One
+defense-in-depth note recorded for later, not reported as a finding: `recordSubscriptionPayment`
+(`src/lib/billing.ts`) trusts Paystack's `amountCents` for the plan embedded in the reference
+without cross-checking it against `PLAN_LIMITS[plan].monthlyFeeCents` — not exploitable today
+since nothing lets an outside party mint a transaction against an arbitrary reference without the
+app's own `PAYSTACK_SECRET_KEY`, but worth re-checking if discount/proration logic is ever added.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -995,13 +1016,16 @@ These are natural follow-ons, flagged here rather than started unprompted:
   informational entitlement checks into actual enforcement; per-organization Paystack accounts
   rather than the one global key billing scaffolding used; Paystack's tokenized Subscriptions API
   for true auto-recurring billing once pricing is final (today's flow is a one-off charge per
-  30-day period, started manually); platform super-admin, monitoring/backups, a security review —
-  once there's a real pilot business ready to run on this. Deployment documentation
-  (`docs/DEPLOYMENT.md`) and a pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`) are now
-  written, but the actual hosting/managed-Postgres decision the former depends on hasn't been
-  made, and nothing in either has been exercised for a real deploy or a real pilot yet. The
-  onboarding runbook documents today's actual process honestly (a manual DB-level script, no
-  self-serve sign-up) rather than assuming a UI that doesn't exist — building that UI is listed in
-  the runbook itself as deliberately deferred until a couple of real pilots show which parts of it
-  are actually worth automating first. A CI/CD pipeline automating `docs/DEPLOYMENT.md`'s steps is
+  30-day period, started manually); platform super-admin, monitoring/backups — once there's a
+  real pilot business ready to run on this. Deployment documentation (`docs/DEPLOYMENT.md`) and a
+  pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`) are now written, but the actual
+  hosting/managed-Postgres decision the former depends on hasn't been made, and nothing in either
+  has been exercised for a real deploy or a real pilot yet. The onboarding runbook documents
+  today's actual process honestly (a manual DB-level script, no self-serve sign-up) rather than
+  assuming a UI that doesn't exist — building that UI is listed in the runbook itself as
+  deliberately deferred until a couple of real pilots show which parts of it are actually worth
+  automating first. A security review of the whole branch is now done (no HIGH/MEDIUM findings —
+  see the Done entry above) but should be re-run once platform super-admin and real payment
+  provider credentials land, since both expand the attack surface this review covered. A CI/CD
+  pipeline automating `docs/DEPLOYMENT.md`'s steps is
   still to build, once a host is chosen.
