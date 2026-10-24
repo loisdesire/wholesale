@@ -786,24 +786,89 @@ proves the harness works but says nothing about whether the real model's judgmen
 - `npm run lint`, `npm run build`, `npm run test` (300/300) and the migration-drift check (no
   schema change this time) all pass clean.
 
+## Done (2026-10-24, Phase 6 — automated payment verification)
+
+VISION.md's Phase 6: "payment records, provider integration, verification ... idempotent
+processing via provider transaction IDs." The manual "mark paid" click (a boolean on `Order`) is
+now backed by a real payment ledger that an automated provider webhook writes to as well.
+
+- **`Payment` model** (`src/lib/payments.ts`): a row only ever exists once there is *verified
+  evidence* of a successful payment — a Paystack webhook whose signature checked out, or a human
+  confirming cash/transfer arrived. Deliberately no "pending"/"failed" `Payment` — an unsuccessful
+  attempt leaves no evidence, so nothing is recorded and the order stays unpaid, exactly matching
+  "payment status rests on verified evidence only, never a customer's claim." "Amount paid" is the
+  `SUM` of these rows (a ledger, like `StockMovement`) — this is what makes partial payment and
+  overpayment representable: an order transitions `CONFIRMED` → `PAID` the first moment the sum
+  reaches the total; paying more after that is recorded and stays visible as an overpayment,
+  never rejected or silently capped.
+- **Paystack integration**: `isPaystackConfigured()` / `verifyPaystackSignature()` (HMAC-SHA512) /
+  `initializePayment()` (starts a hosted-page payment for the outstanding balance), same
+  "degrades gracefully, throws a dedicated error, never fakes a send" shape as `whatsapp.ts`.
+  **Routing problem specific to this integration**: unlike WhatsApp's `phoneNumberId`, nothing in
+  a Paystack webhook names which organization it's about, and `Payment` is tenant data that can't
+  be queried before the organization is known. Solved by generating the reference ourselves at
+  `initializePayment` time (`buildPaymentReference` embeds the organization and order id directly)
+  and parsing it back out (`parsePaymentReference`) — but only *after* the webhook's signature has
+  been verified, so an attacker can't just submit a POST naming an arbitrary organization/order.
+- **`markOrderPaid` (manual) and `recordProviderPayment` (webhook) write through the same
+  `writePayment`** — "amount paid" means one thing regardless of how it arrived.
+  `markOrderPaid` keeps its own pre-existing `OrderStateError` contract and `PAYMENT_MARKED_PAID`
+  audit label (nine existing test files use it as a fixture helper — zero behaviour change for
+  any of them, confirmed by the full suite); a generic ledger entry uses `PaymentError` and
+  `PAYMENT_RECORDED`.
+- **The webhook route** (`/api/webhooks/paystack`) only ever acts on a `charge.success` event
+  with a reference this app itself issued — anything else (a failure, a refund notice, an
+  unrecognized reference) is acknowledged so Paystack doesn't retry forever, but never applied.
+  A provider payment that completes an order notifies the owners (`PAYMENT_VERIFIED`) — a manual
+  one doesn't, since whoever recorded it already knows.
+- **UI**: a confirmed order's detail page gained a "Get payment link" button alongside the
+  existing "Mark as paid (cash/transfer)" one, and a Payments section listing every recorded
+  payment (method, amount, when, who) with a live "amount paid of total" figure and an overpayment
+  badge when it applies.
+- **One scoped simplification, matching the existing `WHATSAPP_ACCESS_TOKEN` pattern**:
+  `PAYSTACK_SECRET_KEY` is a single global env var, not a per-organization credential — a real
+  multi-tenant deployment needs each organization's own Paystack account, which is real SaaS
+  billing/ops complexity deferred to Phase 7, not solved here.
+- **Found and fixed while building this**: the exact FK-wipe-order mistake this document's own
+  gotchas section already warns about (CLAUDE.md: "forgotten twice now") — happened a third time
+  for `Payment`, caught immediately by the full test suite (not in isolation), fixed in both
+  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`.
+- **Tests:** 24 new (324 total) — Paystack signature verification (accepts/rejects/missing
+  secret), payment-reference round-trip and strict-shape rejection, webhook event parsing,
+  manual payment (full, partial, two-partials-sum-to-paid, zero/negative refused, refused against
+  a draft order), provider payment idempotency (a redelivered webhook event is a silent no-op —
+  confirmed exactly one `Payment` row exists after applying the same reference twice), overpayment
+  recorded and visible rather than capped, owner notification only for a provider payment,
+  cross-tenant refusal (a correctly-shaped reference naming the wrong organization is refused, the
+  real order is untouched), `markOrderPaid`'s backward compatibility (same audit label, refuses an
+  already-paid order), and the webhook route end to end (a correctly signed event applies the
+  payment to the right order; an incorrectly signed one is rejected; a non-success event and an
+  unrecognized reference are both acknowledged but not applied). **Verified live in a browser**
+  (Playwright, 47/47 checks, screenshot reviewed): a confirmed order shows both payment actions;
+  "Get payment link" refuses clearly since Paystack isn't configured in this environment; marking
+  paid manually shows the real amount, a Manual row, and the order stepper advancing to Paid.
+- `npm run lint`, `npm run build`, `npm run test` (324/324) and the migration-drift check all pass
+  clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
   managed/production instance — deployment, backups and connection pooling are still undecided.
   Note `Order.orderSeq`/`returnSeq` counters serialize order creation per organization on one row
   lock; fine at this volume, revisit if that ever becomes a hotspot.
-- **No real WhatsApp, Anthropic or Resend credentials in this environment.** Webhook ingestion,
-  reply sending, AI product-matching, the AI eval harness, and the email notification channel are
-  all built and tested against synthetic-but-realistic signed payloads / a mocked model client /
-  a mocked `fetch` — correct by construction and by test, but not yet run against Meta's,
-  Anthropic's or Resend's actual infrastructure for real. (The eval harness's *pipeline* was smoke
-  -tested against the real Anthropic endpoint with an invalid key — see the Phase 5 eval-harness
-  section above — but a real accuracy run still needs a real key.) Nothing in the app pretends
-  otherwise: every screen shows a clear "not configured" state instead of failing silently or
-  faking success.
-- Vitest is configured (`npm run test`, 300 tests / 23 files). VISION.md's remaining
-  testing-discipline scenario not yet covered — a duplicate payment webhook — has no payment
-  gateway to have webhooks from yet (explicitly deferred); applies once that exists.
+- **No real WhatsApp, Anthropic, Resend or Paystack credentials in this environment.** Webhook
+  ingestion, reply sending, AI product-matching, the AI eval harness, the email notification
+  channel, and automated payment verification are all built and tested against
+  synthetic-but-realistic signed payloads / a mocked model client / a mocked `fetch` — correct by
+  construction and by test, but not yet run against Meta's, Anthropic's, Resend's or Paystack's
+  actual infrastructure for real. (The eval harness's *pipeline* was smoke-tested against the real
+  Anthropic endpoint with an invalid key — see the Phase 5 eval-harness section above — but a real
+  accuracy run still needs a real key.) Nothing in the app pretends otherwise: every screen shows a
+  clear "not configured" state instead of failing silently or faking success.
+- Vitest is configured (`npm run test`, 324 tests / 24 files). VISION.md's remaining
+  testing-discipline scenario — a duplicate payment webhook — is now covered
+  (`tests/payments.test.ts`'s idempotency tests: a redelivered webhook event with the same
+  provider reference is a confirmed no-op, never a second `Payment` row).
 - **Returns/refunds scope limits (deliberate):** a return is only possible against units that have
   actually shipped (not the unshipped remainder of a part-shipped order, which goes through "close
   short" instead); no payment-gateway integration (the owner records a refund as paid by hand, like
@@ -838,7 +903,15 @@ These are natural follow-ons, flagged here rather than started unprompted:
   exercised against a mocked `fetch`, per the same "credentials needed to confirm against the
   real service" gap as WhatsApp/Anthropic above). An SMS channel, if ever wanted, follows the same
   `isXConfigured()`/dedicated-error-class shape as `email.ts`/`whatsapp.ts`.
-- Phase 6 (payments & delivery): automated payment verification would let "mark paid" and "refund
-  paid" rest on evidence instead of a manual click; live delivery-tracking integration.
-- Phase 7 (commercial launch): billing/subscriptions, platform super-admin, monitoring/backups,
-  security review, pilot onboarding — once there's a real pilot business ready to run on this.
+- Get a real `PAYSTACK_SECRET_KEY` and do a live smoke test of automated payment verification —
+  same "built and tested against synthetic payloads, not yet run for real" gap as WhatsApp/
+  Anthropic/Resend above. A reconciliation report (what the provider says was paid vs. what's
+  recorded) is the natural next piece once that's confirmed working.
+- Phase 6 remainder: refunds currently pay out exactly the same way they always have (the owner
+  marks a refund paid by hand) — automated refund verification/payout through Paystack would be
+  the refund-side mirror of what payment verification just became; live courier/delivery-tracking
+  integration needs real carrier credentials this environment doesn't have.
+- Phase 7 (commercial launch): billing/subscriptions (including solving per-organization payment
+  provider accounts, rather than the one global `PAYSTACK_SECRET_KEY` this phase used), platform
+  super-admin, monitoring/backups, security review, pilot onboarding — once there's a real pilot
+  business ready to run on this.

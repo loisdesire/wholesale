@@ -23,6 +23,8 @@ import {
 import { InsufficientStockError } from "@/lib/stock";
 import { CustomerError, DuplicateCustomerError, createCustomer } from "@/lib/customers";
 import { ReturnPermissionError } from "@/lib/returns";
+import { initializePayment, PaymentError, PaystackError, getPaidCents } from "@/lib/payments";
+import { transaction } from "@/lib/db";
 
 export type FormState = { error: string | null };
 
@@ -214,6 +216,30 @@ export async function markPaidAction(orderId: string): Promise<FormState> {
   revalidatePath("/orders");
   revalidatePath("/");
   return { error: null };
+}
+
+export type PaymentLinkState = { error: string | null; authorizationUrl?: string };
+
+/** Starts a Paystack payment for the outstanding balance and returns the hosted page link to send the customer. */
+export async function getPaymentLinkAction(orderId: string): Promise<PaymentLinkState> {
+  const session = await requireSession();
+  const organizationId = session.user.organizationId;
+
+  const order = await tenantDb(organizationId).order.findFirst({ where: { id: orderId, organizationId }, include: { customer: true } });
+  if (!order) return { error: "Order not found." };
+
+  try {
+    const paidCents = await transaction(organizationId, (tx) => getPaidCents(tx, orderId));
+    const remainingCents = order.totalCents - paidCents;
+    if (remainingCents <= 0) return { error: "This order is already fully paid." };
+
+    const email = order.customer.email ?? `${order.customer.phoneKey}@no-email.invalid`;
+    const { authorizationUrl } = await initializePayment({ organizationId, orderId, amountCents: remainingCents, customerEmail: email });
+    return { error: null, authorizationUrl };
+  } catch (err) {
+    if (err instanceof PaystackError || err instanceof PaymentError) return { error: err.message };
+    throw err;
+  }
 }
 
 export async function markFulfilledAction(orderId: string): Promise<FormState> {

@@ -1,4 +1,4 @@
-import { OrderStatus, StockMovementReason, UserRole, type Prisma } from "@prisma/client";
+import { OrderStatus, PaymentMethod, StockMovementReason, UserRole, type Prisma } from "@prisma/client";
 import { transaction, type DbClient } from "@/lib/db";
 import { recordStockMovementTx, sortByProductId } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
@@ -6,6 +6,7 @@ import { resolveUnitPriceCents } from "@/lib/pricing";
 import { getCustomerPriceMap } from "@/lib/customers";
 import { lockRow } from "@/lib/locks";
 import { ReturnPermissionError, createOwnerRefundTx } from "@/lib/returns";
+import { getPaidCents, writePayment } from "@/lib/payments";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -581,6 +582,12 @@ export async function confirmOrder(params: {
   });
 }
 
+/**
+ * Marks a confirmed order paid in full by hand (cash, bank transfer, anything
+ * outside the Paystack flow) — writes the same Payment ledger an automated
+ * provider payment does (see src/lib/payments.ts), so "amount paid" always
+ * means one thing regardless of how it arrived.
+ */
 export async function markOrderPaid(params: { organizationId: string; orderId: string; actorId: string }) {
   return transaction(params.organizationId, async (tx) => {
     const order = await loadOrderForUpdate(tx, params.orderId, params.organizationId);
@@ -588,25 +595,15 @@ export async function markOrderPaid(params: { organizationId: string; orderId: s
       throw new OrderStateError("Only confirmed orders can be marked as paid.");
     }
 
-    const updated = await tx.order.update({
-      where: { id: order.id },
-      data: { status: OrderStatus.PAID, paidAt: new Date() },
-    });
+    const alreadyPaidCents = await getPaidCents(tx, order.id);
+    const remainingCents = order.totalCents - alreadyPaidCents;
+    if (remainingCents <= 0) {
+      throw new OrderStateError("This order is already fully paid.");
+    }
 
-    await recordAudit(
-      {
-        organizationId: params.organizationId,
-        entity: "Order",
-        entityId: order.id,
-        action: "PAYMENT_MARKED_PAID",
-        actorId: params.actorId,
-        before: { status: "CONFIRMED" },
-        after: { status: "PAID" },
-      },
-      tx
-    );
+    await writePayment(tx, order, { amountCents: remainingCents, method: PaymentMethod.MANUAL, recordedById: params.actorId, auditAction: "PAYMENT_MARKED_PAID" });
 
-    return updated;
+    return tx.order.findFirstOrThrow({ where: { id: order.id, organizationId: params.organizationId } });
   });
 }
 

@@ -152,6 +152,26 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   capped (`PER_RULE_CAP`) so the query stays bounded; `getAttentionItems` returns `{ items,
   truncated }`, not a bare array — the Operations page shows a banner when `truncated` is true
   rather than silently presenting a partial list as if it were complete.
+- **Payments are a ledger, like Stock — never an editable field on `Order`** (`src/lib/payments.ts`,
+  `Payment` model). A `Payment` row only ever exists once there is *verified evidence* of a
+  successful payment — a Paystack webhook whose signature checked out, or a human confirming
+  cash/transfer actually arrived — never a customer's claim. There is deliberately no
+  "pending"/"failed" `Payment`: an attempt that didn't succeed leaves no evidence, so nothing is
+  recorded and the order just stays unpaid. "Amount paid" is the `SUM` of these rows, which is what
+  makes partial payments and overpayment representable without ever needing to edit/reverse a
+  payment in place — an order transitions `CONFIRMED` → `PAID` the moment that sum first reaches
+  the order total; paying more after that is recorded (visibly, as an overpayment), never rejected
+  or silently capped. `markOrderPaid` (`src/lib/orders.ts`, the manual "mark paid by hand" flow)
+  and the Paystack webhook (`recordProviderPayment`) both write through the same `writePayment` —
+  "amount paid" means one thing regardless of how it arrived. A provider payment's `providerReference`
+  is globally unique and is the idempotency key a redelivered webhook is detected and ignored by.
+  **Paystack's webhook can't name an organization** (unlike WhatsApp's `phoneNumberId`), so the
+  reference the app itself generates when starting a payment (`buildPaymentReference`) embeds the
+  organization and order id directly — parsed back out (`parsePaymentReference`) only *after* the
+  webhook's HMAC-SHA512 signature has checked out, never trusted from an unauthenticated request.
+  One scoped simplification, matching `WHATSAPP_ACCESS_TOKEN`'s existing pattern: `PAYSTACK_SECRET_KEY`
+  is a single global env var for now, not a per-organization credential — real multi-tenant
+  payment-provider accounts are Phase 7 territory.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -232,11 +252,14 @@ organization, Lagos Spice Traders), staff `chidinma@adaezewholesale.ng` / `staff
 `WHATSAPP_VERIFY_TOKEN` (see `.env.example`) and `ANTHROPIC_API_KEY` are required for real WhatsApp
 sending/ingestion and AI product-matching respectively. `RESEND_API_KEY` / `EMAIL_FROM` (and
 optionally `APP_URL`, for a clickable link in the email) are required for the email notification
-channel. Without any of these the app degrades gracefully (clear "not configured" messages in the
-UI, see `isWhatsAppConfigured()` / `isEmailConfigured()` / the AI assist action) rather than
-failing silently or pretending to work — the logic itself is tested against synthetic signed
-payloads / mocked responses in `tests/`, not against the real services. See `docs/PROGRESS.md` for
-exactly what's been verified vs. what needs real credentials to confirm.
+channel. `PAYSTACK_SECRET_KEY` is required for the "Get payment link" flow and for Paystack's
+webhook to verify a payment automatically — without it that button is replaced by a clear refusal
+and the manual "Mark as paid (cash/transfer)" flow still works exactly as before. Without any of
+these the app degrades gracefully (clear "not configured" messages in the UI, see
+`isWhatsAppConfigured()` / `isEmailConfigured()` / `isPaystackConfigured()` / the AI assist action)
+rather than failing silently or pretending to work — the logic itself is tested against synthetic
+signed payloads / mocked responses in `tests/`, not against the real services. See
+`docs/PROGRESS.md` for exactly what's been verified vs. what needs real credentials to confirm.
 
 ## What's deferred (do not build yet)
 
@@ -244,16 +267,20 @@ See VISION.md Part 2 "Explicitly deferred". Built since that list was written: m
 isolation enforcement, customer-merge logic, bulk operations (order bulk-assign, previewed), basic
 reporting, in-app notifications, an email notification channel layered on top of them,
 per-organization SLA configuration, WhatsApp delivery-status tracking (sent/delivered/read/
-failed on outbound messages — VISION.md's Phase 5 "ingestion/delivery tracking"), and a formal AI
-eval harness (`src/lib/ai/eval.ts`, `npm run ai:eval`) — see `docs/PROGRESS.md` for what shipped
-and what's still intentionally narrower than VISION.md's full Phase 4/5/Part 1 ambition. Still
-deferred: billing, platform super-admin, automated payment verification, an SMS channel (email is
-the only push channel so far), non-WhatsApp messaging channels, saved/scheduled reports, live
+failed on outbound messages — VISION.md's Phase 5 "ingestion/delivery tracking"), a formal AI
+eval harness (`src/lib/ai/eval.ts`, `npm run ai:eval`), and automated payment verification
+(Paystack, `src/lib/payments.ts` — VISION.md's Phase 6 "payment records, provider integration,
+verification") — see `docs/PROGRESS.md` for what shipped and what's still intentionally narrower
+than VISION.md's full Phase 4/5/6/Part 1 ambition. Still deferred: billing, platform super-admin,
+reconciliation reporting (comparing what the provider says was paid against what's recorded — a
+natural follow-on to the payment-provider integration above, not built yet), an SMS channel (email
+is the only push channel so far), non-WhatsApp messaging channels, saved/scheduled reports, live
 *courier/physical* delivery-tracking integration (not to be confused with the WhatsApp message
-delivery-status tracking above — that's Phase 6 territory, a different "delivery" entirely), the
-full configurable-automation engine VISION.md describes (triggers/conditions/actions/execution
-logs/retry) — what shipped is narrower: one fixed trigger (a new/changed notification-worthy
-event) with one fixed action (notify), not a
+delivery-status tracking above — a different "delivery" entirely; needs real carrier credentials
+this environment doesn't have, and per-organization Paystack accounts rather than one global key
+(real multi-tenant SaaS billing territory, Phase 7)), the full configurable-automation engine
+VISION.md describes (triggers/conditions/actions/execution logs/retry) — what shipped is narrower:
+one fixed trigger (a new/changed notification-worthy event) with one fixed action (notify), not a
 general rule builder.
 
 ## First-time setup (new machine or cloud session)
@@ -283,9 +310,10 @@ npm run dev
   its own data wiped in `beforeAll` first, or another test file's leftover orgs break the
   fallback — see `tests/end-to-end-flow.test.ts`.
 - **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
-  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten twice now — it only fails when the
-  full suite runs, because other test files leave rows behind.) Missing this once caused an FK failure
-  that only appeared when the full suite ran, not in isolation.
+  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten three times now — most recently
+  for `Payment` — it only fails when the full suite runs, because other test files leave rows
+  behind.) Missing this once caused an FK failure that only appeared when the full suite ran, not
+  in isolation.
 - **Stale Turbopack cache** can produce phantom runtime errors ("X is not a function") for exports
   that are correct and pass tests. Kill the dev server, delete `.next/`, restart.
 - **Chrome extension screenshots** (`Page.captureScreenshot`) can hang for a whole session while

@@ -8,6 +8,7 @@ import {
   cancelOrderAction,
   type FormState,
 } from "../actions";
+import { PaymentLinkButton } from "./payment-link-button";
 
 function ActionButton({
   action,
@@ -91,8 +92,9 @@ export function OrderActions({
 
   if (status === "CONFIRMED") {
     return (
-      <div className="flex flex-wrap gap-4">
-        <ActionButton action={markPaidAction.bind(null, orderId)} label="Mark as paid" pendingLabel="Saving…" />
+      <div className="flex flex-wrap items-start gap-4">
+        <ActionButton action={markPaidAction.bind(null, orderId)} label="Mark as paid (cash/transfer)" pendingLabel="Saving…" />
+        <PaymentLinkButton orderId={orderId} />
         <ActionButton
           action={cancelOrderAction.bind(null, orderId)}
           label="Cancel order"

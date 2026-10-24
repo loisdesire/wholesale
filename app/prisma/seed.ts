@@ -28,6 +28,7 @@ async function main() {
   await prisma.shipment.deleteMany();
   await prisma.returnItem.deleteMany();
   await prisma.orderReturn.deleteMany();
+  await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.message.deleteMany();
@@ -169,9 +170,9 @@ async function main() {
   await prisma.message.createMany({
     data: [
       { conversationId: convo1.id, direction: "INBOUND", sender: "CUSTOMER", body: "Good day, I need 10 Ankara two piece, black, size M and 5 in red, size L", createdAt: hoursAgo(30) },
-      { conversationId: convo1.id, direction: "OUTBOUND", sender: "AI", body: "Hi Ngozi! Confirming: 10x Ankara Two-Piece Set (Black, M) at ₦18,500 each, and 5x Ankara Two-Piece Set (Red, L) at ₦18,500 each. Total: ₦277,500. Shall I draft this order?", createdAt: hoursAgo(29.8) },
+      { conversationId: convo1.id, direction: "OUTBOUND", sender: "AI", body: "Hi Ngozi! Confirming: 10x Ankara Two-Piece Set (Black, M) at ₦18,500 each, and 5x Ankara Two-Piece Set (Red, L) at ₦18,500 each. Total: ₦277,500. Shall I draft this order?", createdAt: hoursAgo(29.8), deliveryStatus: "READ", deliveryStatusAt: hoursAgo(29.7) },
       { conversationId: convo1.id, direction: "INBOUND", sender: "CUSTOMER", body: "Yes please", createdAt: hoursAgo(29.5) },
-      { conversationId: convo1.id, direction: "OUTBOUND", sender: "STAFF", body: "Order confirmed, payment received. Dispatching today.", createdAt: hoursAgo(27) },
+      { conversationId: convo1.id, direction: "OUTBOUND", sender: "STAFF", body: "Order confirmed, payment received. Dispatching today.", createdAt: hoursAgo(27), deliveryStatus: "FAILED", deliveryStatusAt: hoursAgo(26.9), deliveryError: "Recipient number is not on WhatsApp." },
     ],
   });
   const order1 = await prisma.order.create({

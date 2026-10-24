@@ -128,6 +128,7 @@ model Organization {
   returns        OrderReturn[]
   auditLogs      AuditLog[]
   shipments      Shipment[]
+  payments       Payment[]
 }
 
 // A user belongs to one or more organizations, with a role in each. The session
@@ -182,6 +183,7 @@ model User {
   assignedOrders        Order[]         @relation("OrderAssignee")
   assignedReturns       OrderReturn[]   @relation("ReturnAssignee")
   notifications         Notification[]
+  recordedPayments      Payment[]
 }
 
 model Product {
@@ -422,10 +424,50 @@ model Order {
   items     OrderItem[]
   shipments Shipment[]
   returns   OrderReturn[]
+  payments  Payment[]
 
   @@unique([organizationId, reference])
   @@index([organizationId, status])
   @@index([organizationId, assignedToId])
+}
+
+enum PaymentMethod {
+  /**
+   * Recorded by a staff member/owner from outside the app — cash, bank transfer, etc.
+   */
+  MANUAL
+  /**
+   * Verified by a signed provider webhook (Paystack) — never from a customer's claim.
+   */
+  PROVIDER
+}
+
+// A row only ever exists here once there is verified evidence of a successful payment —
+// a provider's signed webhook, or a human confirming a manual payment. There is no
+// "pending" or "failed" Payment: an attempt that didn't succeed leaves no evidence to
+// record, so the order simply stays unpaid. "Amount paid" is the SUM of these rows —
+// a ledger, like StockMovement — never a column on Order that gets edited directly.
+// This is what makes partial and overpaid states representable without a payment ever
+// needing to be split, reversed or corrected in place.
+model Payment {
+  id                String        @id @default(cuid())
+  organizationId    String
+  organization      Organization  @relation(fields: [organizationId], references: [id])
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id])
+  method            PaymentMethod
+  amountCents       Int
+  currency          String        @default("NGN")
+  // Paystack's transaction reference — globally unique (we generate it), the
+  // idempotency key a redelivered webhook is detected and ignored by. Null for a
+  // MANUAL payment, which has no provider transaction behind it.
+  providerReference String?       @unique
+  // Who recorded a MANUAL payment; null for PROVIDER (verified by the webhook, not a person).
+  recordedById      String?
+  recordedBy        User?         @relation(fields: [recordedById], references: [id])
+  createdAt         DateTime      @default(now())
+
+  @@index([organizationId, orderId])
 }
 
 // unitPriceCents is locked at order-confirmation time — a later catalogue price

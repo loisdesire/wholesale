@@ -22,6 +22,7 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   ORDER_DRAFTED: "Order drafted",
   ORDER_CONFIRMED: "Order confirmed, stock reserved",
   PAYMENT_MARKED_PAID: "Marked as paid",
+  PAYMENT_RECORDED: "Payment recorded",
   ORDER_FULFILLED: "Fully shipped — order fulfilled",
   ORDER_PARTIALLY_SHIPPED: "Part of the order shipped",
   ORDER_CLOSED_SHORT: "Closed short — unshipped items refunded",
@@ -48,9 +49,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       customer: { include: { addresses: { orderBy: { createdAt: "asc" } } } },
       conversation: true,
       items: { include: { product: true }, orderBy: { createdAt: "asc" } },
+      payments: { include: { recordedBy: true }, orderBy: { createdAt: "asc" } },
     },
   });
   if (!order) notFound();
+
+  const paidCents = order.payments.reduce((sum, p) => sum + p.amountCents, 0);
 
   const isOwner = session!.user.role === "OWNER";
   const duplicates =
@@ -177,6 +181,50 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           duplicateOf={duplicates.map((d) => d.reference)}
         />
       </section>
+
+      {order.status !== "DRAFT" && (
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-sm font-medium text-ink">Payments</h2>
+            <p className="font-tabular text-sm text-ink">
+              {formatMoney(paidCents, order.currency)} of {formatMoney(order.totalCents, order.currency)}
+              {paidCents > order.totalCents && (
+                <span className="ml-2 rounded-full bg-status-attention-bg px-2 py-0.5 text-xs font-medium text-status-attention-fg">
+                  Overpaid by {formatMoney(paidCents - order.totalCents, order.currency)}
+                </span>
+              )}
+            </p>
+          </div>
+          {order.payments.length === 0 ? (
+            <p className="rounded-md border border-dashed border-line px-4 py-4 text-center text-sm text-text-muted">
+              No payments recorded yet.
+            </p>
+          ) : (
+            <div className="rounded-md border border-line bg-surface">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                    <th className="px-4 py-2">Method</th>
+                    <th className="px-4 py-2 text-right">Amount</th>
+                    <th className="px-4 py-2">When</th>
+                    <th className="px-4 py-2">Recorded by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.payments.map((p) => (
+                    <tr key={p.id} className="border-b border-line last:border-0">
+                      <td className="px-4 py-3 text-ink">{p.method === "PROVIDER" ? "Paystack" : "Manual"}</td>
+                      <td className="px-4 py-3 text-right font-tabular text-ink">{formatMoney(p.amountCents, p.currency)}</td>
+                      <td className="px-4 py-3 text-xs text-text-muted">{formatDateTime(p.createdAt)}</td>
+                      <td className="px-4 py-3 text-text-muted">{p.recordedBy?.name ?? (p.method === "PROVIDER" ? "Verified automatically" : "—")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-sm font-medium text-ink">Items</h2>
