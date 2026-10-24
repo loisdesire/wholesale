@@ -1,10 +1,16 @@
 import { OrderStatus, ReturnKind, ReturnStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { tenantDb, transaction } from "@/lib/db";
-import { HOUR_MS, SEVERITY_RANK, SLA, type Severity } from "@/lib/ops-config";
+import { HOUR_MS, SEVERITY_RANK, resolveSla, type Severity } from "@/lib/ops-config";
 import { getStockByProduct } from "@/lib/stock";
 import { formatMoney } from "@/lib/format";
 import { dateInput } from "@/lib/reports";
+
+/** The organization's resolved SLA thresholds (its overrides merged onto the defaults). */
+async function orgSla(organizationId: string) {
+  const org = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { slaOverrides: true } });
+  return resolveSla(org.slaOverrides);
+}
 
 /** "3h", "2 days" — how long something has been waiting. */
 export function formatAge(hours: number) {
@@ -54,6 +60,7 @@ export type AttentionResult = {
  */
 export async function getAttentionItems(organizationId: string, now = new Date()): Promise<AttentionResult> {
   const db = tenantDb(organizationId);
+  const sla = await orgSla(organizationId);
   const ago = (h: number) => new Date(now.getTime() - h * HOUR_MS);
   const hoursSince = (d: Date) => (now.getTime() - d.getTime()) / HOUR_MS;
   const assigneeSelect = { select: { id: true, name: true } } as const;
@@ -78,25 +85,25 @@ export async function getAttentionItems(organizationId: string, now = new Date()
   const [conversations, drafts, unpaid, unshipped, partial, pastDue, returnsWaiting, returnsToReceive, refundsToPay] =
     await Promise.all([
       db.conversation.findMany({
-        where: { organizationId, status: { in: ["NEW", "AWAITING_STAFF"] }, lastMessageAt: { lt: ago(SLA.conversationWaitingWarnHours) } },
+        where: { organizationId, status: { in: ["NEW", "AWAITING_STAFF"] }, lastMessageAt: { lt: ago(sla.conversationWaitingWarnHours) } },
         include: { customer: true, assignedTo: assigneeSelect },
         orderBy: { lastMessageAt: "asc" },
         take: PER_RULE_CAP,
       }),
       db.order.findMany({
-        where: { organizationId, status: "DRAFT", createdAt: { lt: ago(SLA.draftStaleWarnHours) } },
+        where: { organizationId, status: "DRAFT", createdAt: { lt: ago(sla.draftStaleWarnHours) } },
         include: { customer: true, assignedTo: assigneeSelect },
         orderBy: { createdAt: "asc" },
         take: PER_RULE_CAP,
       }),
       db.order.findMany({
-        where: { organizationId, status: "CONFIRMED", confirmedAt: { lt: ago(SLA.paymentOverdueWarnHours) } },
+        where: { organizationId, status: "CONFIRMED", confirmedAt: { lt: ago(sla.paymentOverdueWarnHours) } },
         include: { customer: true, assignedTo: assigneeSelect },
         orderBy: { confirmedAt: "asc" },
         take: PER_RULE_CAP,
       }),
       db.order.findMany({
-        where: { organizationId, status: "PAID", paidAt: { lt: ago(SLA.shipOverdueWarnHours) } },
+        where: { organizationId, status: "PAID", paidAt: { lt: ago(sla.shipOverdueWarnHours) } },
         include: { customer: true, assignedTo: assigneeSelect },
         orderBy: { paidAt: "asc" },
         take: PER_RULE_CAP,
@@ -113,19 +120,19 @@ export async function getAttentionItems(organizationId: string, now = new Date()
         take: PER_RULE_CAP,
       }),
       db.orderReturn.findMany({
-        where: { organizationId, status: "REQUESTED", createdAt: { lt: ago(SLA.returnDecisionWarnHours) } },
+        where: { organizationId, status: "REQUESTED", createdAt: { lt: ago(sla.returnDecisionWarnHours) } },
         include: { customer: true, order: true, assignedTo: assigneeSelect },
         orderBy: { createdAt: "asc" },
         take: PER_RULE_CAP,
       }),
       db.orderReturn.findMany({
-        where: { organizationId, status: "APPROVED", kind: "RETURN", decidedAt: { lt: ago(SLA.returnReceiveWarnHours) } },
+        where: { organizationId, status: "APPROVED", kind: "RETURN", decidedAt: { lt: ago(sla.returnReceiveWarnHours) } },
         include: { customer: true, order: true, assignedTo: assigneeSelect },
         orderBy: { decidedAt: "asc" },
         take: PER_RULE_CAP,
       }),
       db.orderReturn.findMany({
-        where: { organizationId, refundStatus: "PENDING", decidedAt: { lt: ago(SLA.refundPayWarnHours) } },
+        where: { organizationId, refundStatus: "PENDING", decidedAt: { lt: ago(sla.refundPayWarnHours) } },
         include: { customer: true, order: true, assignedTo: assigneeSelect },
         orderBy: { decidedAt: "asc" },
         take: PER_RULE_CAP,
@@ -171,7 +178,7 @@ export async function getAttentionItems(organizationId: string, now = new Date()
       href: `/inbox/${c.id}`,
       amountCents: null,
       assignee: c.assignedTo,
-      severity: tiered(h, SLA.conversationWaitingCriticalHours),
+      severity: tiered(h, sla.conversationWaitingCriticalHours),
       reason: `Customer has been waiting ${formatAge(h)} for a reply`,
     });
   }
@@ -180,16 +187,16 @@ export async function getAttentionItems(organizationId: string, now = new Date()
   }
   for (const o of unpaid) {
     const h = hoursSince(o.confirmedAt ?? o.createdAt);
-    add({ ...orderBase(o, o.confirmedAt ?? o.createdAt), severity: tiered(h, SLA.paymentOverdueCriticalHours), reason: `Payment overdue — confirmed ${formatAge(h)} ago` });
+    add({ ...orderBase(o, o.confirmedAt ?? o.createdAt), severity: tiered(h, sla.paymentOverdueCriticalHours), reason: `Payment overdue — confirmed ${formatAge(h)} ago` });
   }
   for (const o of unshipped) {
     const h = hoursSince(o.paidAt ?? o.createdAt);
-    add({ ...orderBase(o, o.paidAt ?? o.createdAt), severity: tiered(h, SLA.shipOverdueCriticalHours), reason: `Paid ${formatAge(h)} ago and not shipped` });
+    add({ ...orderBase(o, o.paidAt ?? o.createdAt), severity: tiered(h, sla.shipOverdueCriticalHours), reason: `Paid ${formatAge(h)} ago and not shipped` });
   }
   for (const o of partial) {
     const last = o.shipments[0]?.createdAt ?? o.paidAt ?? o.createdAt;
     const h = hoursSince(last);
-    if (h >= SLA.partialStaleWarnHours) {
+    if (h >= sla.partialStaleWarnHours) {
       add({ ...orderBase(o, last), severity: "warning", reason: `Part-shipped and nothing new has gone out for ${formatAge(h)}` });
     }
   }
@@ -198,7 +205,7 @@ export async function getAttentionItems(organizationId: string, now = new Date()
   }
   for (const r of returnsWaiting) {
     const h = hoursSince(r.createdAt);
-    add({ ...returnBase(r, r.createdAt), severity: tiered(h, SLA.returnDecisionCriticalHours), reason: `Return waiting ${formatAge(h)} for the owner's decision` });
+    add({ ...returnBase(r, r.createdAt), severity: tiered(h, sla.returnDecisionCriticalHours), reason: `Return waiting ${formatAge(h)} for the owner's decision` });
   }
   for (const r of returnsToReceive) {
     const h = hoursSince(r.decidedAt!);
@@ -206,7 +213,7 @@ export async function getAttentionItems(organizationId: string, now = new Date()
   }
   for (const r of refundsToPay) {
     const h = hoursSince(r.decidedAt!);
-    add({ ...returnBase(r, r.decidedAt!), severity: tiered(h, SLA.refundPayCriticalHours), reason: `Refund approved ${formatAge(h)} ago and still unpaid` });
+    add({ ...returnBase(r, r.decidedAt!), severity: tiered(h, sla.refundPayCriticalHours), reason: `Refund approved ${formatAge(h)} ago and still unpaid` });
   }
 
   const truncated = [conversations, drafts, unpaid, unshipped, partial, pastDue, returnsWaiting, returnsToReceive, refundsToPay].some(

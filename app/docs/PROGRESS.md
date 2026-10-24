@@ -651,18 +651,66 @@ as known gaps.
   (`prisma migrate diff --exit-code`) reports no difference; the full Playwright script is still
   33/33, including the notification-badge checks now exercising `userScopedDb` live in a browser.
 
+## Done (2026-10-24, final pass — Phase 4 remainder: per-org SLA + an email channel)
+
+The two items left on "Phase 4 remainder" in the next-steps list: per-organization SLA
+configuration, and a push notification channel layered on the existing in-app ones.
+
+- **Per-organization SLA configuration.** `src/lib/ops-config.ts`'s hardcoded `SLA` is now
+  `DEFAULT_SLA` plus `resolveSla(overrides)`, which merges a partial `Organization.slaOverrides`
+  (JSONB) onto the defaults — an absent, non-numeric, zero/negative, or otherwise invalid key keeps
+  its default, never throws. `src/lib/sla-settings.ts` (owner-only, `SlaSettingsError` on refusal)
+  validates each submitted value is a positive integer up to a year of hours, and that every
+  warning/critical pair (e.g. payment-overdue warn vs. critical) stays ordered — a warning that
+  fires *after* its own critical tier would be a contradiction, not a style nit. `/operations/settings`
+  renders one input per threshold from `SLA_FIELDS` (grouped: Conversations/Orders/Returns),
+  placeholdered with the default, blank meaning "use it"; a submit always replaces the whole
+  override set (the form always sends every field), not a field-by-field merge, so what's saved is
+  exactly what the owner saw. `getAttentionItems` and `getOperationalMetrics` both resolve the
+  organization's own thresholds now — two organizations with different risk tolerances genuinely
+  see different "overdue" lines, immediately, no cache to invalidate.
+- **Email notification channel** (`src/lib/email.ts`, Resend's HTTP API, same shape as
+  `whatsapp.ts`: `isEmailConfigured()`, throws a dedicated error class on any failure, never a
+  fabricated success). Layered onto `notify()`, not a parallel system: email is attempted only
+  when `createMany`'s inserted count equals the recipient count for that call — i.e. every
+  targeted recipient's row was genuinely new. A retry (the whole batch already exists) inserts
+  none and emails nobody; a partial overlap (some recipients already notified from an earlier
+  call, e.g. a late-added owner) is treated the same as a retry rather than guessed at, so this
+  channel can never double-email someone who already got one. A failed send (down provider, bad
+  address) is caught and logged, never thrown past `notify()` — the in-app notification already
+  exists and remains the source of truth regardless of what the optional channel does.
+  `APP_URL` (optional) turns the notification's relative `href` into a clickable absolute link in
+  the email body; without it the email still sends, just without the link.
+- **Tests:** 16 new (276 total) — `resolveSla`'s merge/validation behaviour; SLA settings' owner
+  gate, value/pair validation, persistence, and (the one that actually matters) a real
+  `getAttentionItems` call seeing the override, not the hardcoded default, plus confirmation a
+  second organization's thresholds are untouched; `isEmailConfigured`/`sendEmail` against a mocked
+  `fetch` (success, non-2xx failure, not-configured refusal — the real Resend API itself is
+  untested, same as WhatsApp's actual send call, per the established precedent in this codebase of
+  not unit-testing real outbound network calls); `notify()`'s email layering — silent when
+  unconfigured, fires once per genuinely-new recipient, never fires again on a retry, and a
+  provider failure doesn't take the in-app notification down with it.
+- **Verified live in a browser** (Playwright, 40/40 checks): the owner sees a "Thresholds" link
+  from Operations, the settings form renders grouped fields with correct default placeholders,
+  saving shows a confirmation and the override survives a reload; staff sees neither the link nor
+  the form (visiting the URL directly gets the same refusal message as every other owner-only
+  page in this app, not the form).
+- `npm run lint`, `npm run build`, `npm run test` (276/276) and the migration-drift check all pass
+  clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
   managed/production instance — deployment, backups and connection pooling are still undecided.
   Note `Order.orderSeq`/`returnSeq` counters serialize order creation per organization on one row
   lock; fine at this volume, revisit if that ever becomes a hotspot.
-- **No real WhatsApp or Anthropic credentials in this environment.** Webhook ingestion, reply
-  sending, and AI product-matching are all built and tested against synthetic-but-realistic signed
-  payloads and a mocked model client — correct by construction and by test, but not yet run against
-  Meta's or Anthropic's actual infrastructure. Nothing in the app pretends otherwise: every screen
-  shows a clear "not configured" state instead of failing silently or faking success.
-- Vitest is configured (`npm run test`, 260 tests / 19 files). VISION.md's remaining
+- **No real WhatsApp, Anthropic or Resend credentials in this environment.** Webhook ingestion,
+  reply sending, AI product-matching, and the email notification channel are all built and tested
+  against synthetic-but-realistic signed payloads / a mocked model client / a mocked `fetch` —
+  correct by construction and by test, but not yet run against Meta's, Anthropic's or Resend's
+  actual infrastructure. Nothing in the app pretends otherwise: every screen shows a clear "not
+  configured" state instead of failing silently or faking success.
+- Vitest is configured (`npm run test`, 276 tests / 20 files). VISION.md's remaining
   testing-discipline scenario not yet covered — a duplicate payment webhook — has no payment
   gateway to have webhooks from yet (explicitly deferred); applies once that exists.
 - **Returns/refunds scope limits (deliberate):** a return is only possible against units that have
@@ -692,8 +740,10 @@ These are natural follow-ons, flagged here rather than started unprompted:
   they're the first things real multi-tenant traffic exercises.)
 - Decide on and set up deployment (hosting, managed Postgres, env vars, running `prisma migrate
   deploy` in CI/CD, and setting `wholesale_app`'s real password there — `docs/ISOLATION.md`).
-- Phase 4 remainder: a push notification channel (email/SMS) layered on the existing in-app
-  notifications; per-organization SLA configuration.
+- Get a real `RESEND_API_KEY` and do a live smoke test of the email channel (it's only ever been
+  exercised against a mocked `fetch`, per the same "credentials needed to confirm against the
+  real service" gap as WhatsApp/Anthropic above). An SMS channel, if ever wanted, follows the same
+  `isXConfigured()`/dedicated-error-class shape as `email.ts`/`whatsapp.ts`.
 - Phase 6 (payments & delivery): automated payment verification would let "mark paid" and "refund
   paid" rest on evidence instead of a manual click; live delivery-tracking integration.
 - Phase 7 (commercial launch): billing/subscriptions, platform super-admin, monitoring/backups,

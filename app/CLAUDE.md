@@ -129,13 +129,23 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   `app.user_id` setting, same fails-closed shape as `app.organization_id`), not just an app-level
   `where userId`. Writing a notification *for* someone else (`notify()`) still uses the ordinary
   `transaction()`, since the actor isn't the recipient. See `docs/ISOLATION.md`.
-- **Operations thresholds live in one place** (`src/lib/ops-config.ts`, `SLA`): the needs-attention
-  queue (`src/lib/operations.ts`), the dashboard and the metrics all read the same numbers, so
-  "overdue" never means something different in two places. A record that trips several rules
-  appears once with every reason, not once per rule. Each rule is capped (`PER_RULE_CAP`) so the
-  query stays bounded; `getAttentionItems` returns `{ items, truncated }`, not a bare array — the
-  Operations page shows a banner when `truncated` is true rather than silently presenting a
-  partial list as if it were complete.
+- **Email is a second, best-effort channel layered on the in-app one** (`src/lib/email.ts`,
+  `isEmailConfigured()`/`sendEmail()`, same "degrades gracefully, never fakes a send" shape as
+  `whatsapp.ts`). `notify()` emails every targeted recipient only when `createMany`'s inserted
+  count equals the recipient count — i.e. every one of them was genuinely new this call, never on
+  a retry (which inserts none) or a partial overlap (treated the same as a retry, to never risk a
+  second email for someone already told). A failed or unconfigured send is caught and logged, never
+  thrown past `notify()` — the in-app notification is the source of truth and must not be undone by
+  an optional channel failing.
+- **Operations thresholds are per-organization** (`src/lib/ops-config.ts`'s `DEFAULT_SLA` +
+  `resolveSla()`, `Organization.slaOverrides`, `src/lib/sla-settings.ts`, owner-only,
+  `/operations/settings`): the needs-attention queue (`src/lib/operations.ts`), the dashboard and
+  the metrics all call `resolveSla()` (never read `DEFAULT_SLA`/`SLA` directly) so "overdue" means
+  the same thing everywhere for a given organization, even after that organization tunes it. A
+  record that trips several rules appears once with every reason, not once per rule. Each rule is
+  capped (`PER_RULE_CAP`) so the query stays bounded; `getAttentionItems` returns `{ items,
+  truncated }`, not a bare array — the Operations page shows a banner when `truncated` is true
+  rather than silently presenting a partial list as if it were complete.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -200,21 +210,27 @@ organization, Lagos Spice Traders), staff `chidinma@adaezewholesale.ng` / `staff
 
 `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_APP_SECRET` /
 `WHATSAPP_VERIFY_TOKEN` (see `.env.example`) and `ANTHROPIC_API_KEY` are required for real WhatsApp
-sending/ingestion and AI product-matching respectively. Without them the app degrades gracefully
-(clear "not configured" messages in the UI, see `isWhatsAppConfigured()` / the AI assist action)
-rather than failing silently or pretending to work — the logic itself is tested against synthetic
-signed payloads / mocked responses in `tests/`, not against the real services. See
-`docs/PROGRESS.md` for exactly what's been verified vs. what needs real credentials to confirm.
+sending/ingestion and AI product-matching respectively. `RESEND_API_KEY` / `EMAIL_FROM` (and
+optionally `APP_URL`, for a clickable link in the email) are required for the email notification
+channel. Without any of these the app degrades gracefully (clear "not configured" messages in the
+UI, see `isWhatsAppConfigured()` / `isEmailConfigured()` / the AI assist action) rather than
+failing silently or pretending to work — the logic itself is tested against synthetic signed
+payloads / mocked responses in `tests/`, not against the real services. See `docs/PROGRESS.md` for
+exactly what's been verified vs. what needs real credentials to confirm.
 
 ## What's deferred (do not build yet)
 
 See VISION.md Part 2 "Explicitly deferred". Built since that list was written: multi-tenant
 isolation enforcement, customer-merge logic, bulk operations (order bulk-assign, previewed), basic
-reporting, and in-app notifications — see `docs/PROGRESS.md` for what shipped and what's still
+reporting, in-app notifications, an email notification channel layered on top of them, and
+per-organization SLA configuration — see `docs/PROGRESS.md` for what shipped and what's still
 intentionally narrower than VISION.md's full Phase 4/Part 1 ambition. Still deferred: billing,
-platform super-admin, automated payment verification, a push/email/SMS notification *channel*
-(today's notifications are in-app only), non-WhatsApp channels, a formal AI eval harness,
-saved/scheduled reports, live delivery-tracking integration.
+platform super-admin, automated payment verification, an SMS channel (email is the only push
+channel so far), non-WhatsApp messaging channels, a formal AI eval harness, saved/scheduled
+reports, live delivery-tracking integration, the full configurable-automation engine VISION.md
+describes (triggers/conditions/actions/execution logs/retry) — what shipped is narrower: one
+fixed trigger (a new/changed notification-worthy event) with one fixed action (notify), not a
+general rule builder.
 
 ## First-time setup (new machine or cloud session)
 

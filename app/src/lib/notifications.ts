@@ -1,10 +1,20 @@
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { userScopedDb, type DbClient } from "@/lib/db";
+import { isEmailConfigured, sendEmail } from "@/lib/email";
 
 /**
  * In-app notices. Creation is idempotent per (user, dedupeKey): an event that fires
  * twice, or a retried job, asks for the same notice again and gets no duplicate.
+ *
+ * Email is a second, best-effort channel layered on top (see `src/lib/email.ts`) —
+ * sent only when every targeted recipient's row was genuinely new this call. A
+ * retry (all duplicates) sends no email, by the same dedupe the in-app row already
+ * uses; a partial overlap (some recipients already notified, e.g. a late-added
+ * owner) is treated the same as a retry rather than guessed at, so this channel
+ * never risks a second email for someone who already got one. Nothing here blocks
+ * or fails the primary in-app notification: a down or unconfigured email provider
+ * never undoes the notify() call or throws past it.
  */
 export async function notify(
   tx: DbClient,
@@ -33,7 +43,28 @@ export async function notify(
     })),
     skipDuplicates: true,
   });
+  if (created.count === userIds.length) {
+    await emailRecipients(userIds, params.title, params.body, params.href);
+  }
   return created.count;
+}
+
+/** Best-effort email fan-out; User is identity data, read via the root client like everywhere else. */
+async function emailRecipients(userIds: string[], title: string, body: string | undefined, href: string | undefined) {
+  if (!isEmailConfigured()) return;
+  const recipients = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { email: true } });
+  const link = href && process.env.APP_URL ? `${process.env.APP_URL}${href}` : null;
+  const text = [body, link].filter(Boolean).join("\n\n");
+  await Promise.all(
+    recipients.map((r) =>
+      sendEmail(r.email, title, text).catch((err) => {
+        // Best-effort: the in-app notification already exists and is the source of
+        // truth. Log and move on — never let a down/misconfigured email provider
+        // fail the business action that triggered this notification.
+        console.error(`email notification failed for ${r.email}:`, err instanceof Error ? err.message : err);
+      })
+    )
+  );
 }
 
 /** The people who must be told about owner-level events (membership is identity data, not tenant data). */

@@ -39,9 +39,16 @@ export default async function OperationsPage({
             What needs attention right now, how the business is running, and who&apos;s carrying what.
           </p>
         </div>
-        <Link href="/reports" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
-          Reports &amp; exports →
-        </Link>
+        <div className="flex items-center gap-2">
+          {isOwner && (
+            <Link href="/operations/settings" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+              Thresholds
+            </Link>
+          )}
+          <Link href="/reports" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+            Reports &amp; exports →
+          </Link>
+        </div>
       </header>
 
       {outOfStock.length > 0 && (
