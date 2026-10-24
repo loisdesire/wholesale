@@ -1068,9 +1068,15 @@ Three infrastructure pieces, all buildable without real external accounts:
 - **CI pipeline** (`.github/workflows/ci.yml`): runs on every push/PR — a throwaway Postgres
   service container, the restricted `wholesale_app` role created the same way
   `docker/init-app-role.sql` does locally, `prisma migrate deploy`, `npm run db:check-isolation`
-  (fails the build if tenant isolation isn't actually enforced), lint, typecheck, the full test
-  suite, and the production build. Verifies the branch; does not deploy anything — see
-  `docs/DEPLOYMENT.md`'s new "Continuous integration" section.
+  (fails the build if tenant isolation isn't actually enforced), lint, the production build, and
+  the full test suite. Verifies the branch; does not deploy anything — see `docs/DEPLOYMENT.md`'s
+  new "Continuous integration" section. **Confirmed working on real GitHub Actions infrastructure,
+  not just locally** — the first real run failed on a genuine CI-only bug: a standalone
+  `npx tsc --noEmit` step run before `npm run build` fails on the App Router's auto-generated
+  `LayoutProps`/`PageProps` types, which only exist under `.next/types` once `next build` has
+  actually run. Reproduced locally (`rm -rf .next` then `tsc --noEmit`), fixed by dropping the
+  redundant standalone step (`next build` already runs its own full TypeScript check) and running
+  build before test instead; the second real run passed clean, all 12 steps green.
 - **Error tracking** (`@sentry/nextjs`, `sentry.server.config.ts`, `src/instrumentation.ts`'s new
   `onRequestError` export): same degrade-gracefully shape as every other integration —
   `Sentry.init()` only runs when `SENTRY_DSN` is set, so every Sentry call elsewhere (including the
