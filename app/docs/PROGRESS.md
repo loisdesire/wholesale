@@ -1110,6 +1110,57 @@ Three infrastructure pieces, all buildable without real external accounts:
 - `npm run lint`, `npm run build`, `npm run test` (365/365), and the migration-drift check all pass
   clean on a fresh `prisma migrate deploy` from scratch.
 
+## Done (2026-10-24, continued)
+
+**Inbound WhatsApp image support** — a real feature gap, not a Phase 7 infra piece, surfaced
+directly by the user describing their actual target customers (social-commerce wholesalers whose
+customers send photos alongside orders) during the pricing discussion: the AI/ingestion pipeline
+was text-only, with every image message silently reduced to `[unsupported message type: image]`
+and discarded. Built in one slice (capture/store/display); deliberately stopped short of AI vision.
+
+- **`MessageAttachment`** (new model + migration): stores inbound image bytes directly in Postgres
+  (`BYTEA`), a child of `Message` with no `organizationId` of its own — same pattern as `Message`
+  itself (RLS via `EXISTS` through the parent chain, see `docs/ISOLATION.md`). Chose Postgres
+  storage over a new object-storage account deliberately: no new infra/credentials needed, and
+  this app's volume doesn't yet justify the decision — see `docs/DEPLOYMENT.md`.
+- **`src/lib/whatsapp.ts`**: `parseWebhookPayload` now extracts an image message's media id, mime
+  type and caption (`message.media`) instead of discarding it; `fetchMediaBytes` does Meta's
+  required two-step fetch (resolve media id → short-lived URL → download), capped at 8MB as a
+  sanity bound (Meta's own limit is 5MB). Downloading is network I/O and deliberately happens
+  outside `ingestInboundMessage`'s transaction, at the webhook route's call site — a failed
+  download (logged + `Sentry.captureMessage`) never blocks the message itself from being saved;
+  the caption or an `[image]` placeholder is stored either way, same "never lose the message over
+  a side effect failing" principle used throughout this app.
+- **`/api/attachments/[id]`**: a new authenticated route streaming a stored image's bytes, relying
+  on RLS alone for cross-tenant protection (no `organizationId` column to filter by directly on
+  this child-of-a-child table) — verified live that a different organization's owner is refused
+  (404), not served the image.
+- **Inbox UI**: the conversation thread now renders inline images for messages that have one.
+- **Tests:** 11 new (376 total) — image message parsing (media id/mime/caption extraction, caption
+  vs. placeholder body, malformed payloads never fabricate media info, a genuinely unsupported
+  type like video still gets the old placeholder), `fetchMediaBytes` (refuses when not configured,
+  the two-step fetch, refuses a file Meta itself reports as oversized without downloading it,
+  clean failure surfacing), `ingestInboundMessage` persisting an attachment alongside the message
+  and still saving the message when none is given, and a full webhook-route round trip (downloads
+  and stores end to end; still stores the message when the download fails). `tests/isolation.test.ts`
+  (which fails the suite if a new tenant-data table is missing RLS or isn't acknowledged as a known
+  child table) required `MessageAttachment` to be added to its child-table registry — exactly the
+  guard rail it's meant to be.
+- **Found and fixed**: the FK-wipe-order gotcha (CLAUDE.md: "forgotten three times before") bit a
+  fourth time for `MessageAttachment` — caught immediately by `npm run db:seed` itself this time
+  (not the full test suite), fixed in both `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`.
+- **Verified live in a browser**: a real inbound image message (via a one-off script, cleaned up
+  and reseeded afterward) renders correctly in the inbox thread — the image actually decodes
+  (`naturalWidth > 0`, not a broken-image icon), the caption shows alongside it, direct attachment
+  URL access returns the right content-type, and a different organization is refused — screenshot
+  reviewed, no visual bugs.
+- **Deliberately not built in this slice**: giving the AI engine (`src/lib/ai/engine.ts`) access to
+  these images. `runAIAssist` still builds a text-only transcript; wiring an attachment into
+  Claude's vision input (an image content block per message that has one) is the natural next
+  slice once this foundation is confirmed working, not done here to keep this slice verifiable on
+  its own.
+- `npm run lint`, `npm run build`, and `npm run test` (376/376) all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1207,3 +1258,16 @@ These are natural follow-ons, flagged here rather than started unprompted:
   verification the refund-completion webhook gap is waiting on) is the actual blocker, not more
   code — once that's confirmed, wiring an "enable auto-renewal" button to
   `createPaystackSubscription` is a small, already-tested addition away.
+- Give the AI engine the images it can now see (`MessageAttachment`, see the Done entry above) —
+  wire an image content block into `runAIAssist`'s Claude call per message that has one. Worth
+  noting before doing it: vision input costs meaningfully more per call than text (larger prompt
+  token count per image), which matters directly for `PLAN_LIMITS.aiRepliesPerMonth` — the current
+  limits were sized assuming text-only AI replies; confirm the cost assumption still holds once
+  image-bearing replies are common, before finalizing real pricing numbers.
+- Real pricing is still unset (`PLAN_LIMITS` in `src/lib/billing.ts` are illustrative placeholders).
+  The target customer is social-commerce wholesalers (Instagram/Facebook-driven orders) with real
+  daily order volume (roughly 20 to 150+/day across the actual range discussed), not the
+  hobby-shop scale the very first placeholder numbers were sized for. Real numbers wait on direct
+  conversations with target businesses — concretely, what they currently lose to disorganized
+  order-taking and what they'd pay relative to that, not a survey question asked cold. See this
+  session's conversation for the full reasoning; update `PLAN_LIMITS` once real data exists.

@@ -12,9 +12,19 @@ import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
  * duplicate event) is detected via the unique-constraint violation and
  * treated as a no-op rather than creating a duplicate message.
  *
+ * `attachment`, if given, is already-downloaded image bytes (see
+ * src/lib/whatsapp.ts's fetchMediaBytes) — downloading is network I/O and deliberately happens
+ * outside this function's transaction, at the webhook route's call site, so a failed download
+ * never blocks the message itself from being saved (the route logs it and moves on, same as
+ * every other "couldn't fully apply, but acknowledge" case there).
+ *
  * Returns null when the message was already recorded (duplicate delivery).
  */
-export async function ingestInboundMessage(organizationId: string, message: InboundWhatsAppMessage) {
+export async function ingestInboundMessage(
+  organizationId: string,
+  message: InboundWhatsAppMessage,
+  attachment?: { data: Buffer; mimeType: string }
+) {
   return transaction(organizationId, async (tx) => {
     // Matched on the normalized phone, so WhatsApp's "2348031234567" finds the
     // customer staff entered as "0803 123 4567" instead of creating a second one.
@@ -52,6 +62,17 @@ export async function ingestInboundMessage(organizationId: string, message: Inbo
           createdAt: message.timestamp,
         },
       });
+
+      if (attachment) {
+        await tx.messageAttachment.create({
+          data: {
+            messageId: created.id,
+            mimeType: attachment.mimeType,
+            data: new Uint8Array(attachment.data),
+            sizeBytes: attachment.data.byteLength,
+          },
+        });
+      }
 
       await tx.conversation.update({
         where: { id: conversation.id },

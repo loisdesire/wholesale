@@ -436,7 +436,25 @@ model Message {
   deliveryError    String?
   createdAt        DateTime               @default(now())
 
+  attachments MessageAttachment[]
+
   @@index([conversationId])
+}
+
+// An inbound image (a customer's photo of what they want, a payment screenshot, …) — downloaded
+// from WhatsApp's Media API at ingestion time and stored here, since Meta's own media URLs are
+// short-lived (src/lib/whatsapp.ts's fetchMediaBytes). No organizationId of its own — a child of
+// Message the same way Message is a child of Conversation (see docs/ISOLATION.md).
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id])
+  mimeType  String
+  data      Bytes
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
 }
 
 enum MessageDeliveryStatus {

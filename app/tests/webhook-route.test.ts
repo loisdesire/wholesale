@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { GET, POST } from "@/app/api/webhooks/whatsapp/route";
 
@@ -126,6 +126,78 @@ describe("WhatsApp webhook route", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(await prisma.message.count()).toBe(before);
+  });
+
+  describe("image messages", () => {
+    beforeEach(() => {
+      process.env.WHATSAPP_ACCESS_TOKEN = "route-test-media-token";
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    function imageBody(externalId: string, caption?: string) {
+      return JSON.stringify({
+        object: "whatsapp_business_account",
+        entry: [
+          {
+            changes: [
+              {
+                field: "messages",
+                value: {
+                  metadata: { phone_number_id: ROUTE_PHONE_ID },
+                  messages: [
+                    {
+                      from: "15559990001",
+                      id: externalId,
+                      timestamp: String(Math.floor(Date.now() / 1000)),
+                      type: "image",
+                      image: { id: `media-${externalId}`, mime_type: "image/jpeg", caption },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }
+
+    it("downloads and stores the image, end to end", async () => {
+      const bytes = new Uint8Array([9, 8, 7, 6]);
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(new Response(JSON.stringify({ url: "https://lookaside.example/x", mime_type: "image/jpeg", file_size: 4 }), { status: 200 }))
+          .mockResolvedValueOnce(new Response(bytes, { status: 200 }))
+      );
+
+      const body = imageBody("wamid.route-img-1", "Do you have this colour?");
+      const req = new NextRequest("http://localhost/api/webhooks/whatsapp", { method: "POST", body, headers: { "x-hub-signature-256": sign(body) } });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+
+      const stored = await prisma.message.findUniqueOrThrow({ where: { externalId: "wamid.route-img-1" } });
+      expect(stored.body).toBe("Do you have this colour?");
+      const attachment = await prisma.messageAttachment.findFirstOrThrow({ where: { messageId: stored.id } });
+      expect(attachment.mimeType).toBe("image/jpeg");
+      expect(Buffer.from(attachment.data)).toEqual(Buffer.from(bytes));
+    });
+
+    it("still stores the message when the image download fails — never loses the message over it", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("down", { status: 500 })));
+
+      const body = imageBody("wamid.route-img-2");
+      const req = new NextRequest("http://localhost/api/webhooks/whatsapp", { method: "POST", body, headers: { "x-hub-signature-256": sign(body) } });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+
+      const stored = await prisma.message.findUniqueOrThrow({ where: { externalId: "wamid.route-img-2" } });
+      expect(stored.body).toBe("[image]");
+      expect(await prisma.messageAttachment.count({ where: { messageId: stored.id } })).toBe(0);
+    });
   });
 
   describe("delivery-status updates", () => {

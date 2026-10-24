@@ -16,8 +16,13 @@ real host yet — see `docs/PROGRESS.md`'s "Known gaps" for what's still unverif
   not a hardening nice-to-have. Most managed Postgres (RDS, Supabase, Neon, Render Postgres,
   Cloud SQL) gives you a non-superuser app role by default; only be careful not to grant it
   superuser or `BYPASSRLS` out of convenience.
-- **File storage**: none. No user uploads are stored outside the database (catalogue CSV
+- **File storage**: inbound WhatsApp images are stored as bytes directly in Postgres
+  (`MessageAttachment.data`, a `BYTEA` column) rather than an external object store — a deliberate
+  choice to avoid a new infra dependency/account before there's a real need, see CLAUDE.md's
+  billing/attachments notes. No other user uploads are stored outside the database (catalogue CSV
   import/export and report CSV export are both streamed in the request, never written to disk).
+  Revisit object storage (S3/R2/Cloudinary) if attachment volume ever makes Postgres row/table
+  size a real concern — nothing today needs that decision made yet.
 
 ## Environment variables
 

@@ -36,7 +36,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
     include: {
       customer: true,
       assignedTo: true,
-      messages: { orderBy: { createdAt: "asc" } },
+      messages: { orderBy: { createdAt: "asc" }, include: { attachments: { select: { id: true, mimeType: true } } } },
       orders: true,
     },
   });
@@ -146,7 +146,22 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                         </span>
                       )}
                     </div>
-                    <p className="whitespace-pre-wrap">{m.body}</p>
+                    {m.attachments.length > 0 && (
+                      <div className="mb-2 flex flex-col gap-2">
+                        {m.attachments.map((a) => (
+                          // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route, not a static asset Next's image optimizer can handle
+                          <img
+                            key={a.id}
+                            src={`/api/attachments/${a.id}`}
+                            alt="Image sent by the customer"
+                            className="max-h-80 max-w-full rounded-md border border-line/50 object-contain"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {!(m.attachments.length > 0 && m.body === "[image]") && (
+                      <p className="whitespace-pre-wrap">{m.body}</p>
+                    )}
                     {!isInbound && m.deliveryStatus === "FAILED" && m.deliveryError && (
                       <p className="mt-1 text-xs text-white/80">{m.deliveryError}</p>
                     )}

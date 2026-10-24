@@ -89,7 +89,7 @@ describe("tenant isolation (row-level security)", () => {
     // Identity / tenant registry: read before any tenant is known, carries no tenant data.
     const registry = new Set(["User", "Membership", "Organization"]);
     // Child tables with no organizationId of their own, protected through their parent.
-    const children = new Set(["Message", "OrderItem", "PriceTier", "ReturnItem", "ShipmentItem"]);
+    const children = new Set(["Message", "MessageAttachment", "OrderItem", "PriceTier", "ReturnItem", "ShipmentItem"]);
 
     const unprotected = tables
       .filter((t) => !registry.has(t.table))

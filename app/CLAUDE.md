@@ -215,6 +215,19 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   auto-charges a saved card every period with no way yet to reliably recognize those renewal
   webhooks and apply them to the ledger — see `subscriptions.ts`'s own doc comment for why that gap
   blocks turning this on, not a missing feature.
+- **Inbound WhatsApp images are captured, stored, and rendered — not just text.**
+  `MessageAttachment` (child of `Message`, no `organizationId` of its own — same pattern as
+  `Message` itself, see "Adding a table" in `docs/ISOLATION.md`) stores the actual bytes, since
+  Meta's webhook only ever carries a media id, never the bytes, and Meta's resolved download URL
+  is short-lived (`parseWebhookPayload`'s `media` field, `fetchMediaBytes` in `src/lib/whatsapp.ts`
+  does the two-step id→URL→bytes fetch). Downloading is network I/O and deliberately happens
+  outside `ingestInboundMessage`'s transaction, at the webhook route's call site — a failed
+  download is logged/Sentry-captured but never blocks the message itself from being saved (the
+  caption, or an `[image]` placeholder, still gets stored). Served back out through
+  `/api/attachments/[id]`, authenticated and relying on RLS alone for cross-tenant protection
+  (no `organizationId` to filter by directly on a child-of-a-child table). **Images are stored,
+  not yet given to the AI** — `runAIAssist` (`src/lib/ai/engine.ts`) is still text-only; passing
+  attached images to Claude as vision input is the natural next slice, not yet built.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -324,22 +337,26 @@ eval harness (`src/lib/ai/eval.ts`, `npm run ai:eval`), automated payment verifi
 `src/lib/payments.ts` — VISION.md's Phase 6 "payment records, provider integration, verification"),
 and billing/subscription foundations (`src/lib/billing.ts`, `/billing` — plans, trials, derived
 usage metering, informational entitlement checks, subscription payments through the same Paystack
-webhook as order payments — VISION.md's Phase 7 "billing/subscriptions") — see `docs/PROGRESS.md`
-for what shipped and what's still intentionally narrower than VISION.md's full Phase 4/5/6/7/Part 1
-ambition. Still deferred: platform super-admin, security review, monitoring/backups, a formal
-deployment pipeline and docs, pilot onboarding (the rest of Phase 7), reconciliation reporting
-(comparing what the provider says was paid against what's recorded — a natural follow-on to the
-payment-provider integration above, not built yet), an SMS channel (email is the only push channel
-so far), non-WhatsApp messaging channels, saved/scheduled reports, live *courier/physical*
+webhook as order payments — VISION.md's Phase 7 "billing/subscriptions"), a reconciliation report
+(`src/lib/reconciliation.ts`, comparing what Paystack says it charged against what's recorded),
+automated refund requests and dormant tokenized-subscription plumbing (see above), a CI pipeline,
+error tracking, deployment/monitoring/pilot-onboarding documentation (`docs/DEPLOYMENT.md`,
+`docs/MONITORING_AND_BACKUPS.md`, `docs/PILOT_ONBOARDING.md`), a whole-branch security review
+(no HIGH/MEDIUM findings so far), and inbound WhatsApp image capture/storage/display (see above)
+— see `docs/PROGRESS.md` for what shipped and what's still intentionally narrower than VISION.md's
+full Phase 4/5/6/7/Part 1 ambition. Still deferred: platform super-admin, pilot onboarding itself
+(the runbook exists, but no real pilot has gone through it), an SMS channel (email is the only
+push channel so far), non-WhatsApp messaging channels, saved/scheduled reports, giving the AI
+engine the images it now has access to (text-only today — see above), live *courier/physical*
 delivery-tracking integration (not to be confused with the WhatsApp message delivery-status
 tracking above — a different "delivery" entirely; needs real carrier credentials this environment
 doesn't have), per-organization Paystack accounts rather than one global key, real auto-recurring
-billing via Paystack's tokenized Subscriptions API rather than the one-off-per-period charge built
-here, and hard entitlement enforcement (blocking once a plan limit is exceeded) — all real
-multi-tenant SaaS billing territory that waits on final pricing decisions. The full
-configurable-automation engine VISION.md describes (triggers/conditions/actions/execution
-logs/retry) also remains narrower than the vision: one fixed trigger (a new/changed
-notification-worthy event) with one fixed action (notify), not a general rule builder.
+billing actually turned on (the plumbing is built but dormant — see above), and hard entitlement
+enforcement (blocking once a plan limit is exceeded) — all real multi-tenant SaaS billing territory
+that waits on final pricing decisions. The full configurable-automation engine VISION.md describes
+(triggers/conditions/actions/execution logs/retry) also remains narrower than the vision: one
+fixed trigger (a new/changed notification-worthy event) with one fixed action (notify), not a
+general rule builder.
 
 ## First-time setup (new machine or cloud session)
 
@@ -368,10 +385,11 @@ npm run dev
   its own data wiped in `beforeAll` first, or another test file's leftover orgs break the
   fallback — see `tests/end-to-end-flow.test.ts`.
 - **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
-  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten three times before — most
-  recently for `Payment`; `SubscriptionPayment` got this added proactively — it only fails when the
-  full suite runs, because other test files leave rows behind.) Missing this once caused an FK
-  failure that only appeared when the full suite ran, not in isolation.
+  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten four times now — most recently
+  for `MessageAttachment`, caught immediately by `npm run db:seed` itself this time rather than
+  the full test suite; `SubscriptionPayment` got it added proactively. It fails whenever rows of
+  the forgotten child model exist — the full suite often surfaces it first since other test files
+  leave rows behind, but a direct reseed with real data, like this one, catches it just as fast.)
 - **Stale Turbopack cache** can produce phantom runtime errors ("X is not a function") for exports
   that are correct and pass tests. Kill the dev server, delete `.next/`, restart.
 - **Chrome extension screenshots** (`Page.captureScreenshot`) can hang for a whole session while

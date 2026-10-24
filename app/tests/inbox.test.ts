@@ -84,4 +84,27 @@ describe("ingestInboundMessage", () => {
     expect(conversations).toHaveLength(2);
     expect(conversations[1].status).toBe("NEW");
   });
+
+  it("stores an attachment alongside the message when image bytes are given", async () => {
+    const phone = "15550003333";
+    const data = Buffer.from([1, 2, 3, 4, 5]);
+    const result = await ingestInboundMessage(
+      organizationId,
+      message({ externalId: "wamid.img1", from: phone, body: "[image]" }),
+      { data, mimeType: "image/jpeg" }
+    );
+    expect(result).not.toBeNull();
+
+    const attachment = await prisma.messageAttachment.findFirstOrThrow({ where: { messageId: result!.id } });
+    expect(attachment.mimeType).toBe("image/jpeg");
+    expect(attachment.sizeBytes).toBe(5);
+    expect(Buffer.from(attachment.data)).toEqual(data);
+  });
+
+  it("stores the message with no attachment when none is given — a failed image download never loses the message", async () => {
+    const phone = "15550004444";
+    const result = await ingestInboundMessage(organizationId, message({ externalId: "wamid.img2", from: phone, body: "[image]" }));
+    expect(result).not.toBeNull();
+    expect(await prisma.messageAttachment.count({ where: { messageId: result!.id } })).toBe(0);
+  });
 });

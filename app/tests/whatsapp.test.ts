@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
-import { describe, expect, it, beforeAll } from "vitest";
-import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates } from "@/lib/whatsapp";
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll } from "vitest";
+import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates, fetchMediaBytes, WhatsAppMediaError } from "@/lib/whatsapp";
 
 beforeAll(() => {
   process.env.WHATSAPP_APP_SECRET = "test-app-secret";
@@ -77,7 +77,7 @@ describe("parseWebhookPayload", () => {
     expect(messages[0].timestamp.getTime()).toBe(1700000000 * 1000);
   });
 
-  it("labels a non-text message instead of fabricating content", () => {
+  it("labels a genuinely unsupported message type instead of fabricating content", () => {
     const payload = {
       object: "whatsapp_business_account",
       entry: [
@@ -86,7 +86,7 @@ describe("parseWebhookPayload", () => {
             {
               field: "messages",
               value: {
-                messages: [{ from: "234800000", id: "wamid.IMG1", timestamp: "1700000001", type: "image" }],
+                messages: [{ from: "234800000", id: "wamid.VID1", timestamp: "1700000001", type: "video" }],
               },
             },
           ],
@@ -94,7 +94,79 @@ describe("parseWebhookPayload", () => {
       ],
     };
     const messages = parseWebhookPayload(payload);
-    expect(messages[0].body).toBe("[unsupported message type: image]");
+    expect(messages[0].body).toBe("[unsupported message type: video]");
+    expect(messages[0].media).toBeUndefined();
+  });
+
+  it("extracts an image message's media id and mime type, with its caption as the body", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                messages: [
+                  {
+                    from: "234800000",
+                    id: "wamid.IMG1",
+                    timestamp: "1700000001",
+                    type: "image",
+                    image: { id: "media-123", mime_type: "image/jpeg", caption: "Can I get this in medium?" },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const messages = parseWebhookPayload(payload);
+    expect(messages[0].body).toBe("Can I get this in medium?");
+    expect(messages[0].media).toEqual({ mediaId: "media-123", mimeType: "image/jpeg" });
+  });
+
+  it("falls back to an [image] placeholder body when there's no caption", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                messages: [{ from: "234800000", id: "wamid.IMG2", timestamp: "1700000001", type: "image", image: { id: "media-456", mime_type: "image/png" } }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const messages = parseWebhookPayload(payload);
+    expect(messages[0].body).toBe("[image]");
+    expect(messages[0].media).toEqual({ mediaId: "media-456", mimeType: "image/png" });
+  });
+
+  it("never fabricates media info when the image payload is malformed", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                messages: [{ from: "234800000", id: "wamid.IMG3", timestamp: "1700000001", type: "image" }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const messages = parseWebhookPayload(payload);
+    expect(messages[0].body).toBe("[image]");
+    expect(messages[0].media).toBeUndefined();
   });
 
   it("ignores non-message changes, e.g. status updates", () => {
@@ -185,5 +257,51 @@ describe("parseStatusUpdates", () => {
   it("ignores payloads that aren't whatsapp_business_account events", () => {
     expect(parseStatusUpdates({ object: "page" })).toHaveLength(0);
     expect(parseStatusUpdates(null)).toHaveLength(0);
+  });
+});
+
+describe("fetchMediaBytes", () => {
+  beforeEach(() => {
+    process.env.WHATSAPP_ACCESS_TOKEN = "media-test-token";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("refuses when WhatsApp isn't configured", async () => {
+    delete process.env.WHATSAPP_ACCESS_TOKEN;
+    await expect(fetchMediaBytes("media-1")).rejects.toBeInstanceOf(WhatsAppMediaError);
+  });
+
+  it("resolves the media id to a URL, then downloads it", async () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ url: "https://lookaside.example/media-1", mime_type: "image/jpeg", file_size: 4 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(bytes, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchMediaBytes("media-1");
+    expect(result.mimeType).toBe("image/jpeg");
+    expect(Buffer.from(result.data)).toEqual(Buffer.from(bytes));
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "https://graph.facebook.com/v21.0/media-1", expect.objectContaining({ headers: { Authorization: "Bearer media-test-token" } }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "https://lookaside.example/media-1", expect.objectContaining({ headers: { Authorization: "Bearer media-test-token" } }));
+  });
+
+  it("refuses a file Meta itself reports as too large, without downloading it", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ url: "https://lookaside.example/big", mime_type: "image/jpeg", file_size: 50 * 1024 * 1024 }), { status: 200 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchMediaBytes("media-big")).rejects.toBeInstanceOf(WhatsAppMediaError);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // never attempted the download
+  });
+
+  it("surfaces a failure to resolve the media id cleanly", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not found", { status: 404 })));
+    await expect(fetchMediaBytes("media-gone")).rejects.toThrow(/Could not resolve media/);
   });
 });

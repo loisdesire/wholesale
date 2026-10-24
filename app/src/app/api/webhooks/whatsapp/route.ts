@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { resolveOrganizationForWhatsApp } from "@/lib/whatsapp-routing";
-import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates } from "@/lib/whatsapp";
+import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates, fetchMediaBytes, WhatsAppMediaError } from "@/lib/whatsapp";
 import { ingestInboundMessage } from "@/lib/inbox";
 import { applyMessageStatus } from "@/lib/message-status";
 
@@ -65,7 +65,20 @@ export async function POST(req: NextRequest) {
       );
       continue;
     }
-    await ingestInboundMessage(organizationId, message);
+    let attachment: { data: Buffer; mimeType: string } | undefined;
+    if (message.media) {
+      try {
+        attachment = await fetchMediaBytes(message.media.mediaId);
+      } catch (err) {
+        // The message itself still gets saved below (with its caption or an "[image]"
+        // placeholder) — a failed image download is never a reason to lose the message.
+        const detail = err instanceof WhatsAppMediaError ? err.message : String(err);
+        const warning = `WhatsApp webhook: could not download image for message ${message.externalId}: ${detail}`;
+        console.error(warning);
+        Sentry.captureMessage(warning, "warning");
+      }
+    }
+    await ingestInboundMessage(organizationId, message, attachment);
   }
 
   let unroutedStatuses = 0;

@@ -36,8 +36,10 @@ export type InboundWhatsAppMessage = {
   timestamp: Date;
   /** The business phone number the message was sent to (Meta's metadata.phone_number_id) — identifies the tenant. */
   phoneNumberId?: string;
-  /** Human-readable body. Non-text message types get a bracketed placeholder — never fabricated content. */
+  /** Human-readable body. Non-text, non-image message types get a bracketed placeholder — never fabricated content. */
   body: string;
+  /** Present for an image message — Meta's media id, fetched separately (fetchMediaBytes) since the webhook itself never carries the bytes. */
+  media?: { mediaId: string; mimeType: string };
 };
 
 /**
@@ -76,8 +78,16 @@ export function parseWebhookPayload(body: unknown): InboundWhatsAppMessage[] {
         const timestamp = timestampSeconds ? new Date(timestampSeconds * 1000) : new Date();
 
         let body: string;
+        let media: InboundWhatsAppMessage["media"];
         if (m.type === "text") {
           body = String((m.text as { body?: string })?.body ?? "").trim() || "[empty message]";
+        } else if (m.type === "image") {
+          const image = m.image as { id?: string; mime_type?: string; caption?: string } | undefined;
+          const caption = image?.caption?.trim();
+          body = caption || "[image]";
+          if (image?.id && image?.mime_type) {
+            media = { mediaId: image.id, mimeType: image.mime_type };
+          }
         } else {
           body = `[unsupported message type: ${String(m.type ?? "unknown")}]`;
         }
@@ -89,6 +99,7 @@ export function parseWebhookPayload(body: unknown): InboundWhatsAppMessage[] {
           timestamp,
           phoneNumberId: phoneNumberId ? String(phoneNumberId) : undefined,
           body,
+          media,
         });
       }
     }
@@ -204,4 +215,49 @@ export async function sendWhatsAppTextMessage(
     throw new WhatsAppSendError("WhatsApp send returned no message id.");
   }
   return { messageId };
+}
+
+export class WhatsAppMediaError extends Error {}
+
+// Meta caps WhatsApp image uploads at 5MB; refuse anything larger rather than trust a
+// content-length header blindly (it's not attacker-controlled here — it's Meta's own response —
+// but a sane upper bound is still cheap insurance against downloading something unbounded).
+const MAX_MEDIA_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Downloads an inbound image's bytes from WhatsApp's Media API. Meta's webhook never carries the
+ * bytes themselves, only a media id (see parseWebhookPayload) — this is a required second round
+ * trip: first resolve the id to a short-lived download URL, then fetch that URL, both
+ * authenticated with the same access token. Throws on any failure; the caller
+ * (ingestInboundMessage) decides what "the image didn't come through" means for the message.
+ */
+export async function fetchMediaBytes(mediaId: string): Promise<{ data: Buffer; mimeType: string }> {
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new WhatsAppMediaError("WhatsApp isn't configured (missing WHATSAPP_ACCESS_TOKEN).");
+  }
+
+  const metaRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!metaRes.ok) {
+    const detail = await metaRes.text().catch(() => "");
+    throw new WhatsAppMediaError(`Could not resolve media ${mediaId} (${metaRes.status}): ${detail.slice(0, 300)}`);
+  }
+  const meta = (await metaRes.json()) as { url?: string; mime_type?: string; file_size?: number };
+  if (!meta.url) throw new WhatsAppMediaError(`Media ${mediaId} has no download URL.`);
+  if (typeof meta.file_size === "number" && meta.file_size > MAX_MEDIA_BYTES) {
+    throw new WhatsAppMediaError(`Media ${mediaId} is too large (${meta.file_size} bytes).`);
+  }
+
+  const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!fileRes.ok) {
+    throw new WhatsAppMediaError(`Could not download media ${mediaId} (${fileRes.status}).`);
+  }
+  const arrayBuffer = await fileRes.arrayBuffer();
+  if (arrayBuffer.byteLength > MAX_MEDIA_BYTES) {
+    throw new WhatsAppMediaError(`Media ${mediaId} is too large (${arrayBuffer.byteLength} bytes).`);
+  }
+
+  return { data: Buffer.from(arrayBuffer), mimeType: meta.mime_type ?? "application/octet-stream" };
 }
