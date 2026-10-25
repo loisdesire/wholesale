@@ -22,7 +22,7 @@ export default async function PlatformAdminPage() {
       <header>
         <h1 className="text-xl font-medium text-ink">Platform admin</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Every organization on the platform, read-only. Nothing here edits tenant data — see an organization's own
+          Every organization on the platform, read-only. Nothing here edits tenant data — see an organization&apos;s own
           data by signing in as a member of it.
         </p>
       </header>
