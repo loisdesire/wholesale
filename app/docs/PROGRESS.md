@@ -1224,6 +1224,50 @@ configurable rather than hardcoded with full confidence (the exact current model
 verifiable from available docs) still applies equally to Luna — this default is as unconfirmed as
 Astra was, just cheaper if wrong.
 
+## Done (2026-10-25, continued)
+
+**Platform admin, scoped deliberately to read-only** after a quick scope check with the user
+(the options offered were read-only, read-only + support actions, or full edit — read-only was
+picked, lowest risk since it introduces no new way to touch tenant data). This is the one feature
+in the app that legitimately needs to see across every organization, which made it worth pausing
+on scope before writing code — unlike most of this session's other features, it's the first
+thing in the whole app that deliberately looks past the tenant-isolation boundary everything else
+was built around.
+
+- **`User.isPlatformAdmin`** (new migration): identity data, `false` by default for everyone
+  including every organization's own OWNER. No self-serve path — set directly against the
+  database, same pattern as onboarding an organization itself (`docs/PILOT_ONBOARDING.md`).
+  Wired into `auth.ts`'s `jwt`/`session` callbacks exactly like `role`/`organizationId` — re-read
+  fresh from the database on every request, so revoking it takes effect on the holder's very next
+  request, not whenever their token expires.
+- **`src/lib/platform-admin.ts`**: `getPlatformOverview()` lists every organization (plan, status,
+  trial/period end, created date) with its usage (staff seats, orders this month, AI replies this
+  month) against its plan's limits. Deliberately **not** a new "see everything" database
+  privilege or bypass of RLS: `Organization` is read directly because it's identity data (no RLS,
+  same as `User`/`Membership`), and each organization's usage comes from calling `billing.ts`'s
+  own `getUsage()` once per organization — the exact same tenant-scoped function `/billing`
+  already calls for the signed-in user's own organization. A bug in this code can't leak
+  cross-tenant data any more than a bug anywhere else could, since every underlying query is
+  still individually RLS-scoped — there is no all-at-once query path to get wrong.
+- **`/admin`**: owner-only-page refusal pattern (same shape as `/billing`, `/operations/settings`)
+  gated on `isPlatformAdmin` instead of `role`. Nav link hidden unless `isPlatformAdmin` is true —
+  confirmed live that an organization's own OWNER (a real role, just not this one) still gets
+  refused, proving the two concepts don't get conflated anywhere in the chain.
+- **Tests:** 2 new (379 total, `tests/platform-admin.test.ts`) — lists every organization created
+  with its own correct plan/usage never cross-contaminated between them (one organization given a
+  real order and 1 staff seat, the other given 2 staff seats and zero orders, checked
+  independently), and confirms no organization is silently excluded from the overview.
+- **Verified live in a browser**: the overview renders correctly for a platform admin (both
+  seeded organizations, correct plans/statuses/usage numbers); staff and a regular organization
+  OWNER both get the plain refusal and never see the nav link — screenshot reviewed, no visual
+  bugs, matches the existing design system exactly (reuses `SubscriptionStatusBadge`,
+  `PLAN_LIMITS`, the same table styling as `/billing`).
+- Seed data: the demo owner (`flomglobal@gmail.com`) is now also a platform admin, so the feature
+  demos without extra setup — the same convenience this project has given every other feature via
+  realistic seed data.
+- `npm run lint`, `npm run build`, `npm run test` (379/379), and the migration-drift check all pass
+  clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1302,18 +1346,21 @@ These are natural follow-ons, flagged here rather than started unprompted:
   subscription webhook end-to-end (same "built and tested against synthetic payloads, not yet run
   for real" gap as order payments); decide real pricing/limits before turning the current
   informational entitlement checks into actual enforcement; per-organization Paystack accounts
-  rather than the one global key billing scaffolding used; platform super-admin — once there's a
-  real pilot business ready to run on this. Deployment documentation (`docs/DEPLOYMENT.md`), a
-  pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`), and a monitoring/backups plan
-  (`docs/MONITORING_AND_BACKUPS.md`) are now written, but the actual hosting/managed-Postgres/
-  error-tracking-vendor decisions they depend on haven't been made, and nothing in any of them has
-  been exercised for real yet. The onboarding runbook documents today's actual process honestly (a
-  manual DB-level script, no self-serve sign-up) rather than assuming a UI that doesn't exist —
-  building that UI is listed in the runbook itself as deliberately deferred until a couple of real
-  pilots show which parts of it are actually worth automating first. A security review of the
-  whole branch is now done (no HIGH/MEDIUM findings — see the Done entry above) but should be
-  re-run once platform super-admin and real payment provider credentials land, since both expand
-  the attack surface this review covered.
+  rather than the one global key billing scaffolding used — once there's a real pilot business
+  ready to run on this. Platform admin is now built, but deliberately read-only (see the Done
+  entry above) — if support actions (extending a trial, nudging a stuck subscription) are ever
+  wanted, that's a deliberate second step, not an oversight. Deployment documentation
+  (`docs/DEPLOYMENT.md`), a pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`), and a
+  monitoring/backups plan (`docs/MONITORING_AND_BACKUPS.md`) are now written, but the actual
+  hosting/managed-Postgres/error-tracking-vendor decisions they depend on haven't been made, and
+  nothing in any of them has been exercised for real yet. The onboarding runbook documents today's
+  actual process honestly (a manual DB-level script, no self-serve sign-up) rather than assuming a
+  UI that doesn't exist — building that UI is listed in the runbook itself as deliberately
+  deferred until a couple of real pilots show which parts of it are actually worth automating
+  first. A security review of the whole branch is now done (no HIGH/MEDIUM findings — see the Done
+  entry above) but should be re-run now that platform admin and the OpenAI/vision work have landed
+  and real payment provider credentials eventually land, since all three expand the attack surface
+  that review covered.
 - A CI pipeline (`.github/workflows/ci.yml`) and error-tracking SDK wiring (`@sentry/nextjs`) are
   now both built (see the Done entry above) — what's left on each is entirely outside this
   environment: a CD step that actually deploys, once a host is chosen; a real Sentry project and

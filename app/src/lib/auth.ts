@@ -45,6 +45,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           name: user.name,
           role: membership.role,
           organizationId: membership.organizationId,
+          isPlatformAdmin: user.isPlatformAdmin,
         };
       },
     }),
@@ -54,6 +55,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
       if (user) {
         token.role = user.role;
         token.organizationId = user.organizationId;
+        token.isPlatformAdmin = user.isPlatformAdmin;
         return token;
       }
       if (!token.sub) return null;
@@ -70,6 +72,11 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
       token.organizationId = membership.organizationId;
       token.role = membership.role;
+      // Re-read fresh on every request, same as role/organizationId above — revoking platform
+      // admin access takes effect on the holder's very next request, not whenever their token
+      // happens to expire.
+      const platformAdmin = await prisma.user.findUnique({ where: { id: token.sub }, select: { isPlatformAdmin: true } });
+      token.isPlatformAdmin = platformAdmin?.isPlatformAdmin ?? false;
       return token;
     },
     session: async ({ session, token }) => {
@@ -77,6 +84,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         session.user.id = token.sub as string;
         session.user.role = token.role as "OWNER" | "STAFF";
         session.user.organizationId = token.organizationId as string;
+        session.user.isPlatformAdmin = (token.isPlatformAdmin as boolean | undefined) ?? false;
       }
       return session;
     },

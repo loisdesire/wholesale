@@ -81,6 +81,9 @@ async function main() {
       passwordHash: ownerPasswordHash,
       name: "Lois Flomo",
       memberships: { create: { organizationId: org.id, role: "OWNER" } },
+      // The platform operator, not a tenant role — demos /admin without extra setup. See
+      // CLAUDE.md: never self-serve, set directly against the database like this.
+      isPlatformAdmin: true,
     },
   });
 

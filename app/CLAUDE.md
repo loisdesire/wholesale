@@ -232,6 +232,19 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   than guess a specific product match it isn't genuinely confident about (a screenshot from a
   video can be blurry, oddly framed, or poorly lit — real conditions for this app's actual target
   customers, not a hypothetical).
+- **Platform admin is read-only, by design, not by lack of effort.** `User.isPlatformAdmin`
+  (identity data, false for everyone including every organization's own OWNER — never self-serve,
+  set directly against the database like onboarding an organization, see
+  `docs/PILOT_ONBOARDING.md`) gates `/admin`, scoped in `auth.ts`'s `jwt` callback exactly like
+  `role`/`organizationId` — re-read fresh every request, so revoking it takes effect on the
+  holder's next request, not whenever their token expires. Crucially, `/admin` is **not** a
+  bypass of tenant isolation: `src/lib/platform-admin.ts`'s `getPlatformOverview()` reads
+  `Organization` directly (identity data, no RLS, same as `User`/`Membership`) but gets each
+  organization's usage by calling `billing.ts`'s own `getUsage()` once per organization — the
+  exact same tenant-scoped call `/billing` makes for the signed-in user's own organization, just
+  looped. There is no special "see everything at once" query path and no role granted at the
+  database level; a bug in this page can't leak cross-tenant data any more than a bug anywhere
+  else in the app could, because every query underneath it is still individually RLS-scoped.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -358,15 +371,18 @@ webhook as order payments — VISION.md's Phase 7 "billing/subscriptions"), a re
 automated refund requests and dormant tokenized-subscription plumbing (see above), a CI pipeline,
 error tracking, deployment/monitoring/pilot-onboarding documentation (`docs/DEPLOYMENT.md`,
 `docs/MONITORING_AND_BACKUPS.md`, `docs/PILOT_ONBOARDING.md`), a whole-branch security review
-(no HIGH/MEDIUM findings so far), and inbound WhatsApp image capture/storage/display (see above)
-— see `docs/PROGRESS.md` for what shipped and what's still intentionally narrower than VISION.md's
-full Phase 4/5/6/7/Part 1 ambition. Still deferred: platform super-admin, pilot onboarding itself
-(the runbook exists, but no real pilot has gone through it), an SMS channel (email is the only
-push channel so far), non-WhatsApp messaging channels, saved/scheduled reports, giving the AI
-engine the images it now has access to (text-only today — see above), live *courier/physical*
-delivery-tracking integration (not to be confused with the WhatsApp message delivery-status
-tracking above — a different "delivery" entirely; needs real carrier credentials this environment
-doesn't have), per-organization Paystack accounts rather than one global key, real auto-recurring
+(no HIGH/MEDIUM findings so far), inbound WhatsApp image capture/storage/display and AI vision
+input (see above — the AI engine now sees attached images, not text-only), and a read-only
+platform-admin overview (`src/lib/platform-admin.ts`, `/admin` — see above) — see
+`docs/PROGRESS.md` for what shipped and what's still intentionally narrower than VISION.md's full
+Phase 4/5/6/7/Part 1 ambition. Still deferred: platform-admin *actions* (today it's read-only by
+design, not a lesser version of something — see `User.isPlatformAdmin`'s doc comment), pilot
+onboarding itself (the runbook exists, but no real pilot has gone through it), an SMS channel
+(email is the only push channel so far), non-WhatsApp messaging channels, saved/scheduled reports,
+live *courier/physical* delivery-tracking integration (not to be confused with the WhatsApp
+message delivery-status tracking above — a different "delivery" entirely; needs real carrier
+credentials this environment doesn't have), per-organization Paystack accounts rather than one
+global key, real auto-recurring
 billing actually turned on (the plumbing is built but dormant — see above), and hard entitlement
 enforcement (blocking once a plan limit is exceeded) — all real multi-tenant SaaS billing territory
 that waits on final pricing decisions. The full configurable-automation engine VISION.md describes

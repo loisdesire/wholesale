@@ -219,11 +219,16 @@ model Membership {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  createdAt    DateTime @default(now())
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  name            String
+  createdAt       DateTime @default(now())
+  // Platform operator, not a tenant role — can see (read-only) every organization's overview at
+  // /admin. Not self-serve: set directly against the database, same "no self-serve for this"
+  // pattern as docs/PILOT_ONBOARDING.md's org onboarding. False for everyone by default,
+  // including every organization's own OWNER.
+  isPlatformAdmin Boolean  @default(false)
 
   assignedConversations Conversation[]  @relation("AssignedStaff")
   createdStockMovements StockMovement[]

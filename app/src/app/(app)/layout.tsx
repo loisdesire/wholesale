@@ -27,6 +27,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         organizations={memberships.map((m) => ({ id: m.organizationId, name: m.organization.name, role: m.role }))}
         activeOrganizationId={session?.user.organizationId ?? ""}
         unreadNotifications={unread}
+        isPlatformAdmin={session?.user.isPlatformAdmin ?? false}
       />
       <main className="flex-1 overflow-y-auto px-10 py-8">{children}</main>
     </div>

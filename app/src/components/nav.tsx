@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/reports", label: "Reports" },
   { href: "/search", label: "Search" },
   { href: "/billing", label: "Billing", ownerOnly: true },
+  { href: "/admin", label: "Platform Admin", platformAdminOnly: true },
 ];
 
 export function Nav({
@@ -23,6 +24,7 @@ export function Nav({
   organizations,
   activeOrganizationId,
   unreadNotifications,
+  isPlatformAdmin,
 }: {
   orgName: string;
   userName: string;
@@ -30,6 +32,7 @@ export function Nav({
   organizations: { id: string; name: string; role: string }[];
   activeOrganizationId: string;
   unreadNotifications: number;
+  isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
 
@@ -78,7 +81,7 @@ export function Nav({
               )}
             </Link>
           </li>
-          {NAV_ITEMS.filter((item) => !item.ownerOnly || userRole === "OWNER").map((item) => {
+          {NAV_ITEMS.filter((item) => (!item.ownerOnly || userRole === "OWNER") && (!item.platformAdminOnly || isPlatformAdmin)).map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
