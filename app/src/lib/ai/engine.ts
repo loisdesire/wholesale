@@ -8,11 +8,13 @@ export function isAIConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
 }
 
-// Configurable, not hardcoded: OpenAI's exact current flagship model id couldn't be confirmed
-// with full confidence at the time this was written (conflicting naming across sources — see
-// docs/PROGRESS.md). Set OPENAI_MODEL to override without a code change if this id is wrong or
-// retired by the time this runs for real.
-const MODEL = process.env.OPENAI_MODEL || "gpt-6-astra";
+// Configurable, not hardcoded: OpenAI's exact current model ids couldn't be confirmed with full
+// confidence at the time this was written (conflicting naming across sources — see
+// docs/PROGRESS.md). Defaults to the cheap/fast tier (Luna), not the flagship (Astra) — picked
+// deliberately on cost, not capability: PLAN_LIMITS.aiRepliesPerMonth is a real per-reply cost
+// line (see docs/PROGRESS.md's pricing discussion), and this app's task doesn't need flagship
+// reasoning depth for most replies. Set OPENAI_MODEL to override without a code change.
+const MODEL = process.env.OPENAI_MODEL || "gpt-6-luna";
 const MAX_TOOL_ROUNDS = 4;
 
 const searchCatalogueInput = z.object({ query: z.string().min(1) });

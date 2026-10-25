@@ -36,7 +36,7 @@ Copy `.env.example` and fill in real values. Two are new for this app vs. a typi
 | `APP_URL` | yes, if `RESEND_API_KEY` is set | base URL used to build absolute links in notification emails. Without it emails still send, just without a clickable link. |
 | `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_APP_SECRET` / `WHATSAPP_VERIFY_TOKEN` | optional | WhatsApp Cloud API. The app degrades gracefully without it — inbox/replies via WhatsApp simply don't work until configured. One global credential today, not per-organization (see `docs/PROGRESS.md`). |
 | `OPENAI_API_KEY` | optional | AI product matching on inbound messages, including image input. Degrades gracefully without it. |
-| `OPENAI_MODEL` | optional | Overrides `src/lib/ai/engine.ts`'s default model id (`gpt-6-astra`) without a code change — see CLAUDE.md for why this is configurable rather than hardcoded. |
+| `OPENAI_MODEL` | optional | Overrides `src/lib/ai/engine.ts`'s default model id (`gpt-6-luna`, the cheap/fast tier — chosen on cost, not confidence) without a code change — see CLAUDE.md for why this is configurable rather than hardcoded. |
 | `RESEND_API_KEY` / `EMAIL_FROM` | optional | email notification channel. In-app notifications work regardless. |
 | `PAYSTACK_SECRET_KEY` | optional | order payments *and* subscription billing both go through this one key (see `src/lib/billing.ts`, `/billing`) — webhook events are signed with it too, no separate webhook secret. One global account today, not per-organization. |
 | `TEST_DATABASE_URL` / `TEST_APP_DATABASE_URL` | no | local/CI test runs only; never set in a deployed environment. |

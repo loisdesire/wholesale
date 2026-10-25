@@ -1213,6 +1213,17 @@ result, stated as such to the user at the time.
   before OpenAI would even check whether `gpt-6-astra` exists — see "Suggested next steps" below.
 - `npm run lint`, `npm run build`, and `npm run test` (377/377) all pass clean.
 
+## Done (2026-10-25, continued)
+
+**Default model switched from `gpt-6-astra` to `gpt-6-luna`**, on direct user feedback — Astra is
+the flagship tier and meaningfully more expensive than warranted for a per-message order-taking
+reply; Luna is OpenAI's cheap/fast tier. This matters directly for `PLAN_LIMITS.aiRepliesPerMonth`,
+a real per-reply cost line in pricing. Changed in `src/lib/ai/engine.ts` and `src/lib/ai/eval.ts`'s
+defaults; `OPENAI_MODEL` remains the override either way. The reasoning for this being
+configurable rather than hardcoded with full confidence (the exact current model ids weren't
+verifiable from available docs) still applies equally to Luna — this default is as unconfirmed as
+Astra was, just cheaper if wrong.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1258,8 +1269,9 @@ These are natural follow-ons, flagged here rather than started unprompted:
   multi-tenant traffic exercises.)
 - Get a real, *non-expired* `OPENAI_API_KEY` and confirm the AI engine end to end — the one found
   in this machine's shell environment confirmed error handling works correctly (a live 401
-  surfaced cleanly), but expired before confirming the model id itself (`gpt-6-astra`, see the
-  OpenAI-migration Done entry) actually works. Once confirmed, also run `npm run ai:eval` for
+  surfaced cleanly), but expired before confirming the model id itself (`gpt-6-luna` as of
+  2026-10-25, changed from the flagship `gpt-6-astra` on cost — see the OpenAI-migration Done
+  entry) actually works. Once confirmed, also run `npm run ai:eval` for
   real — the eval harness's own pipeline is smoke-tested against Anthropic (see the Phase 5
   eval-harness entry, from before the OpenAI migration), but no accuracy run against the real
   current model has happened; VISION.md's own rule is the model isn't "production-ready" until

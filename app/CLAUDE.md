@@ -324,11 +324,13 @@ rather than failing silently or pretending to work — the logic itself is teste
 signed payloads / mocked responses in `tests/`, not against the real services. See
 `docs/PROGRESS.md` for exactly what's been verified vs. what needs real credentials to confirm.
 
-`src/lib/ai/engine.ts`'s `MODEL` constant (default `gpt-6-astra`) could not be confirmed with full
-confidence against OpenAI's own docs at the time this was written — set `OPENAI_MODEL` to override
-without a code change if it's wrong or retired by the time this runs for real. A real (but
-expired) `OPENAI_API_KEY` found in this machine's shell environment confirmed the integration's
-error handling works correctly end to end (a live 401 surfaced cleanly in the UI, not a crash),
+`src/lib/ai/engine.ts`'s `MODEL` constant (default `gpt-6-luna` — the cheap/fast tier, picked
+deliberately on cost since `PLAN_LIMITS.aiRepliesPerMonth` is a real per-reply cost line, not for
+lack of confidence in the flagship) could not be confirmed with full confidence against OpenAI's
+own docs at the time this was written — set `OPENAI_MODEL` to override without a code change if
+it's wrong or retired by the time this runs for real. A real (but expired) `OPENAI_API_KEY` found
+in this machine's shell environment confirmed the integration's error handling works correctly
+end to end (a live 401 surfaced cleanly in the UI, not a crash),
 but could not confirm the model id itself, since auth fails before the model is even checked.
 
 `SENTRY_DSN` is required for error tracking (`@sentry/nextjs`, wired into `src/instrumentation.ts`

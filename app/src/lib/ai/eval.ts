@@ -256,7 +256,7 @@ export async function runEvalSuite(cases: EvalCase[] = EVAL_CASES): Promise<Eval
     metricRates[metric] = { passed, total: findings.length, rate: findings.length === 0 ? null : passed / findings.length };
   }
 
-  return { model: process.env.AI_EVAL_MODEL_LABEL ?? process.env.OPENAI_MODEL ?? "gpt-6-astra", ranAt: new Date(), results, completionRate, metricRates, overallPassRate };
+  return { model: process.env.AI_EVAL_MODEL_LABEL ?? process.env.OPENAI_MODEL ?? "gpt-6-luna", ranAt: new Date(), results, completionRate, metricRates, overallPassRate };
 }
 
 export function formatReport(report: EvalReport): string {
