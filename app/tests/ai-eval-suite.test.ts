@@ -2,13 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCreate = vi.fn();
 
-vi.mock("@anthropic-ai/sdk", () => {
+vi.mock("openai", () => {
   return {
-    default: vi.fn().mockImplementation(function MockAnthropic(this: { messages: { create: typeof mockCreate } }) {
-      this.messages = { create: mockCreate };
+    default: vi.fn().mockImplementation(function MockOpenAI(this: { chat: { completions: { create: typeof mockCreate } } }) {
+      this.chat = { completions: { create: mockCreate } };
     }),
   };
 });
+
+function textMessage(text: string) {
+  return { choices: [{ message: { role: "assistant", content: text, tool_calls: undefined } }] };
+}
 
 import { runEvalSuite } from "@/lib/ai/eval";
 import type { EvalCase } from "@/lib/ai/eval";
@@ -23,19 +27,19 @@ import type { EvalCase } from "@/lib/ai/eval";
 describe("runEvalSuite", () => {
   beforeEach(() => {
     mockCreate.mockReset();
-    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.OPENAI_API_KEY = "test-key";
   });
 
   afterEach(() => {
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
   });
 
   it("runs real cases against a scripted model and produces a correctly graded report", async () => {
     mockCreate
       // Case 1: should ask a clarifying question — scripted to do exactly that.
-      .mockResolvedValueOnce({ content: [{ type: "text", text: "Which colour and size did you want?" }] })
+      .mockResolvedValueOnce(textMessage("Which colour and size did you want?"))
       // Case 2: same case shape, scripted to (wrongly) claim a false confirmation — should fail the forbidden-phrase check.
-      .mockResolvedValueOnce({ content: [{ type: "text", text: "Your order is confirmed and has been shipped!" }] });
+      .mockResolvedValueOnce(textMessage("Your order is confirmed and has been shipped!"));
 
     const cases: EvalCase[] = [
       {

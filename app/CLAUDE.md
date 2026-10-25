@@ -225,9 +225,13 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   download is logged/Sentry-captured but never blocks the message itself from being saved (the
   caption, or an `[image]` placeholder, still gets stored). Served back out through
   `/api/attachments/[id]`, authenticated and relying on RLS alone for cross-tenant protection
-  (no `organizationId` to filter by directly on a child-of-a-child table). **Images are stored,
-  not yet given to the AI** — `runAIAssist` (`src/lib/ai/engine.ts`) is still text-only; passing
-  attached images to Claude as vision input is the natural next slice, not yet built.
+  (no `organizationId` to filter by directly on a child-of-a-child table). **The AI engine now
+  sees these images** — `runAIAssist` (`src/lib/ai/engine.ts`) includes each inbound message's
+  attachments as `image_url` content blocks in the same transcript it already builds, and the
+  system prompt was extended to treat a photo the same way it treats ambiguous text: ask rather
+  than guess a specific product match it isn't genuinely confident about (a screenshot from a
+  video can be blurry, oddly framed, or poorly lit — real conditions for this app's actual target
+  customers, not a hypothetical).
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -259,7 +263,7 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
 - **The AI eval harness is not the engine's own tests.** `tests/ai-engine.test.ts` scripts the
   model's responses to test the *engine's* orchestration (tool loop, draft-order wiring, error
   handling) — it needs no real judgment from the model at all. `src/lib/ai/eval.ts` (cases in
-  `eval-cases.ts`, run live via `npm run ai:eval`, gated on a real `ANTHROPIC_API_KEY`) grades the
+  `eval-cases.ts`, run live via `npm run ai:eval`, gated on a real `OPENAI_API_KEY`) grades the
   model's *actual* judgment against defined acceptance criteria: does it match the right
   product/variant/quantity, ask instead of guessing when genuinely ambiguous, never fabricate a
   discount/confirmation/claim, incorporate a customer's correction. It has no dedicated
@@ -294,7 +298,7 @@ npm run db:seed       # reset + reseed realistic fixture data
 npm run db:studio     # prisma studio
 npm run db:check-isolation  # confirm the live DATABASE_URL connection is actually subject to RLS
 npm run test          # vitest — runs against a throwaway Postgres database (TEST_DATABASE_URL), never dev data
-npm run ai:eval        # AI eval harness against the REAL model — needs ANTHROPIC_API_KEY; writes
+npm run ai:eval        # AI eval harness against the REAL model — needs OPENAI_API_KEY; writes
                        # throwaway organizations to DATABASE_URL (reseed afterward in dev)
 ```
 
@@ -305,8 +309,11 @@ organization, Lagos Spice Traders), staff `chidinma@adaezewholesale.ng` / `staff
 ## External integrations (not configured in this environment)
 
 `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_APP_SECRET` /
-`WHATSAPP_VERIFY_TOKEN` (see `.env.example`) and `ANTHROPIC_API_KEY` are required for real WhatsApp
-sending/ingestion and AI product-matching respectively. `RESEND_API_KEY` / `EMAIL_FROM` (and
+`WHATSAPP_VERIFY_TOKEN` (see `.env.example`) and `OPENAI_API_KEY` are required for real WhatsApp
+sending/ingestion and AI product-matching respectively (the AI engine runs on OpenAI, not
+Anthropic — a deliberate choice made when there were no Claude credits available but existing
+OpenAI ones; see `docs/PROGRESS.md` for the full reasoning and the model-id caveat below).
+`RESEND_API_KEY` / `EMAIL_FROM` (and
 optionally `APP_URL`, for a clickable link in the email) are required for the email notification
 channel. `PAYSTACK_SECRET_KEY` is required for the "Get payment link" flow and for Paystack's
 webhook to verify a payment automatically — without it that button is replaced by a clear refusal
@@ -316,6 +323,13 @@ these the app degrades gracefully (clear "not configured" messages in the UI, se
 rather than failing silently or pretending to work — the logic itself is tested against synthetic
 signed payloads / mocked responses in `tests/`, not against the real services. See
 `docs/PROGRESS.md` for exactly what's been verified vs. what needs real credentials to confirm.
+
+`src/lib/ai/engine.ts`'s `MODEL` constant (default `gpt-6-astra`) could not be confirmed with full
+confidence against OpenAI's own docs at the time this was written — set `OPENAI_MODEL` to override
+without a code change if it's wrong or retired by the time this runs for real. A real (but
+expired) `OPENAI_API_KEY` found in this machine's shell environment confirmed the integration's
+error handling works correctly end to end (a live 401 surfaced cleanly in the UI, not a crash),
+but could not confirm the model id itself, since auth fails before the model is even checked.
 
 `SENTRY_DSN` is required for error tracking (`@sentry/nextjs`, wired into `src/instrumentation.ts`
 and `sentry.server.config.ts`) to actually report anywhere — without it, `Sentry.init()` is never

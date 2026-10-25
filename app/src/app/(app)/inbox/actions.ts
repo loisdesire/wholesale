@@ -84,7 +84,7 @@ export async function runAIAssistAction(conversationId: string): Promise<AIAssis
   const session = await requireSession();
 
   if (!isAIConfigured()) {
-    return { error: "AI assist isn't configured (missing ANTHROPIC_API_KEY)." };
+    return { error: "AI assist isn't configured (missing OPENAI_API_KEY)." };
   }
 
   const conversation = await tenantDb(session.user.organizationId).conversation.findFirst({

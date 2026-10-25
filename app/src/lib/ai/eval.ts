@@ -230,7 +230,7 @@ export function gradeCase(ec: EvalCase, outcome: { result: AIAssistResult | null
   return findings;
 }
 
-/** Runs the whole suite against the real model (ANTHROPIC_API_KEY must be set) and grades it. */
+/** Runs the whole suite against the real model (OPENAI_API_KEY must be set) and grades it. */
 export async function runEvalSuite(cases: EvalCase[] = EVAL_CASES): Promise<EvalReport> {
   const fixture = await setupFixture();
   const results: EvalCaseResult[] = [];
@@ -256,7 +256,7 @@ export async function runEvalSuite(cases: EvalCase[] = EVAL_CASES): Promise<Eval
     metricRates[metric] = { passed, total: findings.length, rate: findings.length === 0 ? null : passed / findings.length };
   }
 
-  return { model: process.env.AI_EVAL_MODEL_LABEL ?? "claude-opus-5-5", ranAt: new Date(), results, completionRate, metricRates, overallPassRate };
+  return { model: process.env.AI_EVAL_MODEL_LABEL ?? process.env.OPENAI_MODEL ?? "gpt-6-astra", ranAt: new Date(), results, completionRate, metricRates, overallPassRate };
 }
 
 export function formatReport(report: EvalReport): string {

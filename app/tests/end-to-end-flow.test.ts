@@ -4,13 +4,31 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const mockCreate = vi.fn();
 
-vi.mock("@anthropic-ai/sdk", () => {
+vi.mock("openai", () => {
   return {
-    default: vi.fn().mockImplementation(function MockAnthropic(this: { messages: { create: typeof mockCreate } }) {
-      this.messages = { create: mockCreate };
+    default: vi.fn().mockImplementation(function MockOpenAI(this: { chat: { completions: { create: typeof mockCreate } } }) {
+      this.chat = { completions: { create: mockCreate } };
     }),
   };
 });
+
+function toolCallMessage(calls: { id: string; name: string; input: unknown }[]) {
+  return {
+    choices: [
+      {
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: calls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: JSON.stringify(c.input) } })),
+        },
+      },
+    ],
+  };
+}
+
+function textMessage(text: string) {
+  return { choices: [{ message: { role: "assistant", content: text, tool_calls: undefined } }] };
+}
 
 import { prisma } from "@/lib/prisma";
 import { StockMovementReason } from "@prisma/client";
@@ -28,7 +46,7 @@ function sign(body: string) {
 /**
  * Proves the whole Phase 1 pipeline composes end to end, not just each
  * piece in isolation: a real WhatsApp webhook POST creates the conversation,
- * the AI engine (Anthropic client mocked, everything else real) searches the
+ * the AI engine (OpenAI client mocked, everything else real) searches the
  * real catalogue and drafts a real order from it, and that order is then
  * taken all the way through confirm -> paid -> fulfilled using the exact
  * same order-lifecycle functions a staff-created order uses — with stock
@@ -105,7 +123,7 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
 
   beforeEach(() => {
     mockCreate.mockReset();
-    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.OPENAI_API_KEY = "test-key";
   });
 
   it("runs the full pipeline and leaves an accurate, fully-reconciled trail", async () => {
@@ -152,21 +170,9 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     // 2. Staff clicks "Let AI respond" — the model is mocked, but it drives
     // the real search_catalogue and create_draft_order tools.
     mockCreate
-      .mockResolvedValueOnce({
-        content: [
-          { type: "tool_use", id: "tu1", name: "search_catalogue", input: { query: "black ankara two-piece medium" } },
-        ],
-      })
-      .mockResolvedValueOnce({
-        content: [
-          { type: "tool_use", id: "tu2", name: "create_draft_order", input: { items: [{ productId, quantity: 2 }] } },
-        ],
-      })
-      .mockResolvedValueOnce({
-        content: [
-          { type: "text", text: "I've drafted an order for 2 — a staff member will confirm shortly." },
-        ],
-      });
+      .mockResolvedValueOnce(toolCallMessage([{ id: "tu1", name: "search_catalogue", input: { query: "black ankara two-piece medium" } }]))
+      .mockResolvedValueOnce(toolCallMessage([{ id: "tu2", name: "create_draft_order", input: { items: [{ productId, quantity: 2 }] } }]))
+      .mockResolvedValueOnce(textMessage("I've drafted an order for 2 — a staff member will confirm shortly."));
 
     const aiResult = await runAIAssist({
       organizationId,

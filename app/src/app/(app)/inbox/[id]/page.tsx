@@ -180,7 +180,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
         ) : (
           <p className="rounded-md border border-dashed border-line px-4 py-4 text-sm text-text-muted">
             AI product-matching isn&apos;t configured in this environment (missing
-            ANTHROPIC_API_KEY).
+            OPENAI_API_KEY).
           </p>
         )}
       </section>

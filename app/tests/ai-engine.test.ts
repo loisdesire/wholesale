@@ -2,13 +2,31 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const mockCreate = vi.fn();
 
-vi.mock("@anthropic-ai/sdk", () => {
+vi.mock("openai", () => {
   return {
-    default: vi.fn().mockImplementation(function MockAnthropic(this: { messages: { create: typeof mockCreate } }) {
-      this.messages = { create: mockCreate };
+    default: vi.fn().mockImplementation(function MockOpenAI(this: { chat: { completions: { create: typeof mockCreate } } }) {
+      this.chat = { completions: { create: mockCreate } };
     }),
   };
 });
+
+function toolCallMessage(calls: { id: string; name: string; input: unknown }[]) {
+  return {
+    choices: [
+      {
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: calls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: JSON.stringify(c.input) } })),
+        },
+      },
+    ],
+  };
+}
+
+function textMessage(text: string) {
+  return { choices: [{ message: { role: "assistant", content: text, tool_calls: undefined } }] };
+}
 
 import { phoneKeyOf } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
@@ -74,34 +92,16 @@ describe("runAIAssist", () => {
 
   beforeEach(() => {
     mockCreate.mockReset();
-    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.OPENAI_API_KEY = "test-key";
   });
 
   it("searches the catalogue, drafts an order, and returns the final reply — never auto-confirming it", async () => {
     mockCreate
-      .mockResolvedValueOnce({
-        content: [
-          { type: "tool_use", id: "tu1", name: "search_catalogue", input: { query: "black ankara two-piece medium" } },
-        ],
-      })
-      .mockResolvedValueOnce({
-        content: [
-          {
-            type: "tool_use",
-            id: "tu2",
-            name: "create_draft_order",
-            input: { items: [{ productId, quantity: 2 }] },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        content: [
-          {
-            type: "text",
-            text: "I've drafted an order for 2 Ankara Two-Piece Sets (Black, M) at ₦18,500 each — a staff member will confirm before it's finalized.",
-          },
-        ],
-      });
+      .mockResolvedValueOnce(toolCallMessage([{ id: "tu1", name: "search_catalogue", input: { query: "black ankara two-piece medium" } }]))
+      .mockResolvedValueOnce(toolCallMessage([{ id: "tu2", name: "create_draft_order", input: { items: [{ productId, quantity: 2 }] } }]))
+      .mockResolvedValueOnce(
+        textMessage("I've drafted an order for 2 Ankara Two-Piece Sets (Black, M) at ₦18,500 each — a staff member will confirm before it's finalized.")
+      );
 
     const result = await runAIAssist({ organizationId, conversationId, customerId, createdById: userId });
 
@@ -124,17 +124,8 @@ describe("runAIAssist", () => {
 
   it("asks a clarifying question without drafting an order when ambiguous", async () => {
     mockCreate
-      .mockResolvedValueOnce({
-        content: [{ type: "tool_use", id: "tu1", name: "search_catalogue", input: { query: "heels" } }],
-      })
-      .mockResolvedValueOnce({
-        content: [
-          {
-            type: "text",
-            text: "We have a couple of heel styles — could you tell me which colour and size you're after?",
-          },
-        ],
-      });
+      .mockResolvedValueOnce(toolCallMessage([{ id: "tu1", name: "search_catalogue", input: { query: "heels" } }]))
+      .mockResolvedValueOnce(textMessage("We have a couple of heel styles — could you tell me which colour and size you're after?"));
 
     const result = await runAIAssist({ organizationId, conversationId, customerId, createdById: userId });
 
@@ -143,9 +134,7 @@ describe("runAIAssist", () => {
   });
 
   it("stops after the round cap instead of looping forever on repeated tool calls", async () => {
-    mockCreate.mockResolvedValue({
-      content: [{ type: "tool_use", id: "tu-loop", name: "search_catalogue", input: { query: "anything" } }],
-    });
+    mockCreate.mockResolvedValue(toolCallMessage([{ id: "tu-loop", name: "search_catalogue", input: { query: "anything" } }]));
 
     const result = await runAIAssist({ organizationId, conversationId, customerId, createdById: userId });
 
@@ -153,12 +142,30 @@ describe("runAIAssist", () => {
     expect(result.replyText).toBeTruthy();
   });
 
-  it("throws without calling the API when ANTHROPIC_API_KEY isn't set", async () => {
-    delete process.env.ANTHROPIC_API_KEY;
+  it("throws without calling the API when OPENAI_API_KEY isn't set", async () => {
+    delete process.env.OPENAI_API_KEY;
 
     await expect(
       runAIAssist({ organizationId, conversationId, customerId, createdById: userId })
-    ).rejects.toThrow(/ANTHROPIC_API_KEY/);
+    ).rejects.toThrow(/OPENAI_API_KEY/);
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("includes an attached image as an image_url content block in the call to the model", async () => {
+    const imgMessage = await prisma.message.create({
+      data: { conversationId, direction: "INBOUND", sender: "CUSTOMER", body: "[image]" },
+    });
+    await prisma.messageAttachment.create({
+      data: { messageId: imgMessage.id, mimeType: "image/png", data: new Uint8Array([1, 2, 3]), sizeBytes: 3 },
+    });
+
+    mockCreate.mockResolvedValueOnce(textMessage("Could you tell me more about what you're after?"));
+    await runAIAssist({ organizationId, conversationId, customerId, createdById: userId });
+
+    const call = mockCreate.mock.calls.at(-1)![0];
+    const userMessage = call.messages.find((m: { role: string }) => m.role === "user");
+    const imageBlocks = (userMessage.content as { type: string; image_url?: { url: string } }[]).filter((c) => c.type === "image_url");
+    expect(imageBlocks).toHaveLength(1);
+    expect(imageBlocks[0].image_url?.url).toBe(`data:image/png;base64,${Buffer.from([1, 2, 3]).toString("base64")}`);
   });
 });
