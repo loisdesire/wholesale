@@ -291,6 +291,69 @@ export async function recordStockMovementAction(
   return { error: null };
 }
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+export type ProductImageState = { error: string | null };
+
+export async function uploadProductImageAction(
+  productId: string,
+  _prevState: ProductImageState,
+  formData: FormData
+): Promise<ProductImageState> {
+  const session = await requireSession();
+  const organizationId = session.user.organizationId;
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose an image file." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { error: "That file isn't an image." };
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return { error: `Image is too large (max ${MAX_IMAGE_BYTES / (1024 * 1024)}MB).` };
+  }
+
+  const db = tenantDb(organizationId);
+  const product = await db.product.findFirst({ where: { id: productId, organizationId } });
+  if (!product) return { error: "Product not found." };
+
+  const maxPosition = await db.productImage.aggregate({ where: { productId }, _max: { position: true } });
+  const data = new Uint8Array(await file.arrayBuffer());
+
+  await db.productImage.create({
+    data: {
+      productId,
+      mimeType: file.type,
+      data,
+      sizeBytes: data.byteLength,
+      position: (maxPosition._max.position ?? -1) + 1,
+    },
+  });
+
+  revalidatePath(`/catalogue/${productId}`);
+  revalidatePath("/catalogue");
+  return { error: null };
+}
+
+export async function deleteProductImageAction(productId: string, imageId: string): Promise<ProductImageState> {
+  const session = await requireSession();
+  const organizationId = session.user.organizationId;
+
+  const db = tenantDb(organizationId);
+  const product = await db.product.findFirst({ where: { id: productId, organizationId } });
+  if (!product) return { error: "Product not found." };
+
+  const image = await db.productImage.findFirst({ where: { id: imageId, productId } });
+  if (!image) return { error: "Image not found." };
+
+  await db.productImage.delete({ where: { id: imageId } });
+
+  revalidatePath(`/catalogue/${productId}`);
+  revalidatePath("/catalogue");
+  return { error: null };
+}
+
 export type ImportPreviewState = {
   error: string | null;
   rows?: ImportRowResult[];

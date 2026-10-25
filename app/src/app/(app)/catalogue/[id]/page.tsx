@@ -6,6 +6,7 @@ import { getStockBreakdown } from "@/lib/stock";
 import { formatDateTime } from "@/lib/format";
 import { EditProductForm } from "./edit-product-form";
 import { StockMovementForm } from "./stock-movement-form";
+import { ProductImages } from "./product-images";
 
 const REASON_LABEL: Record<string, string> = {
   INITIAL_STOCK: "Opening balance",
@@ -32,7 +33,10 @@ export default async function ProductDetailPage({
 
   const product = await db.product.findFirst({
     where: { id, organizationId },
-    include: { priceTiers: { orderBy: { minQuantity: "asc" } } },
+    include: {
+      priceTiers: { orderBy: { minQuantity: "asc" } },
+      images: { orderBy: { position: "asc" }, select: { id: true } },
+    },
   });
   if (!product) notFound();
 
@@ -83,6 +87,11 @@ export default async function ProductDetailPage({
           </dl>
         </div>
       </header>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-ink">Photos</h2>
+        <ProductImages productId={product.id} images={product.images} />
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-medium text-ink">Product details</h2>

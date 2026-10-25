@@ -8,6 +8,7 @@ import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isAIConfigured } from "@/lib/ai/engine";
 import { listOrganizationMembers } from "@/lib/membership";
 import { AssigneeControl } from "@/components/assignee-control";
+import { ZoomableImage } from "@/components/zoomable-image";
 import { markResolvedAction } from "../actions";
 import { ReplyForm } from "./reply-form";
 import { AIAssistButton } from "./ai-assist-button";
@@ -149,8 +150,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                     {m.attachments.length > 0 && (
                       <div className="mb-2 flex flex-col gap-2">
                         {m.attachments.map((a) => (
-                          // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route, not a static asset Next's image optimizer can handle
-                          <img
+                          <ZoomableImage
                             key={a.id}
                             src={`/api/attachments/${a.id}`}
                             alt="Image sent by the customer"

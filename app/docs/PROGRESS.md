@@ -1268,6 +1268,51 @@ was built around.
 - `npm run lint`, `npm run build`, `npm run test` (379/379), and the migration-drift check all pass
   clean.
 
+## Done (2026-10-25, continued)
+
+**Two UI/functionality upgrades**, picked from a short menu offered to the user (also offered: a
+mobile/responsive pass, not yet started; formalizing live Playwright checks into real CI coverage,
+declined) — not credential-blocked, buildable immediately.
+
+- **Product photos in the catalogue** — a real gap: products had zero images anywhere, so staff
+  managed a fashion/footwear catalogue by text alone (SKU, name, variant attributes). `ProductImage`
+  (new migration): same approach as `MessageAttachment` — bytes stored directly in Postgres, no
+  new object-storage account, a child of `Product` with no `organizationId` of its own (same RLS
+  pattern as `PriceTier`, an existing child of `Product`). Served through a new authenticated
+  `/api/product-images/[id]` route, same shape as `/api/attachments/[id]`. Upload/delete via
+  `uploadProductImageAction`/`deleteProductImageAction` in `catalogue/actions.ts` (5MB cap, image
+  mime-type check) — deliberately not unit-tested directly, following this codebase's own existing
+  precedent (`previewImportAction`/`commitImportAction`, the CSV import's file-upload actions,
+  aren't unit-tested either; only the lib logic underneath them is). Shown as a gallery on the
+  product detail page and a thumbnail column on the catalogue list.
+- **Click-to-zoom on inbound WhatsApp images** — the vision feature's photos rendered small inline
+  with no way to see them full-size. `src/components/zoomable-image.tsx`: a small reusable
+  client component (thumbnail → full-screen overlay on click, Escape or click-outside to close),
+  now used for both WhatsApp attachments and the new product photos.
+- **A real bug found and fixed during live verification, not by inspection**: the per-image delete
+  button initially called its server action directly from a bare `onClick` handler. This looked
+  fine in isolation (confirmed via a direct database check that the delete *did* execute
+  server-side) but the page never visually refreshed — `revalidatePath()` invalidates the server
+  cache, but an imperative call outside a `<form>` doesn't trigger the client to refetch the way a
+  form submission does. Fixed by wrapping it in `useActionState` + a real `<form action>`, the
+  same pattern already used for every other single-click action in this app (e.g.
+  `returns-ui.tsx`'s `ReceiveGoodsButton`) — this is exactly why "call the action correctly" isn't
+  optional UI polish, it's the difference between a feature that works and one that silently
+  doesn't.
+- **Found and fixed (sixth time) the FK-wipe-order gotcha**: `ProductImage.deleteMany()` needed
+  adding before `Product.deleteMany()` in both `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`
+  — caught immediately by `npm run db:seed` itself.
+- **A test-fixture false alarm, correctly run to ground rather than accepted at face value**: live
+  verification first reported the uploaded photo failing to decode (`naturalWidth: 0`) and the
+  zoom overlay showing nothing. Both traced back to the 1×1-pixel test image used for speed — a
+  real check with a realistically-sized generated PNG confirmed both work correctly; the only real
+  bug in this round was the delete-button one above. Worth recording as a reminder that a failing
+  live check needs its own cause investigated, not just reported or dismissed.
+- **Verified live in a browser**: upload, gallery display, catalogue-list thumbnail, click-to-zoom
+  (open and close), and delete all confirmed working end to end against a real file upload — 10/10
+  checks, screenshots reviewed, no visual bugs beyond the test-fixture artifact noted above.
+- `npm run lint`, `npm run build`, and `npm run test` (379/379) all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a

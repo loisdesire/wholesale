@@ -38,6 +38,7 @@ export default async function CataloguePage({
       orderBy: { name: "asc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
+      include: { images: { orderBy: { position: "asc" }, take: 1, select: { id: true } } },
     }),
     db.product.count({ where }),
   ]);
@@ -111,6 +112,7 @@ export default async function CataloguePage({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <th className="py-2 pr-4"></th>
                 <th className="py-2 pr-4">SKU</th>
                 <th className="py-2 pr-4">Product</th>
                 <th className="py-2 pr-4">Variant</th>
@@ -124,8 +126,25 @@ export default async function CataloguePage({
                 const figures = stockMap.get(p.id);
                 const stock = figures?.available ?? 0;
                 const variant = p.variantAttributes as Record<string, string> | null;
+                const thumbnail = p.images[0];
                 return (
                   <tr key={p.id} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4">
+                      <Link href={`/catalogue/${p.id}`}>
+                        {thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route, not a static asset Next's image optimizer can handle
+                          <img
+                            src={`/api/product-images/${thumbnail.id}`}
+                            alt=""
+                            className="h-10 w-10 rounded-md border border-line object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-10 w-10 items-center justify-center rounded-md border border-dashed border-line text-xs text-text-muted">
+                            —
+                          </span>
+                        )}
+                      </Link>
+                    </td>
                     <td className="py-3 pr-4 font-tabular">
                       <Link href={`/catalogue/${p.id}`} className="text-ink hover:underline">
                         {p.sku}

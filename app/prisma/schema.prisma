@@ -273,11 +273,30 @@ model Product {
   stockMovements StockMovement[]
   orderItems     OrderItem[]
   priceTiers     PriceTier[]
+  images         ProductImage[]
   customerPrices CustomerPrice[]
 
   @@unique([organizationId, sku])
   @@index([organizationId, active])
   @@index([organizationId, name])
+}
+
+// A product photo, stored as bytes directly in Postgres — same approach as
+// MessageAttachment, deliberately: no new object-storage account needed, and this app's volume
+// doesn't yet justify that decision (see docs/DEPLOYMENT.md). A child of Product with no
+// organizationId of its own, same pattern as PriceTier below.
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  mimeType  String
+  data      Bytes
+  sizeBytes Int
+  // Display order — staff-controlled via upload order, not alphabetical/chronological-only.
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 // Quantity-break wholesale pricing, e.g. 1-9 units at list price, 10-49 at a

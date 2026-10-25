@@ -245,6 +245,16 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
   looped. There is no special "see everything at once" query path and no role granted at the
   database level; a bug in this page can't leak cross-tenant data any more than a bug anywhere
   else in the app could, because every query underneath it is still individually RLS-scoped.
+- **Products can have photos** (`ProductImage`) — same bytes-in-Postgres approach as
+  `MessageAttachment`, and the same child-of-parent RLS pattern as `PriceTier` (no `organizationId`
+  of its own). Served through `/api/product-images/[id]`, uploaded/deleted via
+  `catalogue/actions.ts`. **Any button that fires a server action outside a `<form>`** (a bare
+  `onClick`) **won't pick up `revalidatePath()`'s effect on the page** — the server-side write
+  happens, but the client doesn't refetch, so the UI looks like nothing happened. Found this the
+  hard way on the per-photo delete button; the fix is always `useActionState` + a real
+  `<form action>`, same as every other single-click action in this app (`returns-ui.tsx`'s
+  `ReceiveGoodsButton`). `src/components/zoomable-image.tsx` is a small reusable
+  thumbnail-to-full-screen-overlay component, used for both this and inbound WhatsApp images.
 - **Reports never call anything profit without cost data** (`src/lib/reports.ts`): margin is `null`
   unless at least one sold line's product has `costCents` set, and when it is present the report
   states what share of the period's revenue it actually covers — never silently treats a missing
@@ -417,11 +427,13 @@ npm run dev
   its own data wiped in `beforeAll` first, or another test file's leftover orgs break the
   fallback — see `tests/end-to-end-flow.test.ts`.
 - **New Prisma model with a foreign key?** Add its `deleteMany()` (child before parent) to both
-  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten four times now — most recently
-  for `MessageAttachment`, caught immediately by `npm run db:seed` itself this time rather than
-  the full test suite; `SubscriptionPayment` got it added proactively. It fails whenever rows of
-  the forgotten child model exist — the full suite often surfaces it first since other test files
-  leave rows behind, but a direct reseed with real data, like this one, catches it just as fast.)
+  `prisma/seed.ts` and `tests/end-to-end-flow.test.ts`. (Forgotten five times now — most recently
+  for `ProductImage`, before that `MessageAttachment`, both caught immediately by `npm run db:seed`
+  itself rather than the full test suite; `SubscriptionPayment` got it added proactively. It fails
+  whenever rows of the forgotten child model exist — the full suite often surfaces it first since
+  other test files leave rows behind, but a direct reseed with real data, like this one, catches it
+  just as fast. At this point: when adding ANY new child table, add its `deleteMany()` in the same
+  edit as the schema change, before it can be forgotten even once more.)
 - **Stale Turbopack cache** can produce phantom runtime errors ("X is not a function") for exports
   that are correct and pass tests. Kill the dev server, delete `.next/`, restart.
 - **Chrome extension screenshots** (`Page.captureScreenshot`) can hang for a whole session while
