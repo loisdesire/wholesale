@@ -126,36 +126,38 @@ export default async function ProductDetailPage({
             No movements recorded yet.
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">When</th>
-                <th className="py-2 pr-4">Reason</th>
-                <th className="py-2 pr-4">Reference</th>
-                <th className="py-2 pr-4">Note</th>
-                <th className="py-2 pr-4">By</th>
-                <th className="py-2 pr-4 text-right">On hand</th>
-                <th className="py-2 pr-4 text-right">Reserved</th>
-                <th className="py-2 pr-4 text-right">Damaged</th>
-              </tr>
-            </thead>
-            <tbody>
-              {movements.map((m) => (
-                <tr key={m.id} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(m.createdAt)}</td>
-                  <td className="py-3 pr-4 text-ink">{REASON_LABEL[m.reason] ?? m.reason}</td>
-                  <td className="py-3 pr-4 font-tabular text-text-muted">{m.reference ?? "—"}</td>
-                  <td className="py-3 pr-4 max-w-xs truncate text-text-muted">{m.note ?? "—"}</td>
-                  <td className="py-3 pr-4 text-text-muted">{m.createdBy?.name ?? "—"}</td>
-                  {[m.physicalDelta, m.reservedDelta, m.damagedDelta].map((delta, i) => (
-                    <td key={i} className="py-3 pr-4 text-right font-tabular text-text-muted">
-                      {delta === 0 ? "—" : `${delta > 0 ? "+" : ""}${delta}`}
-                    </td>
-                  ))}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">When</th>
+                  <th className="py-2 pr-4">Reason</th>
+                  <th className="py-2 pr-4">Reference</th>
+                  <th className="py-2 pr-4">Note</th>
+                  <th className="py-2 pr-4">By</th>
+                  <th className="py-2 pr-4 text-right">On hand</th>
+                  <th className="py-2 pr-4 text-right">Reserved</th>
+                  <th className="py-2 pr-4 text-right">Damaged</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {movements.map((m) => (
+                  <tr key={m.id} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(m.createdAt)}</td>
+                    <td className="py-3 pr-4 text-ink">{REASON_LABEL[m.reason] ?? m.reason}</td>
+                    <td className="py-3 pr-4 font-tabular text-text-muted">{m.reference ?? "—"}</td>
+                    <td className="py-3 pr-4 max-w-xs truncate text-text-muted">{m.note ?? "—"}</td>
+                    <td className="py-3 pr-4 text-text-muted">{m.createdBy?.name ?? "—"}</td>
+                    {[m.physicalDelta, m.reservedDelta, m.damagedDelta].map((delta, i) => (
+                      <td key={i} className="py-3 pr-4 text-right font-tabular text-text-muted">
+                        {delta === 0 ? "—" : `${delta > 0 ? "+" : ""}${delta}`}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

@@ -36,32 +36,34 @@ export function ReconciliationPanel() {
             </p>
           ) : (
             <div className="rounded-md border border-status-attention-fg/30 bg-surface">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                    <th className="px-4 py-2">Reference</th>
-                    <th className="px-4 py-2">Issue</th>
-                    <th className="px-4 py-2 text-right">Paystack</th>
-                    <th className="px-4 py-2 text-right">Recorded here</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.result.discrepancies.map((d) => (
-                    <tr key={d.reference} className="border-b border-line last:border-0">
-                      <td className="px-4 py-3 font-tabular text-xs text-ink">{d.reference}</td>
-                      <td className="px-4 py-3 text-xs text-text-muted">
-                        {d.kind === "MISSING_LOCALLY" ? d.note : "Paystack and our own record disagree on the amount."}
-                      </td>
-                      <td className="px-4 py-3 text-right font-tabular text-ink">
-                        {formatMoney(d.kind === "MISSING_LOCALLY" ? d.amountCents : d.paystackAmountCents)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-tabular text-ink">
-                        {d.kind === "MISSING_LOCALLY" ? "— nothing recorded" : formatMoney(d.recordedAmountCents)}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                      <th className="px-4 py-2">Reference</th>
+                      <th className="px-4 py-2">Issue</th>
+                      <th className="px-4 py-2 text-right">Paystack</th>
+                      <th className="px-4 py-2 text-right">Recorded here</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {state.result.discrepancies.map((d) => (
+                      <tr key={d.reference} className="border-b border-line last:border-0">
+                        <td className="px-4 py-3 font-tabular text-xs text-ink">{d.reference}</td>
+                        <td className="px-4 py-3 text-xs text-text-muted">
+                          {d.kind === "MISSING_LOCALLY" ? d.note : "Paystack and our own record disagree on the amount."}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-ink">
+                          {formatMoney(d.kind === "MISSING_LOCALLY" ? d.amountCents : d.paystackAmountCents)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-ink">
+                          {d.kind === "MISSING_LOCALLY" ? "— nothing recorded" : formatMoney(d.recordedAmountCents)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

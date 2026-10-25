@@ -183,28 +183,30 @@ export default async function OperationsPage({
         {workload.length === 0 ? (
           <p className="text-sm text-text-muted">No team members yet.</p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">Person</th>
-                <th className="py-2 pr-4 text-right">Open orders</th>
-                <th className="py-2 pr-4 text-right">Open returns</th>
-                <th className="py-2 pr-4 text-right">Open conversations</th>
-              </tr>
-            </thead>
-            <tbody>
-              {workload.map((w) => (
-                <tr key={w.userId} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 text-ink">
-                    {w.name} <span className="text-xs text-text-muted">{w.role === "OWNER" ? "Owner" : "Staff"}</span>
-                  </td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openOrders}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openReturns}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openConversations}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">Person</th>
+                  <th className="py-2 pr-4 text-right">Open orders</th>
+                  <th className="py-2 pr-4 text-right">Open returns</th>
+                  <th className="py-2 pr-4 text-right">Open conversations</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {workload.map((w) => (
+                  <tr key={w.userId} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 text-ink">
+                      {w.name} <span className="text-xs text-text-muted">{w.role === "OWNER" ? "Owner" : "Staff"}</span>
+                    </td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openOrders}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openReturns}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openConversations}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

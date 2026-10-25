@@ -21,7 +21,10 @@ export function OrderStepper({ status }: { status: string }) {
   const currentIndex = STEPS.indexOf((partly ? "FULFILLED" : status) as (typeof STEPS)[number]);
 
   return (
-    <ol className="flex items-center gap-2">
+    // flex-wrap, not a fixed single row: on a narrow screen the 4th step was being clipped off
+    // the right edge entirely, with no way to see it — wrapping onto a second line keeps every
+    // step visible without needing horizontal scroll for something this short.
+    <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
       {STEPS.map((step, i) => {
         const done = i < currentIndex;
         const active = i === currentIndex;

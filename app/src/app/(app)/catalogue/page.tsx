@@ -109,74 +109,76 @@ export default async function CataloguePage({
         </p>
       ) : (
         <>
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4"></th>
-                <th className="py-2 pr-4">SKU</th>
-                <th className="py-2 pr-4">Product</th>
-                <th className="py-2 pr-4">Variant</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4 text-right">Available</th>
-                <th className="py-2 pr-4 text-right">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => {
-                const figures = stockMap.get(p.id);
-                const stock = figures?.available ?? 0;
-                const variant = p.variantAttributes as Record<string, string> | null;
-                const thumbnail = p.images[0];
-                return (
-                  <tr key={p.id} className="border-b border-line last:border-0">
-                    <td className="py-3 pr-4">
-                      <Link href={`/catalogue/${p.id}`}>
-                        {thumbnail ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route, not a static asset Next's image optimizer can handle
-                          <img
-                            src={`/api/product-images/${thumbnail.id}`}
-                            alt=""
-                            className="h-10 w-10 rounded-md border border-line object-cover"
-                          />
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4"></th>
+                  <th className="py-2 pr-4">SKU</th>
+                  <th className="py-2 pr-4">Product</th>
+                  <th className="py-2 pr-4">Variant</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4 text-right">Available</th>
+                  <th className="py-2 pr-4 text-right">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p) => {
+                  const figures = stockMap.get(p.id);
+                  const stock = figures?.available ?? 0;
+                  const variant = p.variantAttributes as Record<string, string> | null;
+                  const thumbnail = p.images[0];
+                  return (
+                    <tr key={p.id} className="border-b border-line last:border-0">
+                      <td className="py-3 pr-4">
+                        <Link href={`/catalogue/${p.id}`}>
+                          {thumbnail ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route, not a static asset Next's image optimizer can handle
+                            <img
+                              src={`/api/product-images/${thumbnail.id}`}
+                              alt=""
+                              className="h-10 w-10 rounded-md border border-line object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-10 w-10 items-center justify-center rounded-md border border-dashed border-line text-xs text-text-muted">
+                              —
+                            </span>
+                          )}
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap py-3 pr-4 font-tabular">
+                        <Link href={`/catalogue/${p.id}`} className="text-ink hover:underline">
+                          {p.sku}
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap py-3 pr-4 text-ink">{p.name}</td>
+                      <td className="whitespace-nowrap py-3 pr-4 text-text-muted">
+                        {variant ? Object.values(variant).join(" / ") : "—"}
+                      </td>
+                      <td className="py-3 pr-4">
+                        {p.active ? (
+                          <span className="text-xs text-text-muted">Active</span>
                         ) : (
-                          <span className="flex h-10 w-10 items-center justify-center rounded-md border border-dashed border-line text-xs text-text-muted">
-                            —
-                          </span>
+                          <span className="text-xs text-status-attention-fg">Inactive</span>
                         )}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-4 font-tabular">
-                      <Link href={`/catalogue/${p.id}`} className="text-ink hover:underline">
-                        {p.sku}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-4 text-ink">{p.name}</td>
-                    <td className="py-3 pr-4 text-text-muted">
-                      {variant ? Object.values(variant).join(" / ") : "—"}
-                    </td>
-                    <td className="py-3 pr-4">
-                      {p.active ? (
-                        <span className="text-xs text-text-muted">Active</span>
-                      ) : (
-                        <span className="text-xs text-status-attention-fg">Inactive</span>
-                      )}
-                    </td>
-                    <td
-                      className={`py-3 pr-4 text-right font-tabular ${
-                        stock === 0 ? "text-status-attention-fg" : "text-ink"
-                      }`}
-                    >
-                      {stock} {p.unit}
-                      {stock === 1 ? "" : "s"}
-                    </td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">
-                      {formatMoney(p.priceCents, p.currency)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td
+                        className={`py-3 pr-4 text-right font-tabular ${
+                          stock === 0 ? "text-status-attention-fg" : "text-ink"
+                        }`}
+                      >
+                        {stock} {p.unit}
+                        {stock === 1 ? "" : "s"}
+                      </td>
+                      <td className="py-3 pr-4 text-right font-tabular text-ink">
+                        {formatMoney(p.priceCents, p.currency)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between text-sm text-text-muted">

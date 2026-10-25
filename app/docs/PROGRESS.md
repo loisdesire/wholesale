@@ -1313,6 +1313,43 @@ declined) — not credential-blocked, buildable immediately.
   checks, screenshots reviewed, no visual bugs beyond the test-fixture artifact noted above.
 - `npm run lint`, `npm run build`, and `npm run test` (379/379) all pass clean.
 
+## Done (2026-10-25, continued — mobile/responsive pass)
+
+The third item from the same upgrade menu, requested after the user tried the app on a phone.
+Audited every major screen at a 375×812 viewport with live Playwright screenshots (not just
+checking for horizontal overflow, which missed real usability problems) and fixed what was
+actually broken, not a cosmetic restyle:
+
+- **The sidebar nav ate ~60% of a phone screen and couldn't be dismissed.** `nav.tsx` rewritten:
+  below the `md` breakpoint the fixed 256px sidebar becomes a slide-in drawer (translate-x,
+  backdrop, a small top bar with a hamburger button to open it), closing automatically on
+  navigation. The close-on-navigate logic uses React's "adjust state during render" pattern
+  (compare `pathname` to a tracked previous value, call `setState` conditionally during render)
+  rather than an unconditional `setState` inside a `useEffect` — the latter is now flagged by
+  `eslint-plugin-react-hooks`'s `react-hooks/set-state-in-effect` rule as an avoidable extra
+  render, and this codebase already had the lint rule on.
+- **Every data table in the app (23 `<table>` instances across 17 files) was silently clipped on
+  narrow screens**, not scrollable — `overflow-x-hidden` on the main content area plus no
+  per-table scroll wrapper meant columns past the viewport edge were simply gone with no way to
+  reach them. Wrapped every `<table>` in `<div className="overflow-x-auto">`; verified the wrapper
+  genuinely scrolls (`scrollWidth > clientWidth`), not just that it doesn't overflow the page.
+- **Catalogue SKUs wrapped mid-identifier** (e.g. "HEADWRAP-ANK-01" breaking across lines) once
+  columns narrowed — added `whitespace-nowrap` to the SKU/name/variant cells so long values scroll
+  instead of mangling, consistent with how the Orders table already behaved on its own.
+- **The order-status stepper (Draft → Confirmed → Paid → Fulfilled) clipped its 4th step
+  completely off-screen** on a 375px width, with no scroll affordance to see it. Changed the
+  stepper's flex row to wrap (`flex-wrap`, `gap-x/gap-y`) so the last step drops to a second line
+  instead of disappearing.
+- `layout.tsx`'s content container made responsive (`flex-col` below `md`, smaller padding on
+  small screens, `overflow-x-hidden` kept on `<main>` only — now safe since every table has its own
+  scroll wrapper).
+- **Verified both ways**: live screenshots at 375×812 across the order detail/new-order/new-product
+  screens confirmed the fixes; a separate desktop-width (1360×1000) regression pass confirmed the
+  nav/layout changes didn't break the existing sidebar-always-visible desktop experience or
+  navigation to Orders/Catalogue/Billing/Platform Admin (7/7 checks passed).
+- `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (379/379) all pass clean
+  after the full pass.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a

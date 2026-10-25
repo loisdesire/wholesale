@@ -103,31 +103,33 @@ export default async function ReportsPage({
             No confirmed orders in this period.
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">Product</th>
-                <th className="py-2 pr-4 text-right">Units sold</th>
-                <th className="py-2 pr-4 text-right">Revenue</th>
-                <th className="py-2 pr-4 text-right">Orders</th>
-              </tr>
-            </thead>
-            <tbody>
-              {demand.map((d) => (
-                <tr key={d.productId} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 text-ink">
-                    <Link href={`/catalogue/${d.productId}`} className="underline-offset-2 hover:underline">
-                      {d.name}
-                    </Link>
-                    <span className="ml-2 font-tabular text-xs text-text-muted">{d.sku}</span>
-                  </td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{d.units}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(d.revenueCents)}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-text-muted">{d.orders}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">Product</th>
+                  <th className="py-2 pr-4 text-right">Units sold</th>
+                  <th className="py-2 pr-4 text-right">Revenue</th>
+                  <th className="py-2 pr-4 text-right">Orders</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {demand.map((d) => (
+                  <tr key={d.productId} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 text-ink">
+                      <Link href={`/catalogue/${d.productId}`} className="underline-offset-2 hover:underline">
+                        {d.name}
+                      </Link>
+                      <span className="ml-2 font-tabular text-xs text-text-muted">{d.sku}</span>
+                    </td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{d.units}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(d.revenueCents)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-text-muted">{d.orders}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -143,28 +145,30 @@ export default async function ReportsPage({
             No stock movements in this period.
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">Reason</th>
-                <th className="py-2 pr-4 text-right">Movements</th>
-                <th className="py-2 pr-4 text-right">Physical change</th>
-                <th className="py-2 pr-4 text-right">Reserved change</th>
-                <th className="py-2 pr-4 text-right">Damaged change</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stockMovements.map((r) => (
-                <tr key={r.reason} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 text-ink">{r.reason}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-text-muted">{r.movements}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.physical)}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.reserved)}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.damaged)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">Reason</th>
+                  <th className="py-2 pr-4 text-right">Movements</th>
+                  <th className="py-2 pr-4 text-right">Physical change</th>
+                  <th className="py-2 pr-4 text-right">Reserved change</th>
+                  <th className="py-2 pr-4 text-right">Damaged change</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {stockMovements.map((r) => (
+                  <tr key={r.reason} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 text-ink">{r.reason}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-text-muted">{r.movements}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.physical)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.reserved)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.damaged)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -180,33 +184,35 @@ export default async function ReportsPage({
             Everyone is settled — nobody owes, and nothing is owed.
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">Customer</th>
-                <th className="py-2 pr-4 text-right">Owes us</th>
-                <th className="py-2 pr-4 text-right">We owe</th>
-                <th className="py-2 pr-4 text-right">Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {outstanding.map((r) => (
-                <tr key={r.customerId} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 text-ink">
-                    <Link href={`/customers/${r.customerId}`} className="underline-offset-2 hover:underline">
-                      {r.name}
-                    </Link>
-                    <span className="ml-2 font-tabular text-xs text-text-muted">{r.phone}</span>
-                  </td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.owesUsCents)}</td>
-                  <td className={`py-3 pr-4 text-right font-tabular ${r.weOweCents > 0 ? "text-status-attention-fg" : "text-ink"}`}>
-                    {formatMoney(r.weOweCents)}
-                  </td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.netCents)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">Customer</th>
+                  <th className="py-2 pr-4 text-right">Owes us</th>
+                  <th className="py-2 pr-4 text-right">We owe</th>
+                  <th className="py-2 pr-4 text-right">Net</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {outstanding.map((r) => (
+                  <tr key={r.customerId} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 text-ink">
+                      <Link href={`/customers/${r.customerId}`} className="underline-offset-2 hover:underline">
+                        {r.name}
+                      </Link>
+                      <span className="ml-2 font-tabular text-xs text-text-muted">{r.phone}</span>
+                    </td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.owesUsCents)}</td>
+                    <td className={`py-3 pr-4 text-right font-tabular ${r.weOweCents > 0 ? "text-status-attention-fg" : "text-ink"}`}>
+                      {formatMoney(r.weOweCents)}
+                    </td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.netCents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

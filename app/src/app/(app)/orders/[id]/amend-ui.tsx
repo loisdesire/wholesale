@@ -26,37 +26,39 @@ export function AmendOrderForm({
         Lines you change are re-priced at today&apos;s prices and the stock reservation is adjusted; lines you leave alone
         keep their agreed price. Set a quantity to 0 to remove a line.
       </p>
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-            <th className="py-2 pr-4">Item</th>
-            <th className="py-2 pr-4 text-right">Now</th>
-            <th className="py-2">New quantity</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((l) => (
-            <tr key={l.orderItemId} className="border-b border-line last:border-0">
-              <td className="py-3 pr-4 text-ink">
-                {l.label}
-                <span className="ml-2 font-tabular text-xs text-text-muted">{l.sku}</span>
-              </td>
-              <td className="py-3 pr-4 text-right font-tabular text-text-muted">{l.quantity}</td>
-              <td className="py-3">
-                <input
-                  type="number"
-                  name={`qty_${l.orderItemId}`}
-                  min={0}
-                  step={1}
-                  defaultValue={l.quantity}
-                  aria-label={`New quantity of ${l.label}`}
-                  className={`${inputClass} w-24`}
-                />
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <th className="py-2 pr-4">Item</th>
+              <th className="py-2 pr-4 text-right">Now</th>
+              <th className="py-2">New quantity</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {lines.map((l) => (
+              <tr key={l.orderItemId} className="border-b border-line last:border-0">
+                <td className="py-3 pr-4 text-ink">
+                  {l.label}
+                  <span className="ml-2 font-tabular text-xs text-text-muted">{l.sku}</span>
+                </td>
+                <td className="py-3 pr-4 text-right font-tabular text-text-muted">{l.quantity}</td>
+                <td className="py-3">
+                  <input
+                    type="number"
+                    name={`qty_${l.orderItemId}`}
+                    min={0}
+                    step={1}
+                    defaultValue={l.quantity}
+                    aria-label={`New quantity of ${l.label}`}
+                    className={`${inputClass} w-24`}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <div className="grid gap-3 md:grid-cols-[1fr_7rem]">
         <select name="addProductId" aria-label="Add a product" defaultValue="" className={inputClass}>
           <option value="">Add a product (optional)…</option>

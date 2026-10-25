@@ -221,37 +221,39 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           placed keep the price they were made at.
         </p>
         {agreedPrices.length > 0 && (
-          <table className="mb-3 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">Product</th>
-                <th className="py-2 pr-4 text-right">List price</th>
-                <th className="py-2 pr-4 text-right">Agreed price</th>
-                {isOwner && <th className="py-2" />}
-              </tr>
-            </thead>
-            <tbody>
-              {agreedPrices.map((p) => (
-                <tr key={p.id} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 text-ink">
-                    {p.product.name}
-                    <span className="ml-2 font-tabular text-xs text-text-muted">{p.product.sku}</span>
-                  </td>
-                  <td className="py-3 pr-4 text-right font-tabular text-text-muted">{formatMoney(p.product.priceCents)}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(p.priceCents)}</td>
-                  {isOwner && (
-                    <td className="py-3 text-right">
-                      <form action={removePriceAction.bind(null, customer.id, p.productId)}>
-                        <button type="submit" className="text-xs text-status-attention-fg underline-offset-2 hover:underline">
-                          Remove
-                        </button>
-                      </form>
-                    </td>
-                  )}
+          <div className="overflow-x-auto">
+            <table className="mb-3 w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">Product</th>
+                  <th className="py-2 pr-4 text-right">List price</th>
+                  <th className="py-2 pr-4 text-right">Agreed price</th>
+                  {isOwner && <th className="py-2" />}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {agreedPrices.map((p) => (
+                  <tr key={p.id} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 text-ink">
+                      {p.product.name}
+                      <span className="ml-2 font-tabular text-xs text-text-muted">{p.product.sku}</span>
+                    </td>
+                    <td className="py-3 pr-4 text-right font-tabular text-text-muted">{formatMoney(p.product.priceCents)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(p.priceCents)}</td>
+                    {isOwner && (
+                      <td className="py-3 text-right">
+                        <form action={removePriceAction.bind(null, customer.id, p.productId)}>
+                          <button type="submit" className="text-xs text-status-attention-fg underline-offset-2 hover:underline">
+                            Remove
+                          </button>
+                        </form>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         {isOwner ? (
           <div className="max-w-xl">
@@ -276,32 +278,34 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             No orders yet.
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">Order</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">Placed</th>
-                <th className="py-2 pr-4 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => (
-                <tr key={o.id} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 font-tabular text-ink">
-                    <Link href={`/orders/${o.id}`} className="underline-offset-2 hover:underline">
-                      {o.reference}
-                    </Link>
-                  </td>
-                  <td className="py-3 pr-4">
-                    <OrderStatusBadge status={o.status} />
-                  </td>
-                  <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">Order</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Placed</th>
+                  <th className="py-2 pr-4 text-right">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.id} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 font-tabular text-ink">
+                      <Link href={`/orders/${o.id}`} className="underline-offset-2 hover:underline">
+                        {o.reference}
+                      </Link>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <OrderStatusBadge status={o.status} />
+                    </td>
+                    <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -353,40 +357,42 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       {returns.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-medium text-ink">Returns &amp; refunds</h2>
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="py-2 pr-4">Return</th>
-                <th className="py-2 pr-4">Order</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">Refund</th>
-                <th className="py-2 pr-4 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {returns.map((r) => (
-                <tr key={r.id} className="border-b border-line last:border-0">
-                  <td className="py-3 pr-4 font-tabular text-ink">{r.reference}</td>
-                  <td className="py-3 pr-4 font-tabular">
-                    <Link href={`/orders/${r.orderId}`} className="text-ink underline-offset-2 hover:underline">
-                      {r.order.reference}
-                    </Link>
-                  </td>
-                  <td className="py-3 pr-4">
-                    <ReturnStatusBadge status={r.status} />
-                  </td>
-                  <td className="py-3 pr-4">
-                    {r.status === "REJECTED" || r.status === "REQUESTED" ? (
-                      <span className="text-xs text-text-muted">—</span>
-                    ) : (
-                      <RefundStatusBadge status={r.refundStatus} />
-                    )}
-                  </td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.refundCents, r.order.currency)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="py-2 pr-4">Return</th>
+                  <th className="py-2 pr-4">Order</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Refund</th>
+                  <th className="py-2 pr-4 text-right">Amount</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {returns.map((r) => (
+                  <tr key={r.id} className="border-b border-line last:border-0">
+                    <td className="py-3 pr-4 font-tabular text-ink">{r.reference}</td>
+                    <td className="py-3 pr-4 font-tabular">
+                      <Link href={`/orders/${r.orderId}`} className="text-ink underline-offset-2 hover:underline">
+                        {r.order.reference}
+                      </Link>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <ReturnStatusBadge status={r.status} />
+                    </td>
+                    <td className="py-3 pr-4">
+                      {r.status === "REJECTED" || r.status === "REQUESTED" ? (
+                        <span className="text-xs text-text-muted">—</span>
+                      ) : (
+                        <RefundStatusBadge status={r.refundStatus} />
+                      )}
+                    </td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.refundCents, r.order.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>

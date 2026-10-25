@@ -201,26 +201,28 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </p>
           ) : (
             <div className="rounded-md border border-line bg-surface">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                    <th className="px-4 py-2">Method</th>
-                    <th className="px-4 py-2 text-right">Amount</th>
-                    <th className="px-4 py-2">When</th>
-                    <th className="px-4 py-2">Recorded by</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.payments.map((p) => (
-                    <tr key={p.id} className="border-b border-line last:border-0">
-                      <td className="px-4 py-3 text-ink">{p.method === "PROVIDER" ? "Paystack" : "Manual"}</td>
-                      <td className="px-4 py-3 text-right font-tabular text-ink">{formatMoney(p.amountCents, p.currency)}</td>
-                      <td className="px-4 py-3 text-xs text-text-muted">{formatDateTime(p.createdAt)}</td>
-                      <td className="px-4 py-3 text-text-muted">{p.recordedBy?.name ?? (p.method === "PROVIDER" ? "Verified automatically" : "—")}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                      <th className="px-4 py-2">Method</th>
+                      <th className="px-4 py-2 text-right">Amount</th>
+                      <th className="px-4 py-2">When</th>
+                      <th className="px-4 py-2">Recorded by</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {order.payments.map((p) => (
+                      <tr key={p.id} className="border-b border-line last:border-0">
+                        <td className="px-4 py-3 text-ink">{p.method === "PROVIDER" ? "Paystack" : "Manual"}</td>
+                        <td className="px-4 py-3 text-right font-tabular text-ink">{formatMoney(p.amountCents, p.currency)}</td>
+                        <td className="px-4 py-3 text-xs text-text-muted">{formatDateTime(p.createdAt)}</td>
+                        <td className="px-4 py-3 text-text-muted">{p.recordedBy?.name ?? (p.method === "PROVIDER" ? "Verified automatically" : "—")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </section>
@@ -229,55 +231,57 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <section>
         <h2 className="mb-3 text-sm font-medium text-ink">Items</h2>
         <div className="rounded-md border border-line bg-surface">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                <th className="px-4 py-2">Product</th>
-                <th className="px-4 py-2 text-right">Qty</th>
-                <th className="px-4 py-2 text-right">Unit price</th>
-                <th className="px-4 py-2 text-right">Line total</th>
-                {order.status === "DRAFT" && <th className="px-4 py-2" />}
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((item) => (
-                <tr key={item.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 text-ink">
-                    {item.product.name}
-                    {item.variantLabel ? ` (${item.variantLabel})` : ""}
-                    <span className="ml-2 font-tabular text-xs text-text-muted">{item.product.sku}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-tabular text-ink">
-                    {order.status === "DRAFT" ? (
-                      <QuantityForm
-                        orderId={order.id}
-                        orderItemId={item.id}
-                        quantity={item.quantity}
-                        moq={item.product.moq}
-                      />
-                    ) : (
-                      item.quantity
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-tabular text-text-muted">
-                    {formatMoney(item.unitPriceCents, order.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-tabular text-ink">
-                    {formatMoney(item.unitPriceCents * item.quantity, order.currency)}
-                  </td>
-                  {order.status === "DRAFT" && (
-                    <td className="px-4 py-3 text-right">
-                      <form action={removeOrderItemAction.bind(null, order.id, item.id)}>
-                        <button type="submit" className="text-xs text-status-attention-fg hover:underline">
-                          Remove
-                        </button>
-                      </form>
-                    </td>
-                  )}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <th className="px-4 py-2">Product</th>
+                  <th className="px-4 py-2 text-right">Qty</th>
+                  <th className="px-4 py-2 text-right">Unit price</th>
+                  <th className="px-4 py-2 text-right">Line total</th>
+                  {order.status === "DRAFT" && <th className="px-4 py-2" />}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {order.items.map((item) => (
+                  <tr key={item.id} className="border-b border-line last:border-0">
+                    <td className="px-4 py-3 text-ink">
+                      {item.product.name}
+                      {item.variantLabel ? ` (${item.variantLabel})` : ""}
+                      <span className="ml-2 font-tabular text-xs text-text-muted">{item.product.sku}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-tabular text-ink">
+                      {order.status === "DRAFT" ? (
+                        <QuantityForm
+                          orderId={order.id}
+                          orderItemId={item.id}
+                          quantity={item.quantity}
+                          moq={item.product.moq}
+                        />
+                      ) : (
+                        item.quantity
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-tabular text-text-muted">
+                      {formatMoney(item.unitPriceCents, order.currency)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-tabular text-ink">
+                      {formatMoney(item.unitPriceCents * item.quantity, order.currency)}
+                    </td>
+                    {order.status === "DRAFT" && (
+                      <td className="px-4 py-3 text-right">
+                        <form action={removeOrderItemAction.bind(null, order.id, item.id)}>
+                          <button type="submit" className="text-xs text-status-attention-fg hover:underline">
+                            Remove
+                          </button>
+                        </form>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="flex items-center justify-between border-t border-line px-4 py-3">
             <span className="text-sm font-medium text-ink">Total</span>
             <span className="font-tabular text-sm font-medium text-ink">

@@ -14,46 +14,48 @@ export function ShipForm({ orderId, lines }: { orderId: string; lines: ShipLine[
   const { state, pending, formProps } = useSubmitAction(shipItemsAction.bind(null, orderId), { error: null } as FormState, { resetOnSuccess: true });
   return (
     <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-            <th className="py-2 pr-4">Item</th>
-            <th className="py-2 pr-4 text-right">Ordered</th>
-            <th className="py-2 pr-4 text-right">Shipped</th>
-            <th className="py-2 pr-4 text-right">Left</th>
-            <th className="py-2">Ship now</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((l) => {
-            const left = l.ordered - l.shipped;
-            return (
-              <tr key={l.orderItemId} className="border-b border-line last:border-0">
-                <td className="py-3 pr-4 text-ink">
-                  {l.label}
-                  <span className="ml-2 font-tabular text-xs text-text-muted">{l.sku}</span>
-                </td>
-                <td className="py-3 pr-4 text-right font-tabular text-text-muted">{l.ordered}</td>
-                <td className="py-3 pr-4 text-right font-tabular text-text-muted">{l.shipped}</td>
-                <td className="py-3 pr-4 text-right font-tabular text-ink">{left}</td>
-                <td className="py-3">
-                  <input
-                    type="number"
-                    name={`qty_${l.orderItemId}`}
-                    min={0}
-                    max={left}
-                    step={1}
-                    disabled={left === 0}
-                    placeholder="0"
-                    aria-label={`Quantity of ${l.label} to ship now`}
-                    className={`${inputClass} w-24`}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <th className="py-2 pr-4">Item</th>
+              <th className="py-2 pr-4 text-right">Ordered</th>
+              <th className="py-2 pr-4 text-right">Shipped</th>
+              <th className="py-2 pr-4 text-right">Left</th>
+              <th className="py-2">Ship now</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => {
+              const left = l.ordered - l.shipped;
+              return (
+                <tr key={l.orderItemId} className="border-b border-line last:border-0">
+                  <td className="py-3 pr-4 text-ink">
+                    {l.label}
+                    <span className="ml-2 font-tabular text-xs text-text-muted">{l.sku}</span>
+                  </td>
+                  <td className="py-3 pr-4 text-right font-tabular text-text-muted">{l.ordered}</td>
+                  <td className="py-3 pr-4 text-right font-tabular text-text-muted">{l.shipped}</td>
+                  <td className="py-3 pr-4 text-right font-tabular text-ink">{left}</td>
+                  <td className="py-3">
+                    <input
+                      type="number"
+                      name={`qty_${l.orderItemId}`}
+                      min={0}
+                      max={left}
+                      step={1}
+                      disabled={left === 0}
+                      placeholder="0"
+                      aria-label={`Quantity of ${l.label} to ship now`}
+                      className={`${inputClass} w-24`}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       <div className="grid gap-3 md:grid-cols-2">
         <input name="carrier" placeholder="Carrier (optional)" aria-label="Carrier" className={inputClass} />
         <input name="trackingReference" placeholder="Tracking reference (optional)" aria-label="Tracking reference" className={inputClass} />

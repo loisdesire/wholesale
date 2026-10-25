@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const active = memberships.find((m) => m.organizationId === session?.user.organizationId);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col md:flex-row">
       <Nav
         orgName={active?.organization.name ?? "Wholesale"}
         userName={session?.user.name ?? ""}
@@ -29,7 +29,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         unreadNotifications={unread}
         isPlatformAdmin={session?.user.isPlatformAdmin ?? false}
       />
-      <main className="flex-1 overflow-y-auto px-10 py-8">{children}</main>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 md:px-10 md:py-8">{children}</main>
     </div>
   );
 }

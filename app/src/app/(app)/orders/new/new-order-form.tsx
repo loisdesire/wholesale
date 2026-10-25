@@ -216,53 +216,55 @@ export function NewOrderForm({
           </p>
         ) : (
           <div className="rounded-md border border-line bg-surface">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                  <th className="px-4 py-2">Product</th>
-                  <th className="px-4 py-2 text-right">Qty</th>
-                  <th className="px-4 py-2 text-right">Unit price</th>
-                  <th className="px-4 py-2 text-right">Line total</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {cart.map((line) => {
-                  const product = productMap.get(line.productId);
-                  if (!product) return null;
-                  const unitPrice = unitPriceFor(product, line.quantity);
-                  const isAgreed = agreedFor(product.id) != null;
-                  return (
-                    <tr key={line.productId} className="border-b border-line last:border-0">
-                      <td className="px-4 py-3 text-ink">
-                        {product.name}
-                        {product.variantLabel ? ` (${product.variantLabel})` : ""}
-                      </td>
-                      <td className="px-4 py-3 text-right font-tabular text-ink">
-                        {line.quantity} {product.unit}
-                        {line.quantity === 1 ? "" : "s"}
-                      </td>
-                      <td className="px-4 py-3 text-right font-tabular text-text-muted">
-                        {formatMoney(unitPrice)}
-                        {isAgreed && <span className="ml-1 text-xs text-text-muted">agreed</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right font-tabular text-ink">
-                        {formatMoney(unitPrice * line.quantity)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(line.productId)}
-                          className="text-xs text-status-attention-fg hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                    <th className="px-4 py-2">Product</th>
+                    <th className="px-4 py-2 text-right">Qty</th>
+                    <th className="px-4 py-2 text-right">Unit price</th>
+                    <th className="px-4 py-2 text-right">Line total</th>
+                    <th className="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.map((line) => {
+                    const product = productMap.get(line.productId);
+                    if (!product) return null;
+                    const unitPrice = unitPriceFor(product, line.quantity);
+                    const isAgreed = agreedFor(product.id) != null;
+                    return (
+                      <tr key={line.productId} className="border-b border-line last:border-0">
+                        <td className="px-4 py-3 text-ink">
+                          {product.name}
+                          {product.variantLabel ? ` (${product.variantLabel})` : ""}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-ink">
+                          {line.quantity} {product.unit}
+                          {line.quantity === 1 ? "" : "s"}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-text-muted">
+                          {formatMoney(unitPrice)}
+                          {isAgreed && <span className="ml-1 text-xs text-text-muted">agreed</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-ink">
+                          {formatMoney(unitPrice * line.quantity)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(line.productId)}
+                            className="text-xs text-status-attention-fg hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             <div className="flex items-center justify-between border-t border-line px-4 py-3">
               <span className="text-sm font-medium text-ink">Total</span>
               <span className="font-tabular text-sm font-medium text-ink">{formatMoney(total)}</span>

@@ -123,51 +123,53 @@ export function OrdersTable({
         </div>
       )}
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-            {canBulkAssign && (
-              <th className="w-8 py-2">
-                <input type="checkbox" checked={selected.size === orders.length && orders.length > 0} onChange={toggleAll} aria-label="Select all" />
-              </th>
-            )}
-            <th className="py-2 pr-4">Reference</th>
-            <th className="py-2 pr-4">Customer</th>
-            <th className="py-2 pr-4">Items</th>
-            <th className="py-2 pr-4">Status</th>
-            <th className="py-2 pr-4">Assigned to</th>
-            <th className="py-2 pr-4">Created</th>
-            <th className="py-2 pr-4 text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((o) => (
-            <tr key={o.id} className="border-b border-line last:border-0">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
               {canBulkAssign && (
-                <td className="py-3">
-                  <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} aria-label={`Select ${o.reference}`} />
-                </td>
+                <th className="w-8 py-2">
+                  <input type="checkbox" checked={selected.size === orders.length && orders.length > 0} onChange={toggleAll} aria-label="Select all" />
+                </th>
               )}
-              <td className="py-3 pr-4 font-tabular">
-                <Link href={`/orders/${o.id}`} className="text-ink hover:underline">
-                  {o.reference}
-                </Link>
-              </td>
-              <td className="py-3 pr-4">
-                <p className="text-ink">{o.customerName ?? "Unnamed"}</p>
-                <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
-              </td>
-              <td className="py-3 pr-4 text-text-muted">{o.units} units</td>
-              <td className="py-3 pr-4">
-                <OrderStatusBadge status={o.status} />
-              </td>
-              <td className="py-3 pr-4 text-text-muted">{o.assignedToName ?? "—"}</td>
-              <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
-              <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+              <th className="py-2 pr-4">Reference</th>
+              <th className="py-2 pr-4">Customer</th>
+              <th className="py-2 pr-4">Items</th>
+              <th className="py-2 pr-4">Status</th>
+              <th className="py-2 pr-4">Assigned to</th>
+              <th className="py-2 pr-4">Created</th>
+              <th className="py-2 pr-4 text-right">Total</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {orders.map((o) => (
+              <tr key={o.id} className="border-b border-line last:border-0">
+                {canBulkAssign && (
+                  <td className="py-3">
+                    <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} aria-label={`Select ${o.reference}`} />
+                  </td>
+                )}
+                <td className="py-3 pr-4 font-tabular">
+                  <Link href={`/orders/${o.id}`} className="text-ink hover:underline">
+                    {o.reference}
+                  </Link>
+                </td>
+                <td className="py-3 pr-4">
+                  <p className="text-ink">{o.customerName ?? "Unnamed"}</p>
+                  <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
+                </td>
+                <td className="py-3 pr-4 text-text-muted">{o.units} units</td>
+                <td className="py-3 pr-4">
+                  <OrderStatusBadge status={o.status} />
+                </td>
+                <td className="py-3 pr-4 text-text-muted">{o.assignedToName ?? "—"}</td>
+                <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
+                <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -488,3 +488,14 @@ npm run dev
   made the bug impossible to reintroduce by adding a fourth statement later. When a tuple's shape
   depends on how many statements precede the one you want, index from the end or name every
   element — don't leave a hardcoded position that only happened to be correct for the old length.
+- **"No horizontal page overflow" is necessary but not sufficient evidence a layout works on
+  mobile.** A `scrollWidth <= clientWidth` check on the page can report clean while a `<table>`
+  nested inside an `overflow-x-hidden` container is still clipping columns off-screen with no way
+  to reach them — the overflow is contained one level down, not visible at the page level. Only a
+  real screenshot at the target viewport width caught this during the mobile pass. Any new
+  wide/flex content on a page needs its own `overflow-x-auto` wrapper, not a page-level check alone.
+- **An unconditional `setState` inside a `useEffect` keyed on a changing prop (e.g. closing a nav
+  drawer on route change) is flagged by `eslint-plugin-react-hooks`'s `react-hooks/set-state-in-effect`.**
+  Use React's "adjust state during render" pattern instead: track the previous value of the thing
+  that changed in its own state, compare it to the current value during render, and call `setState`
+  conditionally right there (not in an effect) when they differ. See `nav.tsx`'s drawer-close logic.

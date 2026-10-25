@@ -100,34 +100,36 @@ export function ImportFlow() {
       </div>
 
       <div className="max-h-[480px] overflow-y-auto rounded-md border border-line bg-surface">
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 bg-surface">
-            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-              <th className="px-4 py-2">Row</th>
-              <th className="px-4 py-2">SKU</th>
-              <th className="px-4 py-2">Action</th>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2 text-right">Price</th>
-              <th className="px-4 py-2">Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {preview.rows.map((row) => (
-              <tr key={row.rowNumber} className="border-b border-line last:border-0">
-                <td className="px-4 py-2 font-tabular text-text-muted">{row.rowNumber}</td>
-                <td className="px-4 py-2 font-tabular text-ink">{row.sku}</td>
-                <td className="px-4 py-2">
-                  <ActionLabel action={row.action} />
-                </td>
-                <td className="px-4 py-2 text-ink">{row.name ?? "—"}</td>
-                <td className="px-4 py-2 text-right font-tabular text-ink">
-                  {row.priceCents !== undefined ? formatMoney(row.priceCents) : "—"}
-                </td>
-                <td className="px-4 py-2 text-status-attention-fg">{row.errors.join("; ")}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead className="sticky top-0 bg-surface">
+              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <th className="px-4 py-2">Row</th>
+                <th className="px-4 py-2">SKU</th>
+                <th className="px-4 py-2">Action</th>
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2 text-right">Price</th>
+                <th className="px-4 py-2">Details</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {preview.rows.map((row) => (
+                <tr key={row.rowNumber} className="border-b border-line last:border-0">
+                  <td className="px-4 py-2 font-tabular text-text-muted">{row.rowNumber}</td>
+                  <td className="px-4 py-2 font-tabular text-ink">{row.sku}</td>
+                  <td className="px-4 py-2">
+                    <ActionLabel action={row.action} />
+                  </td>
+                  <td className="px-4 py-2 text-ink">{row.name ?? "—"}</td>
+                  <td className="px-4 py-2 text-right font-tabular text-ink">
+                    {row.priceCents !== undefined ? formatMoney(row.priceCents) : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-status-attention-fg">{row.errors.join("; ")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <form action={commitActionFn} className="flex items-center gap-4">

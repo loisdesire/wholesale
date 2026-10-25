@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { signOutAction, switchOrganizationAction } from "@/app/(app)/actions";
 
 const NAV_ITEMS = [
@@ -35,9 +36,48 @@ export function Nav({
   isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
+  // A fixed sidebar permanently visible doesn't fit a phone width — below md it becomes a
+  // slide-in drawer instead, triggered by a small top bar. Closes automatically on navigation
+  // so staff aren't left staring at the menu after tapping a link. Adjusted during render, not
+  // in an effect (React's own recommended pattern for "reset state when a prop changes") — an
+  // unconditional setState in an effect causes an avoidable extra render on every navigation.
+  const [open, setOpen] = useState(false);
+  const [openForPathname, setOpenForPathname] = useState(pathname);
+  if (pathname !== openForPathname) {
+    setOpenForPathname(pathname);
+    setOpen(false);
+  }
 
   return (
-    <aside className="flex h-screen w-56 flex-none flex-col bg-ink text-paper">
+    <>
+      <div className="flex items-center justify-between border-b border-line bg-ink px-4 py-3 text-paper md:hidden">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          className="rounded-md p-1.5 hover:bg-white/10"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M3 5h14M3 10h14M3 15h14" />
+          </svg>
+        </button>
+        <span className="truncate text-sm font-medium tracking-tight">{orgName}</span>
+        <span className="w-8" aria-hidden="true" />
+      </div>
+
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+          className="fixed inset-0 z-30 bg-ink/50 md:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-none -translate-x-full flex-col bg-ink text-paper transition-transform duration-200 md:relative md:z-auto md:w-56 md:translate-x-0 ${
+          open ? "translate-x-0" : ""
+        }`}
+      >
       <div className="px-5 py-5">
         <span className="text-sm font-medium tracking-tight">{orgName}</span>
         {organizations.length > 1 && (
@@ -116,6 +156,7 @@ export function Nav({
           </button>
         </form>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

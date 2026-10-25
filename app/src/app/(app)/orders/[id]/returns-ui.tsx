@@ -37,54 +37,56 @@ export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: 
 
   return (
     <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-            <th className="py-2 pr-4">Item</th>
-            <th className="py-2 pr-4 text-right">Can still return</th>
-            <th className="py-2 pr-4">Quantity</th>
-            <th className="py-2">Condition</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((line) => (
-            <tr key={line.orderItemId} className="border-b border-line last:border-0">
-              <td className="py-3 pr-4 text-ink">
-                {line.label}
-                <span className="ml-2 font-tabular text-xs text-text-muted">{line.sku}</span>
-              </td>
-              <td className="py-3 pr-4 text-right font-tabular text-text-muted">
-                {line.returnable} {line.unit}
-                {line.returnable === 1 ? "" : "s"}
-              </td>
-              <td className="py-3 pr-4">
-                <input
-                  type="number"
-                  name={`qty_${line.orderItemId}`}
-                  min={0}
-                  max={line.returnable}
-                  step={1}
-                  disabled={line.returnable === 0}
-                  aria-label={`Quantity of ${line.label} to return`}
-                  placeholder="0"
-                  className={`${inputClass} w-24`}
-                />
-              </td>
-              <td className="py-3">
-                <select
-                  name={`condition_${line.orderItemId}`}
-                  disabled={line.returnable === 0}
-                  aria-label={`Condition of ${line.label}`}
-                  className={inputClass}
-                >
-                  <option value="RESELLABLE">Resellable</option>
-                  <option value="DAMAGED">Damaged</option>
-                </select>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <th className="py-2 pr-4">Item</th>
+              <th className="py-2 pr-4 text-right">Can still return</th>
+              <th className="py-2 pr-4">Quantity</th>
+              <th className="py-2">Condition</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {lines.map((line) => (
+              <tr key={line.orderItemId} className="border-b border-line last:border-0">
+                <td className="py-3 pr-4 text-ink">
+                  {line.label}
+                  <span className="ml-2 font-tabular text-xs text-text-muted">{line.sku}</span>
+                </td>
+                <td className="py-3 pr-4 text-right font-tabular text-text-muted">
+                  {line.returnable} {line.unit}
+                  {line.returnable === 1 ? "" : "s"}
+                </td>
+                <td className="py-3 pr-4">
+                  <input
+                    type="number"
+                    name={`qty_${line.orderItemId}`}
+                    min={0}
+                    max={line.returnable}
+                    step={1}
+                    disabled={line.returnable === 0}
+                    aria-label={`Quantity of ${line.label} to return`}
+                    placeholder="0"
+                    className={`${inputClass} w-24`}
+                  />
+                </td>
+                <td className="py-3">
+                  <select
+                    name={`condition_${line.orderItemId}`}
+                    disabled={line.returnable === 0}
+                    aria-label={`Condition of ${line.label}`}
+                    className={inputClass}
+                  >
+                    <option value="RESELLABLE">Resellable</option>
+                    <option value="DAMAGED">Damaged</option>
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="reason" className="text-sm font-medium text-ink">
