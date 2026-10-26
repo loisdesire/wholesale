@@ -1397,6 +1397,34 @@ near-black+acid-green).
 - `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (379/379) all pass clean.
   No application logic changed — this was tokens, typography, and class names only.
 
+## Done (2026-10-26, continued — dashboard structural redesign)
+
+User's fair pushback on the above: "all you did was change colors... the structure and layout is
+boring asf... the look needs to be modern and clean." Correct — that pass was tokens only. This one
+rebuilds the dashboard's actual layout, the page the complaint was about.
+
+- **"Needs attention" is no longer a duplicate box inside a tile grid** — it's a full-width dark
+  band directly under the header, with the count itself set large in the display face and accent
+  color, the queue rows beneath it in the same band (white text, hairline dividers) rather than a
+  separate bordered list. One true hero moment instead of two competing ones.
+- **The pipeline counts are a connected horizontal strip** (`divide-x`, one rounded container), not
+  five identical bordered boxes — the order lifecycle genuinely is a sequence, so this is a
+  structural device that encodes real information, not decoration for its own sake.
+- **Recent orders / today's activity rows get initials avatars** (`Initials` — a small accent-tinted
+  circle, first letters of the name) and lost their boxed borders in favor of plain hairline
+  dividers, closer to how a modern list actually reads.
+- **A real bug found while verifying on mobile, not introduced on purpose**: the new rows sit inside
+  a bare `grid lg:grid-cols-2` with plain `<div>` children. Grid items default to `min-width: auto`,
+  not `0`, so a flex row with a non-shrinking trailing column (price + status badge) blew the grid
+  track out to its max-content width (1524px measured) instead of fitting the viewport — the
+  trailing column silently scrolled off past the page's `overflow-x-hidden` with no visible sign
+  anything was wrong. Fixed with `min-w-0` on the grid's direct children. See the CLAUDE.md gotcha
+  for the general shape of this bug class.
+- **Verified live**: desktop (1360×1000) and mobile (375×812) screenshots before and after the
+  grid-blowout fix, confirming price/status now render correctly at both widths and the dark hero
+  band holds up responsively.
+- `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (379/379) all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a

@@ -512,3 +512,13 @@ npm run dev
   Use React's "adjust state during render" pattern instead: track the previous value of the thing
   that changed in its own state, compare it to the current value during render, and call `setState`
   conditionally right there (not in an effect) when they differ. See `nav.tsx`'s drawer-close logic.
+- **A grid item's default `min-width` is `auto`, not `0` — a flex row with a non-shrinking
+  (`shrink-0`) trailing column inside a bare `<div>` grid child will blow the grid track out to
+  that row's max-content width instead of wrapping/truncating at the viewport.** Hit this building
+  the dashboard's "Recent orders"/"Today's activity" columns (`grid lg:grid-cols-2` with plain
+  `<div>` children): on mobile the row measured 1524px wide and silently scrolled the price/status
+  column off past `overflow-x-hidden`, with no visual sign anything was wrong other than the
+  trailing content being gone. Fixed by adding `min-w-0` to the grid's direct children (not the
+  flex row itself — the grid item is what needs it). Same family of bug as the table-overflow one
+  above, but one layer different: that one needed a scroll wrapper, this one needed the grid item
+  to be allowed to shrink at all.

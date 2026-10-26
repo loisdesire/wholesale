@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
@@ -60,155 +61,146 @@ export default async function DashboardPage() {
   const needsAttentionCount =
     attentionConversations.length + attentionOrders.length + attentionReturns.length;
 
+  const today = new Date().toLocaleDateString("en-NG", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
   return (
     <div className="flex flex-col gap-10">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">
+          <p className="text-sm text-text-muted">{today}</p>
+          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">
             Good to see you, {session!.user.name?.split(" ")[0]}
           </h1>
-          <p className="mt-1 text-sm text-text-muted">Here&apos;s what&apos;s moving through the business today.</p>
         </div>
         <Link
           href="/operations"
-          className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
+          className="text-sm font-medium text-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-ink"
         >
-          Operations &amp; metrics →
+          Operations &amp; metrics
         </Link>
       </header>
 
-      <section>
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-medium text-ink">
-            Needs attention{" "}
-            {needsAttentionCount > 0 && (
-              <span className="ml-1 text-text-muted">({needsAttentionCount})</span>
-            )}
-          </h2>
-        </div>
+      {needsAttentionCount === 0 ? (
+        <section className="rounded-2xl border border-dashed border-line bg-surface px-8 py-10 text-center">
+          <p className="text-sm text-text-muted">Nothing is waiting on you right now.</p>
+        </section>
+      ) : (
+        <section className="overflow-hidden rounded-2xl bg-ink text-paper">
+          <div className="flex flex-col gap-5 px-6 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <div className="flex items-baseline gap-4">
+              <span className="font-display text-5xl font-semibold text-accent">
+                {needsAttentionCount}
+              </span>
+              <div>
+                <p className="font-medium text-white">
+                  {needsAttentionCount === 1 ? "thing needs" : "things need"} you today
+                </p>
+                <p className="text-sm text-white/55">
+                  Replies to send, orders to confirm, returns to decide.
+                </p>
+              </div>
+            </div>
+          </div>
 
-        {needsAttentionCount === 0 ? (
-          <EmptyRow text="Nothing is waiting on you right now." />
-        ) : (
-          <div className="divide-y divide-line rounded-md border border-line bg-surface">
+          <div className="divide-y divide-white/10 border-t border-white/10">
             {attentionConversations.map((c) => (
-              <Link
-                key={c.id}
-                href={`/inbox/${c.id}`}
-                className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-paper"
-              >
-                <div className="flex items-center gap-3">
-                  <ConversationStatusBadge status={c.status} />
-                  <span className="font-medium text-ink">
-                    {c.customer.name ?? c.customer.phone}
-                  </span>
-                  <span className="text-text-muted">waiting on a reply</span>
-                </div>
-                <span className="font-tabular text-xs text-text-muted">
+              <AttentionRow key={c.id} href={`/inbox/${c.id}`}>
+                <ConversationStatusBadge status={c.status} />
+                <span className="font-medium text-white">
+                  {c.customer.name ?? c.customer.phone}
+                </span>
+                <span className="text-white/55">waiting on a reply</span>
+                <span className="ml-auto shrink-0 font-tabular text-xs text-white/40">
                   {formatRelativeTime(c.lastMessageAt)}
                 </span>
-              </Link>
+              </AttentionRow>
             ))}
             {attentionOrders.map((o) => (
-              <Link
-                key={o.id}
-                href={`/orders/${o.id}`}
-                className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-paper"
-              >
-                <div className="flex items-center gap-3">
-                  <OrderStatusBadge status={o.status} />
-                  <span className="font-tabular text-ink">{o.reference}</span>
-                  <span className="text-text-muted">
-                    {o.status === "DRAFT" ? "needs confirmation" : "awaiting payment"} ·{" "}
-                    {o.customer.name ?? o.customer.phone}
-                  </span>
-                </div>
-                <span className="font-tabular text-xs text-text-muted">
+              <AttentionRow key={o.id} href={`/orders/${o.id}`}>
+                <OrderStatusBadge status={o.status} />
+                <span className="font-tabular text-white">{o.reference}</span>
+                <span className="text-white/55">
+                  {o.status === "DRAFT" ? "needs confirmation" : "awaiting payment"} ·{" "}
+                  {o.customer.name ?? o.customer.phone}
+                </span>
+                <span className="ml-auto shrink-0 font-tabular text-xs text-white/40">
                   {formatMoney(o.totalCents, o.currency)}
                 </span>
-              </Link>
+              </AttentionRow>
             ))}
             {attentionReturns.map((r) => (
-              <Link
-                key={r.id}
-                href={`/orders/${r.orderId}`}
-                className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-paper"
-              >
-                <div className="flex items-center gap-3">
-                  <ReturnStatusBadge status={r.status} />
-                  <span className="font-tabular text-ink">{r.reference}</span>
-                  <span className="text-text-muted">
-                    {r.status === "REQUESTED"
-                      ? "return needs a decision"
-                      : r.refundStatus === "PENDING" && r.status === "RECEIVED"
-                        ? "refund to pay"
-                        : r.status === "APPROVED"
-                          ? "approved, awaiting goods"
-                          : "return open"}{" "}
-                    · {r.customer.name ?? r.customer.phone} · {r.order.reference}
-                  </span>
-                </div>
-                <span className="font-tabular text-xs text-text-muted">
+              <AttentionRow key={r.id} href={`/orders/${r.orderId}`}>
+                <ReturnStatusBadge status={r.status} />
+                <span className="font-tabular text-white">{r.reference}</span>
+                <span className="text-white/55">
+                  {r.status === "REQUESTED"
+                    ? "return needs a decision"
+                    : r.refundStatus === "PENDING" && r.status === "RECEIVED"
+                      ? "refund to pay"
+                      : r.status === "APPROVED"
+                        ? "approved, awaiting goods"
+                        : "return open"}{" "}
+                  · {r.customer.name ?? r.customer.phone}
+                </span>
+                <span className="ml-auto shrink-0 font-tabular text-xs text-white/40">
                   {formatMoney(r.refundCents, r.order.currency)}
                 </span>
-              </Link>
+              </AttentionRow>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Order pipeline</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <div
-            className={`rounded-md border px-4 py-3 ${
-              needsAttentionCount > 0
-                ? "border-accent-2 bg-accent text-paper"
-                : "border-line bg-surface text-ink"
-            }`}
-          >
-            <p className="font-display text-3xl font-semibold tracking-tight">
-              {needsAttentionCount}
-            </p>
-            <p className={`mt-1 text-xs ${needsAttentionCount > 0 ? "text-paper/80" : "text-text-muted"}`}>
-              Needs attention
-            </p>
-          </div>
-          {pipelineOrder.map((status) => (
-            <div
-              key={status}
-              className="rounded-md border border-line bg-surface px-4 py-3"
-            >
-              <p className="font-display text-3xl font-semibold tracking-tight text-ink">
-                {countByStatus[status] ?? 0}
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                {STATUS_LABEL[status]}
-              </p>
+        <h2 className="mb-4 text-sm font-medium text-ink">Order pipeline</h2>
+        {/* The lifecycle genuinely is a sequence, so a connected strip earns the structure a
+            plain stat grid wouldn't — each stage reads as a step, not an interchangeable box. */}
+        <div className="relative">
+          <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
+            <div className="flex divide-x divide-line">
+              {pipelineOrder.map((status) => (
+                <div key={status} className="min-w-[150px] flex-1 px-6 py-5">
+                  <p className="font-display text-3xl font-semibold text-ink">
+                    {countByStatus[status] ?? 0}
+                  </p>
+                  <p className="mt-1 whitespace-nowrap text-xs text-text-muted">
+                    {STATUS_LABEL[status]}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+          {/* Hints that the strip scrolls on a screen too narrow to show all five stages. */}
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-surface to-transparent sm:hidden" />
         </div>
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-ink">Recent orders</h2>
+      <section className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
+        <div className="min-w-0">
+          <h2 className="mb-4 text-sm font-medium text-ink">Recent orders</h2>
           {recentOrders.length === 0 ? (
             <EmptyRow text="No orders yet." />
           ) : (
-            <div className="divide-y divide-line rounded-md border border-line bg-surface">
+            <div className="divide-y divide-line">
               {recentOrders.map((o) => (
                 <Link
                   key={o.id}
                   href={`/orders/${o.id}`}
-                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-paper"
+                  className="flex items-center gap-3 py-3.5 text-sm transition-colors hover:text-accent"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="font-tabular text-ink">{o.reference}</span>
-                    <span className="text-text-muted">{o.customer.name ?? o.customer.phone}</span>
+                  <Initials name={o.customer.name ?? o.customer.phone} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-ink group-hover:text-accent">
+                      {o.customer.name ?? o.customer.phone}
+                    </p>
+                    <p className="font-tabular text-xs text-text-muted">{o.reference}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-tabular text-text-muted">
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-tabular text-ink">
                       {formatMoney(o.totalCents, o.currency)}
                     </span>
                     <OrderStatusBadge status={o.status} />
@@ -219,27 +211,30 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-ink">Today&apos;s activity</h2>
+        <div className="min-w-0">
+          <h2 className="mb-4 text-sm font-medium text-ink">Today&apos;s activity</h2>
           {recentMessages.length === 0 ? (
             <EmptyRow text="No conversation activity yet." />
           ) : (
-            <div className="divide-y divide-line rounded-md border border-line bg-surface">
+            <div className="divide-y divide-line">
               {recentMessages.map((m) => (
                 <Link
                   key={m.id}
                   href={`/inbox/${m.conversationId}`}
-                  className="flex flex-col gap-0.5 px-4 py-3 text-sm hover:bg-paper"
+                  className="flex items-start gap-3 py-3.5 text-sm"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-ink">
-                      {m.conversation.customer.name ?? m.conversation.customer.phone}
-                    </span>
-                    <span className="font-tabular text-xs text-text-muted">
-                      {formatRelativeTime(m.createdAt)}
-                    </span>
+                  <Initials name={m.conversation.customer.name ?? m.conversation.customer.phone} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate font-medium text-ink">
+                        {m.conversation.customer.name ?? m.conversation.customer.phone}
+                      </span>
+                      <span className="shrink-0 font-tabular text-xs text-text-muted">
+                        {formatRelativeTime(m.createdAt)}
+                      </span>
+                    </div>
+                    <p className="truncate text-text-muted">{m.body}</p>
                   </div>
-                  <p className="truncate text-text-muted">{m.body}</p>
                 </Link>
               ))}
             </div>
@@ -257,6 +252,28 @@ const STATUS_LABEL: Record<string, string> = {
   PARTIALLY_FULFILLED: "Partly shipped",
   FULFILLED: "Fulfilled",
 };
+
+function AttentionRow({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="flex items-center gap-3 px-6 py-3.5 text-sm transition-colors hover:bg-white/5 sm:px-8">
+      {children}
+    </Link>
+  );
+}
+
+function Initials({ name }: { name: string }) {
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 font-display text-sm font-semibold text-accent-2">
+      {initials || "?"}
+    </span>
+  );
+}
 
 function EmptyRow({ text }: { text: string }) {
   return (
