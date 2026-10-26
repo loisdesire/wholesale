@@ -60,7 +60,7 @@ export default async function ProductDetailPage({
         </Link>
         <div className="mt-2 flex items-baseline justify-between">
           <div>
-            <h1 className="text-xl font-medium text-ink">{product.name}</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">{product.name}</h1>
             <p className="mt-1 font-tabular text-sm text-text-muted">
               {product.sku}
               {variant ? ` · ${Object.values(variant).join(" / ")}` : ""}

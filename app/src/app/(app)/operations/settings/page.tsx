@@ -28,7 +28,7 @@ export default async function OperationsSettingsPage() {
     <div className="flex flex-col gap-6">
       {back}
       <header>
-        <h1 className="text-xl font-medium text-ink">Attention thresholds</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Attention thresholds</h1>
         <p className="mt-1 text-sm text-text-muted">
           How long something may wait before the needs-attention queue calls it a warning or a critical exception.
         </p>

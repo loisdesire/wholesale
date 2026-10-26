@@ -56,7 +56,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
         </Link>
         <div className="mt-2 flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-medium text-ink">
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">
               {conversation.customer.name ?? "Unnamed"}
             </h1>
             <p className="mt-1 font-tabular text-sm text-text-muted">{conversation.customer.phone}</p>
@@ -131,7 +131,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                     className={`max-w-lg rounded-md border px-4 py-2.5 text-sm ${
                       isInbound
                         ? "border-line bg-surface text-ink"
-                        : "border-ink/10 bg-ink text-paper"
+                        : "border-accent-2/30 bg-accent text-paper"
                     }`}
                   >
                     <div

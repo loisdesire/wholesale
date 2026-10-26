@@ -92,7 +92,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         <Link href="/customers" className="text-sm text-text-muted hover:text-ink">
           ← Customers
         </Link>
-        <h1 className="mt-2 text-xl font-medium text-ink">{customer.name ?? "Unnamed"}</h1>
+        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">{customer.name ?? "Unnamed"}</h1>
         <p className="mt-1 font-tabular text-sm text-text-muted">{customer.phone}</p>
         {customer.notes && <p className="mt-2 max-w-xl text-sm text-text-muted">{customer.notes}</p>}
       </header>

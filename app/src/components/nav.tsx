@@ -61,7 +61,7 @@ export function Nav({
             <path d="M3 5h14M3 10h14M3 15h14" />
           </svg>
         </button>
-        <span className="truncate text-sm font-medium tracking-tight">{orgName}</span>
+        <span className="truncate font-display text-sm font-semibold tracking-tight">{orgName}</span>
         <span className="w-8" aria-hidden="true" />
       </div>
 
@@ -79,7 +79,7 @@ export function Nav({
         }`}
       >
       <div className="px-5 py-5">
-        <span className="text-sm font-medium tracking-tight">{orgName}</span>
+        <span className="font-display text-base font-semibold tracking-tight">{orgName}</span>
         {organizations.length > 1 && (
           <form action={(formData) => switchOrganizationAction(String(formData.get("organizationId")))} className="mt-2">
             <label htmlFor="organization-switch" className="sr-only">
@@ -107,10 +107,10 @@ export function Nav({
           <li>
             <Link
               href="/notifications"
-              className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
+              className={`flex items-center justify-between rounded-md border-l-2 px-3 py-2 text-sm transition-colors ${
                 pathname.startsWith("/notifications")
-                  ? "bg-white/10 font-medium text-white"
-                  : "text-white/65 hover:bg-white/5 hover:text-white"
+                  ? "border-accent bg-white/10 font-medium text-white"
+                  : "border-transparent text-white/65 hover:bg-white/5 hover:text-white"
               }`}
             >
               Notifications
@@ -128,10 +128,10 @@ export function Nav({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                  className={`block rounded-md border-l-2 px-3 py-2 text-sm transition-colors ${
                     active
-                      ? "bg-white/10 font-medium text-white"
-                      : "text-white/65 hover:bg-white/5 hover:text-white"
+                      ? "border-accent bg-white/10 font-medium text-white"
+                      : "border-transparent text-white/65 hover:bg-white/5 hover:text-white"
                   }`}
                 >
                   {item.label}

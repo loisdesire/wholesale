@@ -23,7 +23,7 @@ export default async function InboxPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-xl font-medium text-ink">Inbox</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Inbox</h1>
         <p className="mt-1 text-sm text-text-muted">
           Every WhatsApp conversation, regardless of who or what is handling it.
         </p>

@@ -16,7 +16,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <h1 className="text-xl font-medium text-ink">Search</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Search</h1>
         <p className="mt-1 text-sm text-text-muted">
           Orders, customers, products and returns. Phone numbers match in any format.
         </p>
@@ -30,7 +30,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             aria-label="Search"
             className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
           />
-          <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper hover:bg-ink-2">
+          <button type="submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper hover:bg-accent-2">
             Search
           </button>
         </form>

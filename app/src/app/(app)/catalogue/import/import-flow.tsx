@@ -77,7 +77,7 @@ export function ImportFlow() {
           <button
             type="submit"
             disabled={previewPending}
-            className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-ink-2 disabled:opacity-60"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
           >
             {previewPending ? "Reading…" : "Preview import"}
           </button>
@@ -138,7 +138,7 @@ export function ImportFlow() {
         <button
           type="submit"
           disabled={commitPending || !canCommit}
-          className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-ink-2 disabled:opacity-60"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
         >
           {commitPending ? "Importing…" : `Commit import (${createCount + updateCount})`}
         </button>

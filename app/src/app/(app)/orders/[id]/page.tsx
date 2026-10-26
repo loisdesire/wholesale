@@ -137,7 +137,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </Link>
         <div className="mt-2 flex items-start justify-between">
           <div>
-            <h1 className="font-tabular text-xl font-medium text-ink">{order.reference}</h1>
+            <h1 className="font-tabular text-2xl font-semibold tracking-tight text-ink">{order.reference}</h1>
             <p className="mt-1 text-sm text-text-muted">
               <Link href={`/customers/${order.customer.id}`} className="underline-offset-2 hover:underline">
                 {order.customer.name ?? "Unnamed"}

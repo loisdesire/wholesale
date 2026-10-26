@@ -60,7 +60,7 @@ export default async function MergePage({
     <div className="flex max-w-3xl flex-col gap-8">
       <header>
         {back}
-        <h1 className="mt-2 text-xl font-medium text-ink">Merge customers</h1>
+        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">Merge customers</h1>
         <p className="mt-1 text-sm text-text-muted">
           Review what will move. Nothing is deleted — the merged record is archived and the merge can be undone.
         </p>

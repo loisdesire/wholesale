@@ -62,9 +62,9 @@ export default async function CustomersPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-medium text-ink">Customers</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Customers</h1>
           <p className="mt-1 text-sm text-text-muted">
             Identified by phone number, with their order and conversation history. Balances are summed from orders
             and refunds, never typed in.
@@ -72,7 +72,7 @@ export default async function CustomersPage({
         </div>
         <Link
           href="/customers/new"
-          className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-ink-2"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2"
         >
           New customer
         </Link>
@@ -107,7 +107,7 @@ export default async function CustomersPage({
                 href={link({ filter: f.value, page: undefined })}
                 aria-current={active ? "true" : undefined}
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  active ? "bg-ink text-paper" : "border border-line text-text-muted hover:text-ink"
+                  active ? "bg-accent text-paper" : "border border-line text-text-muted hover:text-ink"
                 }`}
               >
                 {f.label}

@@ -38,7 +38,7 @@ export default async function BillingPage() {
   return (
     <div className="flex flex-col gap-10">
       <header>
-        <h1 className="text-xl font-medium text-ink">Billing</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Billing</h1>
         <p className="mt-1 text-sm text-text-muted">
           Plan, usage and subscription payment history. Plan prices and limits here are illustrative placeholders, not
           final pricing.

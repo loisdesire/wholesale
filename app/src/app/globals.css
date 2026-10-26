@@ -1,24 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #1b2340;
-  --ink-2: #2a3561;
-  --paper: #f7f5f1;
+  /* Deep aubergine, not navy and not flat black — reads as rich dye rather than corporate. */
+  --ink: #1d1030;
+  --ink-2: #2d1c48;
+  /* Warm, unbleached-cotton paper — the trade this app serves is textiles. */
+  --paper: #fbf3e9;
   --surface: #ffffff;
-  --line: #e2dfd6;
-  --accent: #c8841e;
-  --accent-ink: #5c3c0f;
-  --text: #1b2340;
-  --text-muted: #686d7a;
+  --line: #ecdfcb;
 
-  --status-neutral-fg: #4b4f5b;
-  --status-neutral-bg: #eef0f3;
-  --status-progress-fg: #92620f;
-  --status-progress-bg: #fbf1e1;
-  --status-success-fg: #1f6b4e;
-  --status-success-bg: #e5f3ec;
-  --status-attention-fg: #a13f2b;
-  --status-attention-bg: #fbe9e4;
+  /* Raspberry-magenta: the one bold color. Used for primary actions and selected state only. */
+  --accent: #cf1457;
+  --accent-2: #a60f44;
+  --accent-ink: #ffffff;
+  /* Marigold: the quieter second color — highlights and badges, never competing with accent. */
+  --gold: #e3920f;
+  --gold-ink: #3a2305;
+
+  --text: #1d1030;
+  --text-muted: #726a7d;
+
+  --status-neutral-fg: #534c5e;
+  --status-neutral-bg: #efe9e2;
+  --status-progress-fg: #9a5b06;
+  --status-progress-bg: #fcf0db;
+  --status-success-fg: #0d7a57;
+  --status-success-bg: #e2f5ec;
+  --status-attention-fg: #b3261e;
+  --status-attention-bg: #fbe8e5;
 }
 
 @theme inline {
@@ -28,7 +37,10 @@
   --color-surface: var(--surface);
   --color-line: var(--line);
   --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
   --color-accent-ink: var(--accent-ink);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-status-neutral-fg: var(--status-neutral-fg);
@@ -41,6 +53,7 @@
   --color-status-attention-bg: var(--status-attention-bg);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
 }
 
 body {
@@ -52,4 +65,11 @@ body {
 .font-tabular {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-feature-settings: "tnum";
+}
+
+/* The one display typeface, reserved for page titles and headline figures — the signature
+   typographic move. Everything else stays in the plain sans so the display face keeps its
+   weight instead of being diluted across every label. */
+.font-display {
+  font-family: var(--font-display), ui-serif, serif;
 }

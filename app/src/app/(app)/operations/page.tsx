@@ -32,9 +32,9 @@ export default async function OperationsPage({
 
   return (
     <div className="flex flex-col gap-10">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-medium text-ink">Operations</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Operations</h1>
           <p className="mt-1 text-sm text-text-muted">
             What needs attention right now, how the business is running, and who&apos;s carrying what.
           </p>

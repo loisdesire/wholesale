@@ -36,7 +36,7 @@ export function OrderStepper({ status }: { status: string }) {
                   done
                     ? "bg-status-success-fg text-paper"
                     : active
-                      ? "bg-ink text-paper"
+                      ? "bg-accent text-paper"
                       : "border border-line text-text-muted"
                 }`}
               >

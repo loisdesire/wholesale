@@ -12,9 +12,9 @@ export default async function NotificationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-medium text-ink">Notifications</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Notifications</h1>
           <p className="mt-1 text-sm text-text-muted">Return decisions, refunds due, and work assigned to you.</p>
         </div>
         {unreadIds.length > 0 && <MarkAllReadButton />}

@@ -10,9 +10,9 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen w-full">
       <div className="hidden w-[42%] flex-col justify-between bg-ink px-12 py-10 text-paper md:flex">
-        <span className="text-lg font-medium tracking-tight">Adaeze Wholesale</span>
-        <div className="max-w-sm">
-          <p className="text-2xl leading-snug text-white/90">
+        <span className="font-display text-lg font-semibold tracking-tight">Adaeze Wholesale</span>
+        <div className="max-w-sm border-l-2 border-accent pl-6">
+          <p className="font-display text-3xl italic leading-snug text-white/95">
             Every WhatsApp enquiry becomes a trackable order — with a status,
             an owner, and a record of what happened.
           </p>
@@ -23,11 +23,11 @@ export default async function LoginPage({
       <div className="flex flex-1 items-center justify-center px-6 py-10">
         <div className="w-full max-w-sm">
           <div className="mb-8 md:hidden">
-            <span className="text-lg font-medium tracking-tight text-ink">
+            <span className="font-display text-lg font-semibold tracking-tight text-ink">
               Adaeze Wholesale
             </span>
           </div>
-          <h1 className="text-xl font-medium text-ink">Sign in</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
           <p className="mt-1 text-sm text-text-muted">
             Use your staff account to continue.
           </p>

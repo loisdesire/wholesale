@@ -31,9 +31,9 @@ export default async function ReportsPage({
 
   return (
     <div className="flex flex-col gap-10">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-medium text-ink">Reports</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Reports</h1>
           <p className="mt-1 text-sm text-text-muted">
             Everything below is computed from real records for {formatRangeLabel(range)}. Revenue, cash, receivables and
             refunds are kept separate — none of this is labelled profit unless a cost is on record.

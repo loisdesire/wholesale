@@ -62,9 +62,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-medium text-ink">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">
             Good to see you, {session!.user.name?.split(" ")[0]}
           </h1>
           <p className="mt-1 text-sm text-text-muted">Here&apos;s what&apos;s moving through the business today.</p>
@@ -159,13 +159,27 @@ export default async function DashboardPage() {
 
       <section>
         <h2 className="mb-3 text-sm font-medium text-ink">Order pipeline</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div
+            className={`rounded-md border px-4 py-3 ${
+              needsAttentionCount > 0
+                ? "border-accent-2 bg-accent text-paper"
+                : "border-line bg-surface text-ink"
+            }`}
+          >
+            <p className="font-display text-3xl font-semibold tracking-tight">
+              {needsAttentionCount}
+            </p>
+            <p className={`mt-1 text-xs ${needsAttentionCount > 0 ? "text-paper/80" : "text-text-muted"}`}>
+              Needs attention
+            </p>
+          </div>
           {pipelineOrder.map((status) => (
             <div
               key={status}
               className="rounded-md border border-line bg-surface px-4 py-3"
             >
-              <p className="font-tabular text-2xl font-medium text-ink">
+              <p className="font-display text-3xl font-semibold tracking-tight text-ink">
                 {countByStatus[status] ?? 0}
               </p>
               <p className="mt-1 text-xs text-text-muted">

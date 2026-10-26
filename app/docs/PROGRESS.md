@@ -1350,6 +1350,53 @@ actually broken, not a cosmetic restyle:
 - `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (379/379) all pass clean
   after the full pass.
 
+## Done (2026-10-26 — visual redesign)
+
+Requested as "use all the design skills available, we need nice interfaces" — a deliberate visual
+identity pass, not a restyle. Ran `frontend-design` and `ui-ux-pro-max` for palette/typography/UX
+guidance first, chose a direction explicitly (bold & energetic, picked by the user over AskUserQuestion
+against a Linear/Stripe-neutral option and a literal-Ankara option), then built a token system rather
+than defaulting to generic SaaS blue or either of the common AI-generated looks (cream+terracotta,
+near-black+acid-green).
+
+- **New palette** (`globals.css`): deep aubergine ink (`#1d1030`, not navy, not flat black), warm
+  unbleached-cotton paper (`#fbf3e9`), and one deliberately bold color — raspberry-magenta
+  (`#cf1457`) — reserved for primary actions and selected state only, so it reads as a signal, not
+  wallpaper. A quieter marigold (`#e3920f`) exists as a second color for later use but isn't forced
+  into this pass. Status badge colors (success/progress/attention/neutral) recolored to sit
+  harmoniously with the new base rather than clashing with the old navy+amber pairing. White-on-accent
+  contrast checked by hand (~4.75:1, passes AA for normal text).
+- **One display typeface, used sparingly**: Fraunces (serif, next/font/google) reserved for page `<h1>`
+  titles, the dashboard's headline numbers, and the login page's pull-quote — IBM Plex Sans stays the
+  body/UI face everywhere else. This follows the explicit design-skill guidance to spend typographic
+  boldness in one place rather than swapping the whole app's font, which would have been higher risk
+  for no real gain.
+- **Mechanical, not hand-per-page**: the primary-button class signature (`bg-ink ... text-paper ...
+  hover:bg-ink-2`, previously identical across 19 files) was script-converted to `bg-accent /
+  hover:bg-accent-2`; all 21 `<h1>` headings got the display-font treatment in one pass; active-state
+  filter pills/tabs (`bg-ink text-paper` ternaries) became `bg-accent text-paper`. This is the same
+  "fix once, apply everywhere via a consistent existing pattern" approach used for the mobile table-wrap
+  pass — low risk because the signature was genuinely load-bearing and uniform already.
+- **Bespoke touches** where a mechanical pass wasn't the right tool: the dashboard's pipeline grid
+  gained a 6th "Needs attention" tile that turns solid accent when the count is non-zero (the one
+  number staff actually need to notice first); the nav's active link gets a left accent rail instead of
+  a flat white overlay; outbound WhatsApp message bubbles in the inbox thread now render in the accent
+  color (an iMessage-style "this is us" signal) instead of plain ink; the login page's pull-quote is
+  set in italic display type with an accent rule, making the sign-in screen the deliberate one-time
+  "hero" moment the design skill calls for.
+- **A real responsive bug found during verification, not introduced by this pass**: on a 375px screen
+  the page-header pattern (`flex items-start justify-between` — h1+subtitle on the left, a button on
+  the right, used identically across 7 pages) let the subtitle's wrapped last line run underneath the
+  button instead of making room for it. Fixed by stacking the header vertically below `sm:` across all
+  7 files (`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between`); the catalogue page's
+  3-button header row also got `flex-wrap` for the same reason.
+- **Verified live**: desktop (1360×1000) screenshots across dashboard, orders, order detail, catalogue
+  list, catalogue product detail (with the photo gallery), inbox, billing, and platform admin; mobile
+  (375×812) screenshots of dashboard and orders confirmed the header fix and that the bold palette
+  holds up at phone width.
+- `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (379/379) all pass clean.
+  No application logic changed — this was tokens, typography, and class names only.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a

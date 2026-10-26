@@ -298,14 +298,27 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
 
 ## Design system
 
-Loaded via the `frontend-design` skill — see the plan recorded in the first `/login` and dashboard
-build. Summary: deep indigo `#1b2340` (ink) + warm paper `#f7f5f1` background + marigold accent
-`#c8841e` used sparingly; IBM Plex Sans for UI text, IBM Plex Mono (`.font-tabular` / `font-mono`)
-reserved for numeric/reference table columns (money, SKUs, phone numbers, order refs) where digit
-alignment is functional, not decorative. Four semantic status tones only: neutral/progress/
-success/attention (`src/components/status-badge.tsx`). No shadows, minimal consistent radius, flat
-hairline-divided sections instead of card soup. Re-load the `frontend-design` skill before adding
-any new screen type, not just the first one.
+Redesigned 2026-10-26 using the `frontend-design` and `ui-ux-pro-max` skills (user request: "bold &
+energetic", not generic SaaS) — see the Done entry in `docs/PROGRESS.md` for the full rationale.
+Current tokens (`src/app/globals.css`): deep aubergine ink `#1d1030` (not navy, not flat black) +
+warm cotton paper `#fbf3e9` background + raspberry-magenta accent `#cf1457`, used **only** for
+primary actions and selected/active state — it's the one bold color in the system, so it stays
+reserved rather than spreading onto every element. A quieter marigold `#e3920f` (`--gold`) exists
+as a second color but isn't wired into any component yet — available for a future need, not a
+signal to start using it everywhere. IBM Plex Sans is the UI/body face; Fraunces (`.font-display`,
+`var(--font-display)`) is reserved for page `<h1>` titles, headline numbers, and the login
+pull-quote only — don't apply it to body text or small labels, that's what dilutes a display face.
+IBM Plex Mono (`.font-tabular` / `font-mono`) stays reserved for numeric/reference table columns
+(money, SKUs, phone numbers, order refs) where digit alignment is functional, not decorative —
+never combine `.font-tabular` with `.font-display` on the same element (conflicting font-family).
+Four semantic status tones only: neutral/progress/success/attention
+(`src/components/status-badge.tsx`) — these are separate from the brand accent on purpose, so
+"this needs attention" and "this is the primary action" never look like the same thing. No
+shadows, minimal consistent radius, flat hairline-divided sections instead of card soup. The
+primary-button class signature (`rounded-md bg-accent ... text-paper ... hover:bg-accent-2`) is
+intentionally identical across ~19 files — keep new primary actions consistent with it rather than
+inventing a new button style. Re-load the `frontend-design` skill before adding any new screen type,
+not just the first one.
 
 Any text input pre-filled with a real, non-placeholder default value a user is likely to just
 overtype (e.g. the "colour"/"size" starting rows in `product-form.tsx`'s attribute editor) needs

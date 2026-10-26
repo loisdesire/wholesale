@@ -50,7 +50,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-ink-2 disabled:opacity-60"
+        className="mt-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

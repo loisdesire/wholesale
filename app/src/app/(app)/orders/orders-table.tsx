@@ -98,7 +98,7 @@ export function OrdersTable({
                 type="button"
                 onClick={apply}
                 disabled={pending}
-                className="rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-paper hover:bg-ink-2 disabled:opacity-60"
+                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-paper hover:bg-accent-2 disabled:opacity-60"
               >
                 {pending ? "Applying…" : `Apply to ${okCount} order${okCount === 1 ? "" : "s"}`}
               </button>
