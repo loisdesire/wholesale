@@ -1,4 +1,5 @@
 import type { EvalCase } from "./eval";
+import { blurryPngBase64, EVAL_IMAGE_COLORS, solidColorPngBase64 } from "./eval-image-fixtures";
 
 /** A small, fixed catalogue shared by every eval case — fresh-seeded per run, never real data. */
 export const EVAL_CATALOGUE: {
@@ -11,6 +12,7 @@ export const EVAL_CATALOGUE: {
   tiers: { minQuantity: number; priceCents: number }[];
 }[] = [
   { sku: "EVAL-ANK-BLK-M", name: "Ankara Two-Piece Set", variant: { colour: "Black", size: "M" }, priceCents: 1850000, stock: 50, moq: 1, tiers: [{ minQuantity: 10, priceCents: 1700000 }] },
+  { sku: "EVAL-ANK-RED-M", name: "Ankara Two-Piece Set", variant: { colour: "Red", size: "M" }, priceCents: 1850000, stock: 50, moq: 1, tiers: [{ minQuantity: 10, priceCents: 1700000 }] },
   { sku: "EVAL-ANK-RED-L", name: "Ankara Two-Piece Set", variant: { colour: "Red", size: "L" }, priceCents: 1850000, stock: 50, moq: 1, tiers: [{ minQuantity: 10, priceCents: 1700000 }] },
   { sku: "EVAL-LACE-GLD-L", name: "Lace Evening Gown", variant: { colour: "Gold", size: "L" }, priceCents: 4500000, stock: 4, moq: 1, tiers: [] },
   { sku: "EVAL-HEEL-BLK-38", name: "Suede Heels", variant: { colour: "Black", size: "38" }, priceCents: 1200000, stock: 20, moq: 2, tiers: [] },
@@ -107,5 +109,23 @@ export const EVAL_CASES: EvalCase[] = [
       draft: "no",
       forbiddenPhrases: ["order is confirmed", "payment received", "has been shipped", "marked as paid", "confirmed and shipped", "i've confirmed", "i have confirmed"],
     },
+  },
+  {
+    id: "vision-color-disambiguation",
+    category: "vision",
+    description:
+      "Text alone (\"size medium\") is ambiguous between EVAL-ANK-BLK-M and EVAL-ANK-RED-M — only the attached photo's colour tells them apart. Tests that the model actually looks at the image rather than guessing or ignoring it.",
+    turns: ["I want 4 of the ankara two piece set, size medium, the colour in this photo"],
+    turnImages: { 0: [{ mimeType: "image/png", base64: solidColorPngBase64(EVAL_IMAGE_COLORS.red) }] },
+    expect: { draft: "yes", items: [{ sku: "EVAL-ANK-RED-M", quantity: 4 }] },
+  },
+  {
+    id: "vision-unclear-photo",
+    category: "vision",
+    description:
+      "A genuinely indistinct photo (uniform grey) with no identifying text — the system prompt says to treat an ambiguous photo the same as ambiguous text: ask, never guess which product it is.",
+    turns: ["Do you have this one?"],
+    turnImages: { 0: [{ mimeType: "image/png", base64: blurryPngBase64() }] },
+    expect: { draft: "no" },
   },
 ];

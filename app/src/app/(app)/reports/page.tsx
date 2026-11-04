@@ -10,6 +10,8 @@ import {
   getStockMovementSummary,
   parseRange,
 } from "@/lib/reports";
+import { listReportViews } from "@/lib/report-views";
+import { SavedViews } from "./saved-views";
 
 export default async function ReportsPage({
   searchParams,
@@ -22,11 +24,12 @@ export default async function ReportsPage({
   const range = parseRange(from, to);
   const qs = `from=${dateInput(range.from)}&to=${dateInput(range.to)}`;
 
-  const [sales, demand, stockMovements, outstanding] = await Promise.all([
+  const [sales, demand, stockMovements, outstanding, savedViews] = await Promise.all([
     getSalesReport(organizationId, range),
     getProductDemand(organizationId, range),
     getStockMovementSummary(organizationId, range),
     getOutstandingBalances(organizationId),
+    listReportViews(organizationId),
   ]);
 
   return (
@@ -57,6 +60,8 @@ export default async function ReportsPage({
           Apply
         </button>
       </form>
+
+      <SavedViews views={savedViews} from={dateInput(range.from)} to={dateInput(range.to)} rangeLabel={formatRangeLabel(range)} />
 
       <section>
         <div className="mb-3 flex items-center justify-between">

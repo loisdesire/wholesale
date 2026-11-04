@@ -145,6 +145,7 @@ model Organization {
   shipments            Shipment[]
   payments             Payment[]
   subscriptionPayments SubscriptionPayment[]
+  reportViews          ReportView[]
 }
 
 // Illustrative tiers only — VISION.md is explicit that final pricing/limits wait for
@@ -241,6 +242,7 @@ model User {
   assignedReturns       OrderReturn[]   @relation("ReturnAssignee")
   notifications         Notification[]
   recordedPayments      Payment[]
+  savedReportViews      ReportView[]    @relation("ReportViewCreator")
 }
 
 model Product {
@@ -686,4 +688,21 @@ model AuditLog {
   createdAt      DateTime     @default(now())
 
   @@index([organizationId, entity, entityId])
+}
+
+// A named, team-shared report filter — today just a date range — so staff don't have to
+// retype the same range every time. Shared across the organization (not per-user): anyone
+// on the team can save one or remove one; createdBy is attribution, not an access boundary.
+model ReportView {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  fromDate       DateTime
+  toDate         DateTime
+  createdById    String?
+  createdBy      User?        @relation("ReportViewCreator", fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
 }

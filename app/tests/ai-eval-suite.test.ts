@@ -69,4 +69,32 @@ describe("runEvalSuite", () => {
     expect(report.metricRates.escalation.rate).toBe(1); // both correctly didn't draft
     expect(report.metricRates["forbidden-phrase"]).toMatchObject({ passed: 0, total: 1 });
   });
+
+  it("attaches a case's turn image as a real MessageAttachment the model actually receives", async () => {
+    mockCreate.mockResolvedValueOnce(textMessage("Could you tell me which product this is?"));
+
+    const cases: EvalCase[] = [
+      {
+        id: "suite-test-vision",
+        category: "vision",
+        description: "test",
+        turns: ["Do you have this one?"],
+        turnImages: { 0: [{ mimeType: "image/png", base64: Buffer.from([1, 2, 3]).toString("base64") }] },
+        expect: { draft: "no" },
+      },
+    ];
+
+    const report = await runEvalSuite(cases);
+
+    expect(report.results).toHaveLength(1);
+    expect(report.results[0].error).toBeNull();
+
+    const call = mockCreate.mock.calls[0][0];
+    const userMessage = call.messages.find((m: { role: string }) => m.role === "user");
+    const imageBlocks = (userMessage.content as { type: string; image_url?: { url: string } }[]).filter(
+      (c) => c.type === "image_url"
+    );
+    expect(imageBlocks).toHaveLength(1);
+    expect(imageBlocks[0].image_url?.url).toBe(`data:image/png;base64,${Buffer.from([1, 2, 3]).toString("base64")}`);
+  });
 });

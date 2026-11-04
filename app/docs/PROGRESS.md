@@ -1425,6 +1425,49 @@ rebuilds the dashboard's actual layout, the page the complaint was about.
   band holds up responsively.
 - `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (379/379) all pass clean.
 
+## Done (2026-11-04 — three remaining local-buildable gaps)
+
+Picked, in order, from a "what's left in the building phase" list: per-org SLA thresholds turned
+out to already be built (a stale doc line, corrected above, not a real gap); these three were
+genuinely open.
+
+- **Saved/shared report views.** New `ReportView` model (tenant data, same RLS pattern as every
+  other top-level tenant table) — a named date range any staff member can save or remove, shared
+  across the whole organization rather than per-user. `src/lib/report-views.ts`
+  (list/save/delete), `reports/actions.ts`, `reports/saved-views.tsx` (pills with a × to delete,
+  an inline "save this range" form that collapses itself once a save actually succeeds — adjusted
+  during render per this codebase's established pattern, not a `useEffect`, after ESLint's
+  `set-state-in-effect` flagged a first-draft effect-based version). Verified live: save, apply
+  (jumps straight back to the saved range), and delete all round-tripped correctly.
+- **Image test cases in the AI eval harness.** `EvalCase` gained an optional `turnImages` field
+  (sparse, keyed by turn index) wired into `runCase` the same way a real inbound WhatsApp photo
+  works — a real `MessageAttachment` row, read by `runAIAssist` exactly as it already does. No
+  image-generation library exists in this repo, so `src/lib/ai/eval-image-fixtures.ts` is a small
+  dependency-free PNG encoder (IHDR/IDAT-via-zlib/IEND, manual CRC32) producing real, decodable
+  solid-color photos — verified by actually rendering one, not just trusting the byte count. Two
+  new cases: `vision-color-disambiguation` (a new `EVAL-ANK-RED-M` catalogue SKU makes "size
+  medium" alone genuinely ambiguous between black and red — only the attached red photo resolves
+  it) and `vision-unclear-photo` (a uniform grey "photo," no identifying text — must ask, not
+  guess, per the system prompt's existing ambiguous-photo rule). A new `"vision"` `EvalCategory`.
+  Added a unit test (`tests/ai-eval-suite.test.ts`) proving a case's `turnImages` actually reaches
+  the scripted model as a real `image_url` content block, not just that the harness doesn't throw.
+- **Platform admin support actions.** Two narrow, named, owner-style actions — the only edits a
+  platform admin can make, everything else about an organization still stays read-only by design.
+  `extendTrial` (push a trialing org's `trialEndsAt` out by N days, measured from whichever is
+  later — today or its current expiry, so it never silently shortens real remaining time) and
+  `markSubscriptionActive` (manually clear a `PAST_DUE` status for when a payment issue was
+  actually resolved in Paystack's own dashboard but the renewal webhook that would normally flip
+  it never arrived — doesn't touch `currentPeriodEnd` or fabricate a payment record). Both guarded
+  to the specific status they apply to, both write a real `AuditLog` row in the *target*
+  organization's own tenant data (via `transaction()`, the normal tenant-scoped path, not a
+  special platform-admin write path) so what happened is visible from inside that organization
+  too. `src/lib/platform-admin.ts`, `admin/actions.ts`, `admin/row-actions.tsx`. 9 new unit tests
+  covering the date math (including the "already-expired trial" edge case — must measure from
+  now, not a stale past date), the status guards, and the audit trail. Verified live: extending
+  Lagos Spice Traders' trial by 7 days moved `trialEndsAt` from 13 Nov to 20 Nov exactly, in the
+  real UI.
+- `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (391/391) all pass clean.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
@@ -1451,11 +1494,12 @@ rebuilds the dashboard's actual layout, the page the complaint was about.
   payment.
 - **Phase 4 not done / deliberately left:** scheduled/automated notification delivery (email, SMS,
   push) — today's notifications are in-app only, read on request, which is what VISION.md's Phase 1
-  non-negotiables actually call for; a push channel is a real feature, not a one-line add. SLA
-  thresholds (`src/lib/ops-config.ts`) are global, not yet per-organization-configurable. No
-  saved/shared report views — date range only. Delivery tracking integrations (VISION Phase 6) are
-  still out of scope; shipments record a carrier and tracking *reference* as free text, not a live
-  tracking status.
+  non-negotiables actually call for; a push channel is a real feature, not a one-line add. Delivery
+  tracking integrations (VISION Phase 6) are still out of scope; shipments record a carrier and
+  tracking *reference* as free text, not a live tracking status. (Two things were marked as gaps
+  here in earlier versions of this doc and are now stale: SLA thresholds — `src/lib/sla-settings.ts`
+  + `/operations/settings` have been per-organization, owner-only, since the SLA-overrides Done
+  entry below; and saved/shared report views — see the 2026-11-04 Done entry above.)
 - **`DAMAGE` meaning changed** (Phase 2). Pre-existing `DAMAGE` rows (which meant "written off")
   were converted to `MANUAL_ADJUSTMENT` with an explanatory note by the migration so history keeps
   its meaning.
@@ -1504,9 +1548,10 @@ These are natural follow-ons, flagged here rather than started unprompted:
   for real" gap as order payments); decide real pricing/limits before turning the current
   informational entitlement checks into actual enforcement; per-organization Paystack accounts
   rather than the one global key billing scaffolding used — once there's a real pilot business
-  ready to run on this. Platform admin is now built, but deliberately read-only (see the Done
-  entry above) — if support actions (extending a trial, nudging a stuck subscription) are ever
-  wanted, that's a deliberate second step, not an oversight. Deployment documentation
+  ready to run on this. Platform admin's two support actions (extending a trial, unsticking a
+  past-due subscription) are now built — see the 2026-11-04 Done entry above; everything else
+  about an organization (plan, seats, limits) still stays read-only by design, a deliberate
+  boundary, not an oversight. Deployment documentation
   (`docs/DEPLOYMENT.md`), a pilot onboarding runbook (`docs/PILOT_ONBOARDING.md`), and a
   monitoring/backups plan (`docs/MONITORING_AND_BACKUPS.md`) are now written, but the actual
   hosting/managed-Postgres/error-tracking-vendor decisions they depend on haven't been made, and
@@ -1531,12 +1576,14 @@ These are natural follow-ons, flagged here rather than started unprompted:
   verification the refund-completion webhook gap is waiting on) is the actual blocker, not more
   code — once that's confirmed, wiring an "enable auto-renewal" button to
   `createPaystackSubscription` is a small, already-tested addition away.
-- Give the AI engine the images it can now see (`MessageAttachment`, see the Done entry above) —
-  wire an image content block into `runAIAssist`'s Claude call per message that has one. Worth
-  noting before doing it: vision input costs meaningfully more per call than text (larger prompt
-  token count per image), which matters directly for `PLAN_LIMITS.aiRepliesPerMonth` — the current
-  limits were sized assuming text-only AI replies; confirm the cost assumption still holds once
-  image-bearing replies are common, before finalizing real pricing numbers.
+- ~~Give the AI engine the images it can now see~~ — done; this bullet referred to the Claude-based
+  engine and went stale once the OpenAI migration shipped (`runAIAssist` now sends `image_url`
+  content blocks per attached message — see that Done entry). Still genuinely open from the same
+  note: vision input costs meaningfully more per call than text, which matters directly for
+  `PLAN_LIMITS.aiRepliesPerMonth` — the current limits were sized assuming text-only AI replies;
+  confirm the cost assumption still holds once image-bearing replies are common, before finalizing
+  real pricing numbers. ~~No eval-harness test cases exercise an image input yet either~~ — done,
+  see the 2026-11-04 Done entry above (`vision-color-disambiguation`, `vision-unclear-photo`).
 - Real pricing is still unset (`PLAN_LIMITS` in `src/lib/billing.ts` are illustrative placeholders).
   The target customer is social-commerce wholesalers (Instagram/Facebook-driven orders) with real
   daily order volume (roughly 20 to 150+/day across the actual range discussed), not the

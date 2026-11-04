@@ -3,6 +3,7 @@ import { getPlatformOverview } from "@/lib/platform-admin";
 import { PLAN_LIMITS } from "@/lib/billing";
 import { formatDateTime } from "@/lib/format";
 import { SubscriptionStatusBadge } from "@/components/status-badge";
+import { AdminRowActions } from "./row-actions";
 
 export default async function PlatformAdminPage() {
   const session = await auth();
@@ -22,8 +23,10 @@ export default async function PlatformAdminPage() {
       <header>
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Platform admin</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Every organization on the platform, read-only. Nothing here edits tenant data — see an organization&apos;s own
-          data by signing in as a member of it.
+          Every organization on the platform. Nothing here edits an organization&apos;s plan, seats or usage limits —
+          only the two narrow support actions below (extending a trial, unsticking a past-due subscription), each
+          recorded in that organization&apos;s own audit log. See an organization&apos;s own data by signing in as a
+          member of it.
         </p>
       </header>
 
@@ -45,6 +48,7 @@ export default async function PlatformAdminPage() {
                   <th className="px-4 py-2 text-right">Orders this month</th>
                   <th className="px-4 py-2 text-right">AI replies this month</th>
                   <th className="px-4 py-2">Created</th>
+                  <th className="px-4 py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,6 +88,9 @@ export default async function PlatformAdminPage() {
                       {org.aiRepliesThisPeriod} / {PLAN_LIMITS[org.plan].aiRepliesPerMonth}
                     </td>
                     <td className="px-4 py-3 text-xs text-text-muted">{formatDateTime(org.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <AdminRowActions organizationId={org.id} status={org.subscriptionStatus} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
