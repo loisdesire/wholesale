@@ -5,7 +5,7 @@ import { useSubmitAction } from "@/lib/use-submit-action";
 import { updateItemQuantityAction, updateOrderDetailsAction, type FormState } from "../actions";
 
 const inputClass =
-  "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
+  "rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
 
 /** Inline "change quantity" on a draft order line. The server re-prices the line. */
 export function QuantityForm({

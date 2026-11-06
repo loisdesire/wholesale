@@ -4,14 +4,15 @@ import { tenantDb } from "@/lib/db";
 import { buildOrderWhere, parseOrderStatus } from "@/lib/search";
 import { listOrganizationMembers } from "@/lib/membership";
 import { OrdersTable, type OrderRow } from "./orders-table";
+import { Plus, Search, X } from "lucide-react";
 
 const PAGE_SIZE = 50;
 const STATUS_FILTERS = [
-  { value: undefined, label: "All" },
+  { value: undefined, label: "All Orders" },
   { value: "DRAFT", label: "Draft" },
   { value: "CONFIRMED", label: "Confirmed" },
   { value: "PAID", label: "Paid" },
-  { value: "PARTIALLY_FULFILLED", label: "Partly shipped" },
+  { value: "PARTIALLY_FULFILLED", label: "Partly Shipped" },
   { value: "FULFILLED", label: "Fulfilled" },
   { value: "CANCELLED", label: "Cancelled" },
 ] as const;
@@ -71,138 +72,137 @@ export default async function OrdersPage({
   }));
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex flex-col gap-6 pb-12">
+      {/* Header */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Orders</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Orders Ledger</h1>
+            <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
+              {totalCount} total
+            </span>
+          </div>
           <p className="mt-1 text-sm text-text-muted">
-            Draft, confirmed, paid, and fulfilled — every order in one place.
+            Trade commitments, dispatch manifests, and live customer orders.
           </p>
         </div>
         <Link
           href="/orders/new"
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2"
+          className="inline-flex items-center gap-2 self-start rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-accent/25 transition-all hover:bg-accent-2 hover:shadow-md hover:shadow-accent/30 active:scale-95 sm:self-auto cursor-pointer"
         >
-          New order
+          <Plus className="h-4 w-4 stroke-[2.5]" />
+          <span>New Order</span>
         </Link>
       </header>
 
-      <div className="flex flex-col gap-3">
-        <form action="/orders" className="flex flex-wrap items-end gap-2">
+      {/* Filter & Search Bar */}
+      <div className="card-base flex flex-col gap-3 rounded-2xl p-4 sm:p-5">
+        <form action="/orders" className="flex flex-wrap items-center gap-3">
           {filters.status && <input type="hidden" name="status" value={filters.status} />}
-          <input
-            name="q"
-            type="search"
-            defaultValue={filters.q}
-            placeholder="Reference, customer, phone, product…"
-            aria-label="Search orders"
-            className="w-72 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-          />
-          <label className="flex flex-col gap-1 text-xs text-text-muted">
-            From
+          
+          <div className="relative min-w-[260px] flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
             <input
-              name="from"
-              type="date"
-              defaultValue={filters.from}
-              className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
+              name="q"
+              type="search"
+              defaultValue={filters.q}
+              placeholder="Search reference, customer name, phone, product…"
+              className="w-full rounded-xl border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted/60 focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-text-muted">
-            To
-            <input
-              name="to"
-              type="date"
-              defaultValue={filters.to}
-              className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
-            />
-          </label>
-          <button type="submit" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
-            Apply
-          </button>
-          {filtered && (
-            <Link href="/orders" className="py-2 text-sm text-text-muted underline-offset-2 hover:text-ink hover:underline">
-              Clear
-            </Link>
-          )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted">
+              <span className="font-semibold uppercase tracking-wider text-xs text-ink/80">From</span>
+              <input
+                name="from"
+                type="date"
+                defaultValue={filters.from}
+                className="bg-transparent text-base sm:text-xs font-medium text-ink outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted">
+              <span className="font-semibold uppercase tracking-wider text-xs text-ink/80">To</span>
+              <input
+                name="to"
+                type="date"
+                defaultValue={filters.to}
+                className="bg-transparent text-base sm:text-xs font-medium text-ink outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-paper hover:bg-ink-2 transition-colors cursor-pointer"
+            >
+              Filter
+            </button>
+
+            {filtered && (
+              <Link
+                href="/orders"
+                className="inline-flex items-center gap-1 rounded-xl border border-line px-3 py-2 text-xs font-medium text-text-muted hover:text-ink hover:bg-paper transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </Link>
+            )}
+          </div>
         </form>
-        <nav aria-label="Filter by status" className="flex flex-wrap gap-1.5">
-          {STATUS_FILTERS.map((f) => {
-            const active = filters.status === f.value;
-            return (
-              <Link
-                key={f.label}
-                href={link({ status: f.value, page: undefined })}
-                aria-current={active ? "true" : undefined}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  active ? "bg-accent text-paper" : "border border-line text-text-muted hover:text-ink"
-                }`}
-              >
-                {f.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <nav aria-label="Filter by assignee" className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-text-muted">Assigned:</span>
-          {[{ value: undefined, label: "Anyone" }, { value: "none", label: "Unassigned" }, ...members.map((m) => ({ value: m.id, label: m.name }))].map((f) => {
-            const active = filters.assignee === f.value;
-            return (
-              <Link
-                key={f.label}
-                href={link({ assignee: f.value, page: undefined })}
-                aria-current={active ? "true" : undefined}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  active ? "bg-accent text-paper" : "border border-line text-text-muted hover:text-ink"
-                }`}
-              >
-                {f.label}
-              </Link>
-            );
-          })}
-        </nav>
-        {filtered && (
-          <p className="text-xs text-text-muted">
-            {totalCount} {totalCount === 1 ? "order matches" : "orders match"}
-          </p>
-        )}
+
+        {/* Status Filter Tab Ribbon */}
+        <div className="border-t border-line/60 pt-3">
+          <nav aria-label="Filter by status" className="flex flex-wrap items-center gap-1.5">
+            {STATUS_FILTERS.map((f) => {
+              const active = filters.status === f.value;
+              return (
+                <Link
+                  key={f.label}
+                  href={link({ status: f.value, page: undefined })}
+                  aria-current={active ? "true" : undefined}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                    active
+                      ? "bg-accent text-white shadow-xs shadow-accent/20"
+                      : "border border-line/70 bg-surface/80 text-text-muted hover:border-line hover:text-ink hover:bg-paper/60"
+                  }`}
+                >
+                  {f.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </div>
 
-      {orders.length === 0 && filtered ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
-          No orders match these filters.
-        </p>
-      ) : orders.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
-          No orders yet.{" "}
-          <Link href="/orders/new" className="text-ink underline underline-offset-2">
-            Create the first one
-          </Link>
-          .
-        </p>
-      ) : (
-        <OrdersTable orders={rows} members={members} canBulkAssign={isOwner} />
-      )}
+      {/* Main Table Card View */}
+      <OrdersTable orders={rows} members={members} canBulkAssign={isOwner} />
 
+      {/* Pagination Footer */}
       {totalPages > 1 && (
-        <nav aria-label="Pagination" className="flex items-center justify-between text-sm">
-          {page > 1 ? (
-            <Link href={link({ page: String(page - 1) })} className="text-ink underline-offset-2 hover:underline">
-              ← Newer
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span className="text-xs text-text-muted">
-            Page {page} of {totalPages}
+        <div className="flex items-center justify-between px-2 pt-2 text-xs text-text-muted">
+          <span>
+            Page <strong className="text-ink">{page}</strong> of {totalPages}
           </span>
-          {page < totalPages ? (
-            <Link href={link({ page: String(page + 1) })} className="text-ink underline-offset-2 hover:underline">
-              Older →
-            </Link>
-          ) : (
-            <span />
-          )}
-        </nav>
+          <div className="flex items-center gap-2">
+            {page > 1 && (
+              <Link
+                href={link({ page: String(page - 1) })}
+                className="rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:bg-paper transition-colors"
+              >
+                ← Previous
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link
+                href={link({ page: String(page + 1) })}
+                className="rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:bg-paper transition-colors"
+              >
+                Next →
+              </Link>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

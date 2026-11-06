@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { FormState } from "./actions";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 
 type AttributeRow = { key: string; value: string };
 type PriceTierRow = { minQuantity: string; priceNaira: string };
@@ -55,95 +56,109 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
   );
 
   return (
-    <form action={formAction} className="flex max-w-lg flex-col gap-6">
+    <form action={formAction} className="flex flex-col gap-6">
       <input type="hidden" name="attributesJson" value={attributesJson} />
       <input type="hidden" name="priceTiersJson" value={priceTiersJson} />
 
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="SKU" name="sku" defaultValue={defaultValues?.sku} required />
-        <Field label="Product name" name="name" defaultValue={defaultValues?.name} required />
+      {/* 1. Identification */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="SKU Code" name="sku" defaultValue={defaultValues?.sku} required placeholder="e.g. ANK-2PC-BLK-M" />
+        <Field label="Product Name" name="name" defaultValue={defaultValues?.name} required placeholder="e.g. Ankara Two-Piece Set" />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink">Variant attributes</span>
-        <p className="text-xs text-text-muted">
-          Colour, size, or anything else specific to this business (material, model, packaging…).
-        </p>
-        {attributes.map((attr, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Attribute (e.g. colour)"
-              value={attr.key}
-              onChange={(e) =>
-                setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, key: e.target.value } : a)))
-              }
-              onFocus={(e) => e.target.select()}
-              className="w-1/3 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-            />
-            <input
-              type="text"
-              placeholder="Value (e.g. Black)"
-              value={attr.value}
-              onChange={(e) =>
-                setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, value: e.target.value } : a)))
-              }
-              onFocus={(e) => e.target.select()}
-              className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-            />
-            <button
-              type="button"
-              onClick={() => setAttributes((prev) => prev.filter((_, j) => j !== i))}
-              className="text-xs text-status-attention-fg hover:underline"
-            >
-              Remove
-            </button>
+      {/* 2. Variant Attributes */}
+      <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-paper/20 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink">Variant Attributes</span>
+            <p className="text-xs text-text-muted mt-0.5">
+              Specific dimensions (e.g. Colour, Size, Material, Bundle packaging).
+            </p>
           </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => setAttributes((prev) => [...prev, { key: "", value: "" }])}
-          className="self-start text-xs text-ink underline underline-offset-2"
-        >
-          Add attribute
-        </button>
+          <button
+            type="button"
+            onClick={() => setAttributes((prev) => [...prev, { key: "", value: "" }])}
+            className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink hover:bg-paper transition-all"
+          >
+            <Plus className="h-3 w-3" /> Add Attribute
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-1">
+          {attributes.map((attr, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Attribute (e.g. colour)"
+                value={attr.key}
+                onChange={(e) =>
+                  setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, key: e.target.value } : a)))
+                }
+                onFocus={(e) => e.target.select()}
+                className="w-1/3 rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-xs text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+              />
+              <input
+                type="text"
+                placeholder="Value (e.g. Black)"
+                value={attr.value}
+                onChange={(e) =>
+                  setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, value: e.target.value } : a)))
+                }
+                onFocus={(e) => e.target.select()}
+                className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-xs text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+              />
+              <button
+                type="button"
+                onClick={() => setAttributes((prev) => prev.filter((_, j) => j !== i))}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded p-1 text-text-muted hover:text-status-attention-fg transition-colors"
+                title="Remove attribute"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* 3. Base Pricing & Cost */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field
-          label="Price (₦)"
+          label="Wholesale Price (₦)"
           name="priceNaira"
           type="number"
           step="0.01"
           min="0.01"
           defaultValue={defaultValues?.priceNaira}
           required
+          placeholder="0.00"
         />
         <Field
-          label="Cost (₦, optional)"
+          label="Estimated Cost (₦, optional)"
           name="costNaira"
           type="number"
           step="0.01"
           min="0.01"
           defaultValue={defaultValues?.costNaira}
+          placeholder="0.00"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* 4. MOQ & Packaging Unit */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field
-          label="MOQ (minimum order qty)"
+          label="MOQ (Minimum Order Quantity)"
           name="moq"
           type="number"
           step="1"
           min="1"
           defaultValue={defaultValues?.moq ?? 1}
         />
-        <Field label="Unit" name="unit" defaultValue={defaultValues?.unit ?? "piece"} />
+        <Field label="Unit of Measure" name="unit" defaultValue={defaultValues?.unit ?? "piece"} placeholder="e.g. piece, pack, pair, roll" />
       </div>
 
       {showOpeningStock && (
         <Field
-          label="Opening stock"
+          label="Initial Opening Stock Balance"
           name="openingStock"
           type="number"
           step="1"
@@ -152,77 +167,91 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
         />
       )}
 
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink">Wholesale price tiers (optional)</span>
-        <p className="text-xs text-text-muted">
-          Quantity breaks — e.g. 10+ units at a lower price. The base price above always applies
-          below the lowest tier.
-        </p>
-        {tiers.map((tier, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Min qty"
-              value={tier.minQuantity}
-              onChange={(e) =>
-                setTiers((prev) => prev.map((t, j) => (j === i ? { ...t, minQuantity: e.target.value } : t)))
-              }
-              className="w-28 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-            />
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="Price (₦) at that qty"
-              value={tier.priceNaira}
-              onChange={(e) =>
-                setTiers((prev) => prev.map((t, j) => (j === i ? { ...t, priceNaira: e.target.value } : t)))
-              }
-              className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-            />
-            <button
-              type="button"
-              onClick={() => setTiers((prev) => prev.filter((_, j) => j !== i))}
-              className="text-xs text-status-attention-fg hover:underline"
-            >
-              Remove
-            </button>
+      {/* 5. Wholesale Price Tiers */}
+      <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-paper/20 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink">Volume Price Breaks (Tiers)</span>
+            <p className="text-xs text-text-muted mt-0.5">
+              Discounted pricing at quantity thresholds (e.g. 10+ units, 24+ units).
+            </p>
           </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => setTiers((prev) => [...prev, { minQuantity: "", priceNaira: "" }])}
-          className="self-start text-xs text-ink underline underline-offset-2"
-        >
-          Add price tier
-        </button>
+          <button
+            type="button"
+            onClick={() => setTiers((prev) => [...prev, { minQuantity: "", priceNaira: "" }])}
+            className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink hover:bg-paper transition-all"
+          >
+            <Plus className="h-3 w-3" /> Add Tier
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-1">
+          {tiers.length === 0 ? (
+            <span className="text-xs text-text-muted italic">No volume breaks configured. Base price applies to all quantities.</span>
+          ) : (
+            tiers.map((tier, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Min qty (e.g. 12)"
+                  value={tier.minQuantity}
+                  onChange={(e) =>
+                    setTiers((prev) => prev.map((t, j) => (j === i ? { ...t, minQuantity: e.target.value } : t)))
+                  }
+                  className="w-1/3 rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-xs font-tabular text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="Tier price (₦)"
+                  value={tier.priceNaira}
+                  onChange={(e) =>
+                    setTiers((prev) => prev.map((t, j) => (j === i ? { ...t, priceNaira: e.target.value } : t)))
+                  }
+                  className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-xs font-tabular text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+                />
+                <button
+                  type="button"
+                  onClick={() => setTiers((prev) => prev.filter((_, j) => j !== i))}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded p-1 text-text-muted hover:text-status-attention-fg transition-colors"
+                  title="Remove tier"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-ink">
+      {/* 6. Active Toggle */}
+      <label className="flex items-center gap-2.5 text-xs font-medium text-ink cursor-pointer select-none">
         <input
           type="checkbox"
           name="active"
           defaultChecked={defaultValues?.active ?? true}
-          className="h-4 w-4 rounded border-line"
+          className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
         />
-        Active (visible to AI and staff for quoting)
+        <span>Active &amp; Available for Staff Quoting &amp; WhatsApp AI</span>
       </label>
 
       {state.error && (
-        <p role="alert" className="text-sm text-status-attention-fg">
+        <div className="rounded-md border border-status-attention-fg/30 bg-status-attention-bg p-3 text-xs text-status-attention-fg">
           {state.error}
-        </p>
+        </div>
       )}
 
-      <div>
+      <div className="flex justify-end border-t border-line pt-4">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
+          className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-accent-2 active:scale-95 disabled:opacity-60 shadow-sm cursor-pointer"
         >
-          {pending ? "Saving…" : submitLabel}
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          <span>{pending ? "Saving Product…" : submitLabel}</span>
         </button>
       </div>
     </form>
@@ -237,6 +266,7 @@ function Field({
   required,
   step,
   min,
+  placeholder,
 }: {
   label: string;
   name: string;
@@ -245,11 +275,12 @@ function Field({
   required?: boolean;
   step?: string;
   min?: string;
+  placeholder?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="text-sm font-medium text-ink">
-        {label}
+      <label htmlFor={name} className="text-xs font-semibold uppercase tracking-wider text-ink">
+        {label} {required && <span className="text-accent">*</span>}
       </label>
       <input
         id={name}
@@ -257,9 +288,10 @@ function Field({
         type={type}
         step={step}
         min={min}
+        placeholder={placeholder}
         defaultValue={defaultValue}
         required={required}
-        className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+        className="rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
       />
     </div>
   );

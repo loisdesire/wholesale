@@ -1,0 +1,10 @@
+# Root gitignore
+node_modules/
+.next/
+.vscode/
+*.db
+*.db-journal
+app/prisma/*.db
+app/prisma/*.db-journal
+.DS_Store
+*.log

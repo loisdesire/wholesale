@@ -12,5 +12,7 @@ export async function lockRow(
   table: "Order" | "OrderReturn" | "Customer" | "Conversation",
   id: string
 ) {
+  const allowed = ["Order", "OrderReturn", "Customer", "Conversation"];
+  if (!allowed.includes(table)) throw new Error(`Invalid table for row lock: ${table}`);
   await tx.$queryRawUnsafe(`SELECT "id" FROM "${table}" WHERE "id" = $1 FOR UPDATE`, id);
 }

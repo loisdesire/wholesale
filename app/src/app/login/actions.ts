@@ -15,7 +15,13 @@ export async function loginAction(
     await signIn("credentials", {
       email,
       password,
-      redirectTo: typeof callbackUrl === "string" && callbackUrl ? callbackUrl : "/",
+      redirectTo:
+        typeof callbackUrl === "string" &&
+        callbackUrl.startsWith("/") &&
+        !callbackUrl.startsWith("//") &&
+        !callbackUrl.startsWith("/\\")
+          ? callbackUrl
+          : "/dashboard",
     });
     return { error: null };
   } catch (err) {

@@ -3,6 +3,14 @@ import { auth } from "@/lib/auth";
 import { searchEverything } from "@/lib/search";
 import { formatMoney } from "@/lib/format";
 import { OrderStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
+import {
+  Search,
+  ShoppingBag,
+  Users,
+  Package,
+  RotateCcw,
+  ArrowUpRight,
+} from "lucide-react";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;
@@ -14,113 +22,225 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     results.orders.length + results.customers.length + results.products.length + results.returns.length;
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Search</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Orders, customers, products and returns. Phone numbers match in any format.
-        </p>
-        <form action="/search" className="mt-4 flex max-w-xl gap-2">
-          <input
-            name="q"
-            type="search"
-            defaultValue={query}
-            autoFocus
-            placeholder="Order ref, name, phone, SKU…"
-            aria-label="Search"
-            className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-          />
-          <button type="submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper hover:bg-accent-2">
-            Search
-          </button>
-        </form>
+    <div className="flex flex-col gap-8 pb-16">
+      {/* Header & Global Command Search */}
+      <header className="flex flex-col gap-4">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Global Search</h1>
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-accent/10 px-2 text-xs font-bold text-accent">
+              Instant
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-text-muted">
+            Search orders, customer accounts, phone numbers in any format, catalogue SKUs, and returns across the whole organization.
+          </p>
+        </div>
+
+        {/* Elevated Search Bar */}
+        <div className="card-base flex items-center gap-3 rounded-2xl p-2.5 shadow-xs max-w-2xl">
+          <form action="/search" className="flex flex-1 items-center gap-2 sm:gap-3">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+              <input
+                name="q"
+                type="search"
+                defaultValue={query}
+                autoFocus
+                placeholder="Enter order reference, customer phone, SKU, or name…"
+                aria-label="Search"
+                className="w-full rounded-xl bg-transparent py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none placeholder:text-text-muted/60"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-5 py-2 text-xs font-semibold text-white shadow-sm shadow-accent/20 transition-all hover:bg-accent-2 active:scale-95 cursor-pointer"
+            >
+              Search
+            </button>
+          </form>
+        </div>
       </header>
 
+      {/* Query status helpers */}
       {query.length > 0 && query.length < 2 && (
-        <p className="text-sm text-text-muted">Type at least two characters.</p>
+        <div className="card-base rounded-2xl p-6 text-center text-xs text-text-muted">
+          Type at least two characters to search.
+        </div>
       )}
+
       {query.length >= 2 && total === 0 && (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
-          Nothing matches &ldquo;{query}&rdquo;.
-        </p>
+        <div className="card-base flex flex-col items-center justify-center rounded-2xl p-12 text-center shadow-xs">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper text-text-muted">
+            <Search className="h-6 w-6" />
+          </div>
+          <h2 className="mt-3 font-display text-base font-bold text-ink">
+            No results found for &ldquo;{query}&rdquo;
+          </h2>
+          <p className="mt-1 text-xs text-text-muted max-w-sm">
+            Check the spelling, verify the phone format, or try searching by SKU directly.
+          </p>
+        </div>
       )}
 
-      {results.orders.length > 0 && (
-        <Group title="Orders" seeAll={`/orders?q=${encodeURIComponent(query)}`}>
-          {results.orders.map((o) => (
-            <Row key={o.id} href={`/orders/${o.id}`}>
-              <span className="flex items-center gap-3">
-                <span className="font-tabular text-ink">{o.reference}</span>
-                <OrderStatusBadge status={o.status} />
-                <span className="text-text-muted">{o.customer.name ?? o.customer.phone}</span>
-              </span>
-              <span className="font-tabular text-text-muted">{formatMoney(o.totalCents, o.currency)}</span>
-            </Row>
-          ))}
-        </Group>
-      )}
+      {/* Results Groups */}
+      <div className="space-y-6">
+        {/* 1. Orders Results */}
+        {results.orders.length > 0 && (
+          <Group
+            icon={ShoppingBag}
+            title="Matching Orders"
+            count={results.orders.length}
+            seeAll={`/orders?q=${encodeURIComponent(query)}`}
+          >
+            {results.orders.map((o) => (
+              <Row key={o.id} href={`/orders/${o.id}`}>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono font-bold text-ink group-hover:text-accent transition-colors">
+                    {o.reference}
+                  </span>
+                  <OrderStatusBadge status={o.status} />
+                  <span className="text-xs text-text-muted">
+                    {o.customer.name ?? o.customer.phone}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-tabular text-sm font-bold text-ink">
+                    {formatMoney(o.totalCents, o.currency)}
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+              </Row>
+            ))}
+          </Group>
+        )}
 
-      {results.customers.length > 0 && (
-        <Group title="Customers" seeAll={`/customers?q=${encodeURIComponent(query)}`}>
-          {results.customers.map((c) => (
-            <Row key={c.id} href={`/customers/${c.id}`}>
-              <span className="text-ink">{c.name ?? "Unnamed"}</span>
-              <span className="font-tabular text-text-muted">{c.phone}</span>
-            </Row>
-          ))}
-        </Group>
-      )}
+        {/* 2. Customer Results */}
+        {results.customers.length > 0 && (
+          <Group
+            icon={Users}
+            title="Matching Customers"
+            count={results.customers.length}
+            seeAll={`/customers?q=${encodeURIComponent(query)}`}
+          >
+            {results.customers.map((c) => (
+              <Row key={c.id} href={`/customers/${c.id}`}>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-ink group-hover:text-accent transition-colors">
+                    {c.name ?? "Unnamed Customer"}
+                  </span>
+                  <span className="font-tabular text-xs text-text-muted">{c.phone}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-text-muted">Customer Profile</span>
+                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+              </Row>
+            ))}
+          </Group>
+        )}
 
-      {results.products.length > 0 && (
-        <Group title="Products" seeAll={`/catalogue?q=${encodeURIComponent(query)}`}>
-          {results.products.map((p) => (
-            <Row key={p.id} href={`/catalogue/${p.id}`}>
-              <span className="text-ink">{p.name}</span>
-              <span className="font-tabular text-text-muted">{p.sku}</span>
-            </Row>
-          ))}
-        </Group>
-      )}
+        {/* 3. Catalogue Products Results */}
+        {results.products.length > 0 && (
+          <Group
+            icon={Package}
+            title="Matching Products"
+            count={results.products.length}
+            seeAll={`/catalogue?q=${encodeURIComponent(query)}`}
+          >
+            {results.products.map((p) => (
+              <Row key={p.id} href={`/catalogue/${p.id}`}>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-ink group-hover:text-accent transition-colors">
+                    {p.name}
+                  </span>
+                  <span className="font-tabular text-xs font-medium text-text-muted bg-paper px-2 py-0.5 rounded-md">
+                    {p.sku}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-tabular text-xs text-text-muted font-medium">SKU Detail</span>
+                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+              </Row>
+            ))}
+          </Group>
+        )}
 
-      {results.returns.length > 0 && (
-        <Group title="Returns & refunds">
-          {results.returns.map((r) => (
-            <Row key={r.id} href={`/orders/${r.orderId}`}>
-              <span className="flex items-center gap-3">
-                <span className="font-tabular text-ink">{r.reference}</span>
-                <ReturnStatusBadge status={r.status} />
-                <span className="text-text-muted">
-                  {r.customer.name ?? r.customer.phone} · {r.order.reference}
-                </span>
-              </span>
-              <span className="font-tabular text-text-muted">{formatMoney(r.refundCents, r.order.currency)}</span>
-            </Row>
-          ))}
-        </Group>
-      )}
+        {/* 4. Returns & Refunds Results */}
+        {results.returns.length > 0 && (
+          <Group
+            icon={RotateCcw}
+            title="Matching Returns &amp; Refunds"
+            count={results.returns.length}
+          >
+            {results.returns.map((r) => (
+              <Row key={r.id} href={`/orders/${r.orderId}`}>
+                <div className="flex items-center gap-3">
+                  <span className="font-tabular font-bold text-ink group-hover:text-accent transition-colors">
+                    {r.reference}
+                  </span>
+                  <ReturnStatusBadge status={r.status} />
+                  <span className="text-xs text-text-muted">
+                    {r.customer.name ?? r.customer.phone} · Order {r.order.reference}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-tabular text-sm font-bold text-ink">
+                    {formatMoney(r.refundCents, r.order.currency)}
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+              </Row>
+            ))}
+          </Group>
+        )}
+      </div>
     </div>
   );
 }
 
-function Group({ title, seeAll, children }: { title: string; seeAll?: string; children: React.ReactNode }) {
+function Group({
+  icon: Icon,
+  title,
+  count,
+  seeAll,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  count: number;
+  seeAll?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-ink">{title}</h2>
+    <div className="card-base overflow-hidden rounded-2xl shadow-xs">
+      <div className="flex items-center justify-between border-b border-line bg-paper/40 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-accent" />
+          <h2 className="font-display text-sm font-bold text-ink">{title}</h2>
+          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
+            {count}
+          </span>
+        </div>
         {seeAll && (
-          <Link href={seeAll} className="text-xs text-text-muted underline-offset-2 hover:text-ink hover:underline">
-            See all
+          <Link href={seeAll} className="text-xs font-semibold text-accent hover:underline flex items-center gap-1">
+            <span>View all</span>
+            <ArrowUpRight className="h-3 w-3" />
           </Link>
         )}
       </div>
-      <div className="divide-y divide-line rounded-md border border-line bg-surface">{children}</div>
-    </section>
+      <div className="divide-y divide-line/70">{children}</div>
+    </div>
   );
 }
 
 function Row({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-paper">
+    <Link
+      href={href}
+      className="group flex items-center justify-between gap-4 px-5 py-3.5 text-sm transition-colors hover:bg-paper/40 cursor-pointer"
+    >
       {children}
     </Link>
   );

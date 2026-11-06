@@ -1,90 +1,190 @@
-type Tone = "neutral" | "progress" | "success" | "attention";
+import { clsx } from "clsx";
 
-const TONE_CLASSES: Record<Tone, string> = {
-  neutral: "text-status-neutral-fg bg-status-neutral-bg",
-  progress: "text-status-progress-fg bg-status-progress-bg",
-  success: "text-status-success-fg bg-status-success-bg",
-  attention: "text-status-attention-fg bg-status-attention-bg",
+type StatusMeta = {
+  label: string;
+  dotColor: string;
+  textColor: string;
+  // Only true exceptions (Cancelled, Overdue, Critical) get a subtle wash background
+  wash?: string;
 };
 
-const CONVERSATION_STATUS: Record<string, { label: string; tone: Tone }> = {
-  NEW: { label: "New", tone: "neutral" },
-  AI_HANDLING: { label: "AI handling", tone: "progress" },
-  AWAITING_STAFF: { label: "Awaiting staff", tone: "attention" },
-  RESOLVED: { label: "Resolved", tone: "success" },
+const CONVERSATION_STATUS: Record<string, StatusMeta> = {
+  NEW: { 
+    label: "New", 
+    dotColor: "bg-accent", 
+    textColor: "text-ink font-semibold" 
+  },
+  AI_HANDLING: { 
+    label: "AI Active", 
+    dotColor: "bg-accent", 
+    textColor: "text-accent font-semibold" 
+  },
+  AWAITING_STAFF: { 
+    label: "Needs Staff", 
+    dotColor: "bg-amber-600", 
+    textColor: "text-amber-950 font-bold" 
+  },
+  RESOLVED: { 
+    label: "Resolved", 
+    dotColor: "bg-emerald-600", 
+    textColor: "text-emerald-950 font-semibold" 
+  },
 };
 
-const ORDER_STATUS: Record<string, { label: string; tone: Tone }> = {
-  DRAFT: { label: "Draft", tone: "neutral" },
-  CONFIRMED: { label: "Confirmed", tone: "progress" },
-  PAID: { label: "Paid", tone: "success" },
-  PARTIALLY_FULFILLED: { label: "Partly shipped", tone: "progress" },
-  FULFILLED: { label: "Fulfilled", tone: "success" },
-  CANCELLED: { label: "Cancelled", tone: "attention" },
+const ORDER_STATUS: Record<string, StatusMeta> = {
+  DRAFT: { 
+    label: "Draft", 
+    dotColor: "bg-ink/50", 
+    textColor: "text-ink/80 font-semibold" 
+  },
+  CONFIRMED: { 
+    label: "Confirmed", 
+    dotColor: "bg-accent", 
+    textColor: "text-accent font-semibold" 
+  },
+  PAID: { 
+    label: "Paid", 
+    dotColor: "bg-emerald-600", 
+    textColor: "text-emerald-800 font-semibold" 
+  },
+  PARTIALLY_FULFILLED: { 
+    label: "Partly Shipped", 
+    dotColor: "bg-amber-600", 
+    textColor: "text-amber-950 font-semibold" 
+  },
+  FULFILLED: { 
+    label: "Fulfilled", 
+    dotColor: "bg-emerald-600", 
+    textColor: "text-emerald-800 font-semibold" 
+  },
+  CANCELLED: { 
+    label: "Cancelled", 
+    dotColor: "bg-status-attention-fg", 
+    textColor: "text-status-attention-fg font-semibold" 
+  },
 };
 
-const RETURN_STATUS: Record<string, { label: string; tone: Tone }> = {
-  REQUESTED: { label: "Awaiting decision", tone: "attention" },
-  APPROVED: { label: "Approved", tone: "progress" },
-  REJECTED: { label: "Rejected", tone: "neutral" },
-  RECEIVED: { label: "Goods received", tone: "success" },
+const RETURN_STATUS: Record<string, StatusMeta> = {
+  REQUESTED: { 
+    label: "Pending Review", 
+    dotColor: "bg-amber-600", 
+    textColor: "text-amber-950 font-bold" 
+  },
+  APPROVED: { 
+    label: "Approved", 
+    dotColor: "bg-accent", 
+    textColor: "text-accent font-semibold" 
+  },
+  REJECTED: { 
+    label: "Rejected", 
+    dotColor: "bg-status-attention-fg", 
+    textColor: "text-status-attention-fg font-semibold" 
+  },
+  RECEIVED: { 
+    label: "Goods Intake", 
+    dotColor: "bg-emerald-600", 
+    textColor: "text-emerald-800 font-semibold" 
+  },
 };
 
-const REFUND_STATUS: Record<string, { label: string; tone: Tone }> = {
-  NONE: { label: "No refund due", tone: "neutral" },
-  PENDING: { label: "Refund to pay", tone: "attention" },
-  REFUNDED: { label: "Refunded", tone: "success" },
+const REFUND_STATUS: Record<string, StatusMeta> = {
+  NONE: { 
+    label: "No Refund", 
+    dotColor: "bg-line", 
+    textColor: "text-text-muted" 
+  },
+  PENDING: { 
+    label: "Refund Due", 
+    dotColor: "bg-status-attention-fg", 
+    textColor: "text-status-attention-fg font-medium",
+    wash: "bg-status-attention-bg px-2 py-0.5 rounded"
+  },
+  REFUNDED: { 
+    label: "Refunded", 
+    dotColor: "bg-emerald-600", 
+    textColor: "text-text-muted" 
+  },
 };
 
-const SUBSCRIPTION_STATUS: Record<string, { label: string; tone: Tone }> = {
-  TRIALING: { label: "Trialing", tone: "progress" },
-  ACTIVE: { label: "Active", tone: "success" },
-  PAST_DUE: { label: "Past due", tone: "attention" },
-  CANCELED: { label: "Canceled", tone: "neutral" },
+const SUBSCRIPTION_STATUS: Record<string, StatusMeta> = {
+  TRIALING: { 
+    label: "Trial Active", 
+    dotColor: "bg-accent", 
+    textColor: "text-ink font-medium" 
+  },
+  ACTIVE: { 
+    label: "Active", 
+    dotColor: "bg-emerald-600", 
+    textColor: "text-ink font-medium" 
+  },
+  PAST_DUE: { 
+    label: "Past Due", 
+    dotColor: "bg-status-attention-fg", 
+    textColor: "text-status-attention-fg font-medium",
+    wash: "bg-status-attention-bg px-2 py-0.5 rounded"
+  },
+  CANCELED: { 
+    label: "Canceled", 
+    dotColor: "bg-line", 
+    textColor: "text-text-muted" 
+  },
 };
 
-const SEVERITY: Record<string, { label: string; tone: Tone }> = {
-  critical: { label: "Critical", tone: "attention" },
-  warning: { label: "Warning", tone: "progress" },
-  info: { label: "Info", tone: "neutral" },
+const SEVERITY: Record<string, StatusMeta> = {
+  critical: { 
+    label: "Critical", 
+    dotColor: "bg-status-attention-fg", 
+    textColor: "text-status-attention-fg font-semibold",
+    wash: "bg-status-attention-bg px-2 py-0.5 rounded"
+  },
+  warning: { 
+    label: "Warning", 
+    dotColor: "bg-gold", 
+    textColor: "text-ink font-medium",
+    wash: "bg-gold/10 px-2 py-0.5 rounded"
+  },
+  info: { 
+    label: "Info", 
+    dotColor: "bg-ink/30", 
+    textColor: "text-text-muted" 
+  },
 };
 
-export function SeverityBadge({ severity }: { severity: string }) {
-  const entry = SEVERITY[severity] ?? { label: severity, tone: "neutral" as Tone };
-  return <Badge {...entry} />;
-}
-
-function Badge({ label, tone }: { label: string; tone: Tone }) {
+function StatusPip({ meta }: { meta: StatusMeta }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_CLASSES[tone]}`}
-    >
-      {label}
+    <span className={clsx("inline-flex items-center gap-1.5 whitespace-nowrap text-xs", meta.wash)}>
+      <span className={clsx("h-1.5 w-1.5 rounded-full shrink-0", meta.dotColor)} />
+      <span className={clsx("tracking-tight", meta.textColor)}>{meta.label}</span>
     </span>
   );
 }
 
 export function ConversationStatusBadge({ status }: { status: string }) {
-  const entry = CONVERSATION_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
-  return <Badge {...entry} />;
+  const meta = CONVERSATION_STATUS[status] ?? { label: status, dotColor: "bg-line", textColor: "text-text-muted" };
+  return <StatusPip meta={meta} />;
 }
 
 export function OrderStatusBadge({ status }: { status: string }) {
-  const entry = ORDER_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
-  return <Badge {...entry} />;
+  const meta = ORDER_STATUS[status] ?? { label: status, dotColor: "bg-line", textColor: "text-text-muted" };
+  return <StatusPip meta={meta} />;
 }
 
 export function ReturnStatusBadge({ status }: { status: string }) {
-  const entry = RETURN_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
-  return <Badge {...entry} />;
+  const meta = RETURN_STATUS[status] ?? { label: status, dotColor: "bg-line", textColor: "text-text-muted" };
+  return <StatusPip meta={meta} />;
 }
 
 export function RefundStatusBadge({ status }: { status: string }) {
-  const entry = REFUND_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
-  return <Badge {...entry} />;
+  const meta = REFUND_STATUS[status] ?? { label: status, dotColor: "bg-line", textColor: "text-text-muted" };
+  return <StatusPip meta={meta} />;
 }
 
 export function SubscriptionStatusBadge({ status }: { status: string }) {
-  const entry = SUBSCRIPTION_STATUS[status] ?? { label: status, tone: "neutral" as Tone };
-  return <Badge {...entry} />;
+  const meta = SUBSCRIPTION_STATUS[status] ?? { label: status, dotColor: "bg-line", textColor: "text-text-muted" };
+  return <StatusPip meta={meta} />;
+}
+
+export function SeverityBadge({ severity }: { severity: string }) {
+  const meta = SEVERITY[severity] ?? { label: severity, dotColor: "bg-line", textColor: "text-text-muted" };
+  return <StatusPip meta={meta} />;
 }

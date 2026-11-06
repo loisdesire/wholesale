@@ -12,18 +12,22 @@ import { ZoomableImage } from "@/components/zoomable-image";
 import { markResolvedAction } from "../actions";
 import { ReplyForm } from "./reply-form";
 import { AIAssistButton } from "./ai-assist-button";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Plus,
+  Phone,
+  Check,
+  CheckCheck,
+  AlertCircle,
+  MessageSquare,
+  ExternalLink,
+} from "lucide-react";
 
 const SENDER_LABEL: Record<string, string> = {
-  CUSTOMER: "",
-  AI: "AI",
-  STAFF: "Staff",
-};
-
-const DELIVERY_LABEL: Record<string, string> = {
-  SENT: "Sent",
-  DELIVERED: "Delivered",
-  READ: "Read",
-  FAILED: "Not delivered",
+  CUSTOMER: "Customer",
+  AI: "AI Copilot",
+  STAFF: "Sales Staff",
 };
 
 export default async function ConversationDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,10 +39,10 @@ export default async function ConversationDetailPage({ params }: { params: Promi
   const conversation = await db.conversation.findFirst({
     where: { id, organizationId },
     include: {
-      customer: true,
+      customer: { include: { addresses: true } },
       assignedTo: true,
       messages: { orderBy: { createdAt: "asc" }, include: { attachments: { select: { id: true, mimeType: true } } } },
-      orders: true,
+      orders: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!conversation) notFound();
@@ -49,154 +53,242 @@ export default async function ConversationDetailPage({ params }: { params: Promi
   const isOwner = session!.user.role === "OWNER";
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <Link href="/inbox" className="text-sm text-text-muted hover:text-ink">
-          ← Inbox
-        </Link>
-        <div className="mt-2 flex items-start justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">
-              {conversation.customer.name ?? "Unnamed"}
-            </h1>
-            <p className="mt-1 font-tabular text-sm text-text-muted">{conversation.customer.phone}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-text-muted">
-              Assigned to
-              <AssigneeControl
-                kind="conversation"
-                id={conversation.id}
-                currentAssigneeId={conversation.assignedToId}
-                members={members}
-                isOwner={isOwner}
-                currentUserId={session!.user.id}
-              />
+    <div className="flex flex-col gap-6 pb-14">
+      {/* Top Header & Context */}
+      <header className="card-base flex flex-col gap-4 rounded-2xl p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/inbox"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-paper/60 text-ink hover:bg-paper transition-colors active:scale-95"
+            title="Return to WhatsApp desk"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-display text-xl font-bold tracking-tight text-ink sm:text-2xl truncate">
+                {conversation.customer.name ?? "Unnamed Customer"}
+              </h1>
+              <ConversationStatusBadge status={conversation.status} />
             </div>
-            <ConversationStatusBadge status={conversation.status} />
-            {conversation.status !== "RESOLVED" && (
-              <form action={markResolvedAction.bind(null, conversation.id)}>
-                <button
-                  type="submit"
-                  className="rounded-md border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-paper"
-                >
-                  Mark resolved
-                </button>
-              </form>
-            )}
+            <p className="mt-0.5 font-tabular text-xs text-text-muted flex items-center gap-1.5">
+              <Phone className="h-3 w-3 text-text-muted/70" />
+              <span>{conversation.customer.phone}</span>
+            </p>
           </div>
+        </div>
+
+        {/* Header Actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted min-h-[40px]">
+            <span className="font-semibold text-ink">Assigned:</span>
+            <AssigneeControl
+              kind="conversation"
+              id={conversation.id}
+              currentAssigneeId={conversation.assignedToId}
+              members={members}
+              isOwner={isOwner}
+              currentUserId={session!.user.id}
+            />
+          </div>
+
+          <Link
+            href={`/orders/new?customerId=${conversation.customerId}&conversationId=${conversation.id}`}
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-xs font-semibold text-white shadow-xs shadow-accent/25 transition-all hover:bg-accent-2 active:scale-95 cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span>Create Order</span>
+          </Link>
+
+          {conversation.status !== "RESOLVED" && (
+            <form action={markResolvedAction.bind(null, conversation.id)}>
+              <button
+                type="submit"
+                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3.5 py-2 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 active:scale-95 cursor-pointer"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Mark Resolved</span>
+              </button>
+            </form>
+          )}
         </div>
       </header>
 
+      {/* Linked Orders Ribbon */}
       {conversation.orders.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-medium text-ink">Linked orders</h2>
+        <div className="card-base flex flex-wrap items-center gap-3 rounded-2xl px-5 py-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">
+            Commercial Orders ({conversation.orders.length}):
+          </span>
           <div className="flex flex-wrap gap-2">
             {conversation.orders.map((o) => (
               <Link
                 key={o.id}
                 href={`/orders/${o.id}`}
-                className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper"
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper/60 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
               >
-                <span className="font-tabular text-ink">{o.reference}</span>
+                <span className="font-mono font-bold">{o.reference}</span>
                 <OrderStatusBadge status={o.status} />
               </Link>
             ))}
           </div>
-        </section>
+        </div>
       )}
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-ink">Conversation</h2>
-          <Link
-            href={`/orders/new?customerId=${conversation.customerId}&conversationId=${conversation.id}`}
-            className="text-sm text-ink underline underline-offset-2 hover:text-ink-2"
-          >
-            Create order for this customer
-          </Link>
+      {/* Main 2-Column Responsive Workspace */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left 2 Cols: Message Feed & Chat Viewport */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="card-base flex flex-col rounded-2xl p-4 sm:p-6 min-h-[360px] sm:min-h-[480px] max-h-[60vh] sm:max-h-[660px] overflow-y-auto">
+            {conversation.messages.length === 0 ? (
+              <div className="m-auto flex flex-col items-center justify-center p-8 text-center text-text-muted">
+                <MessageSquare className="h-8 w-8 text-line" />
+                <p className="mt-2 text-sm font-medium">No messages recorded in this stream yet.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {conversation.messages.map((m) => {
+                  const isInbound = m.direction === "INBOUND";
+                  const isAi = m.sender === "AI";
+
+                  return (
+                    <div
+                      key={m.id}
+                      className={`flex flex-col ${isInbound ? "items-start" : "items-end"}`}
+                    >
+                      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-text-muted px-1">
+                        <span className={isAi ? "text-amber-700 font-semibold" : ""}>
+                          {SENDER_LABEL[m.sender] ?? (isInbound ? "Customer" : "Staff")}
+                        </span>
+                        <span>·</span>
+                        <span className="font-tabular">{formatDateTime(m.createdAt)}</span>
+                      </div>
+
+                      <div
+                        className={`max-w-md rounded-2xl px-4 py-3 text-sm shadow-xs ${
+                          isInbound
+                            ? "rounded-tl-xs border border-line/80 bg-paper/70 text-ink"
+                            : isAi
+                              ? "rounded-tr-xs border border-gold/40 bg-ink text-paper"
+                              : "rounded-tr-xs bg-ink text-paper"
+                        }`}
+                      >
+                        {m.attachments.length > 0 && (
+                          <div className="mb-2.5 flex flex-col gap-2">
+                            {m.attachments.map((a) => (
+                              <ZoomableImage
+                                key={a.id}
+                                src={`/api/attachments/${a.id}`}
+                                alt="Attachment sent via WhatsApp"
+                                className="max-h-72 max-w-full rounded-xl border border-line/40 object-contain"
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {!(m.attachments.length > 0 && m.body === "[image]") && (
+                          <p className="whitespace-pre-wrap leading-relaxed">{m.body}</p>
+                        )}
+
+                        {!isInbound && (
+                          <div className="mt-1.5 flex items-center justify-end gap-1 text-xs text-paper/80 font-medium">
+                            {m.deliveryStatus === "READ" ? (
+                              <span className="flex items-center gap-1 text-sky-400 font-medium">
+                                <CheckCheck className="h-3 w-3" />
+                                <span>Read</span>
+                              </span>
+                            ) : m.deliveryStatus === "DELIVERED" ? (
+                              <span className="flex items-center gap-1">
+                                <CheckCheck className="h-3 w-3" />
+                                <span>Delivered</span>
+                              </span>
+                            ) : m.deliveryStatus === "SENT" ? (
+                              <span className="flex items-center gap-1">
+                                <Check className="h-3 w-3" />
+                                <span>Sent</span>
+                              </span>
+                            ) : m.deliveryStatus === "FAILED" ? (
+                              <span className="flex items-center gap-1 text-rose-400 font-medium">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>{m.deliveryError || "Failed"}</span>
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Reply Form Dock */}
+          <div className="space-y-2">
+            {whatsappReady ? (
+              <ReplyForm conversationId={conversation.id} />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-line bg-paper/30 p-4 text-center text-xs text-text-muted">
+                WhatsApp credentials not connected in this environment — replies can be previewed or logged.
+              </div>
+            )}
+          </div>
         </div>
 
-        {conversation.messages.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
-            No messages yet.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {conversation.messages.map((m) => {
-              const isInbound = m.direction === "INBOUND";
-              return (
-                <div key={m.id} className={`flex ${isInbound ? "justify-start" : "justify-end"}`}>
-                  <div
-                    className={`max-w-lg rounded-md border px-4 py-2.5 text-sm ${
-                      isInbound
-                        ? "border-line bg-surface text-ink"
-                        : "border-accent-2/30 bg-accent text-paper"
-                    }`}
-                  >
-                    <div
-                      className={`mb-1 flex items-center gap-2 text-xs ${
-                        isInbound ? "text-text-muted" : "text-white/60"
-                      }`}
-                    >
-                      {SENDER_LABEL[m.sender] && <span>{SENDER_LABEL[m.sender]}</span>}
-                      <span className="font-tabular">{formatDateTime(m.createdAt)}</span>
-                      {!isInbound && m.deliveryStatus && (
-                        <span className={m.deliveryStatus === "FAILED" ? "font-medium text-white" : ""}>
-                          · {DELIVERY_LABEL[m.deliveryStatus]}
-                        </span>
-                      )}
-                    </div>
-                    {m.attachments.length > 0 && (
-                      <div className="mb-2 flex flex-col gap-2">
-                        {m.attachments.map((a) => (
-                          <ZoomableImage
-                            key={a.id}
-                            src={`/api/attachments/${a.id}`}
-                            alt="Image sent by the customer"
-                            className="max-h-80 max-w-full rounded-md border border-line/50 object-contain"
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {!(m.attachments.length > 0 && m.body === "[image]") && (
-                      <p className="whitespace-pre-wrap">{m.body}</p>
-                    )}
-                    {!isInbound && m.deliveryStatus === "FAILED" && m.deliveryError && (
-                      <p className="mt-1 text-xs text-white/80">{m.deliveryError}</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {/* Right 1 Col: AI Copilot & Customer Card */}
+        <div className="space-y-6">
+          {/* AI Copilot Card */}
+          <div className="card-base rounded-2xl p-5 space-y-3.5 shadow-xs">
+            <div className="border-b border-line/60 pb-2.5">
+              <h3 className="font-display text-sm font-bold text-ink">Commercial Copilot</h3>
+              <p className="text-xs text-text-muted">Analyze messages against active catalogue stock to prepare quote replies.</p>
+            </div>
+
+            {aiReady ? (
+              <AIAssistButton conversationId={conversation.id} />
+            ) : (
+              <div className="rounded-xl border border-dashed border-line p-3 text-center text-xs text-text-muted">
+                Anthropic AI model configured and will activate when API key is provided.
+              </div>
+            )}
           </div>
-        )}
-      </section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">AI assist</h2>
-        {aiReady ? (
-          <AIAssistButton conversationId={conversation.id} />
-        ) : (
-          <p className="rounded-md border border-dashed border-line px-4 py-4 text-sm text-text-muted">
-            AI product-matching isn&apos;t configured in this environment (missing
-            OPENAI_API_KEY).
-          </p>
-        )}
-      </section>
+          {/* Customer Profile Summary */}
+          <div className="card-base rounded-2xl p-5 space-y-3.5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-line/60 pb-2.5">
+              <h3 className="font-display text-sm font-bold text-ink">Customer Account</h3>
+              <Link
+                href={`/customers/${conversation.customerId}`}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+              >
+                <span>Full Ledger</span>
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Reply</h2>
-        {whatsappReady ? (
-          <ReplyForm conversationId={conversation.id} />
-        ) : (
-          <p className="rounded-md border border-dashed border-line px-4 py-4 text-sm text-text-muted">
-            WhatsApp sending isn&apos;t configured in this environment (missing
-            WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID) — replies can&apos;t be sent until
-            it is.
-          </p>
-        )}
-      </section>
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between items-baseline">
+                <span className="text-text-muted">Name</span>
+                <span className="font-semibold text-ink">{conversation.customer.name ?? "Unnamed"}</span>
+              </div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-text-muted">Phone</span>
+                <span className="font-tabular font-medium text-ink">{conversation.customer.phone}</span>
+              </div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-text-muted">Associated Orders</span>
+                <span className="font-tabular font-bold text-ink">{conversation.orders.length}</span>
+              </div>
+              {conversation.customer.addresses.length > 0 && (
+                <div className="border-t border-line/60 pt-2 text-xs text-text-muted">
+                  <span className="font-semibold text-ink">Primary Address:</span>
+                  <p className="mt-0.5 line-clamp-2">{conversation.customer.addresses[0].text}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

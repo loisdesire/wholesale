@@ -4,19 +4,37 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { signOutAction, switchOrganizationAction } from "@/app/(app)/actions";
+import {
+  LayoutDashboard,
+  Inbox,
+  ShoppingBag,
+  Layers,
+  Users,
+  Activity,
+  BarChart3,
+  Search,
+  CreditCard,
+  ShieldCheck,
+  Bell,
+  LogOut,
+  ChevronDown,
+  Menu,
+  X,
+  Building2,
+} from "lucide-react";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/inbox", label: "Inbox" },
-  { href: "/orders", label: "Orders" },
-  { href: "/catalogue", label: "Catalogue" },
-  { href: "/customers", label: "Customers" },
-  { href: "/operations", label: "Operations" },
-  { href: "/reports", label: "Reports" },
-  { href: "/search", label: "Search" },
-  { href: "/billing", label: "Billing", ownerOnly: true },
-  { href: "/admin", label: "Platform Admin", platformAdminOnly: true },
-];
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  ownerOnly?: boolean;
+  platformAdminOnly?: boolean;
+};
+
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
 
 export function Nav({
   orgName,
@@ -36,11 +54,6 @@ export function Nav({
   isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
-  // A fixed sidebar permanently visible doesn't fit a phone width — below md it becomes a
-  // slide-in drawer instead, triggered by a small top bar. Closes automatically on navigation
-  // so staff aren't left staring at the menu after tapping a link. Adjusted during render, not
-  // in an effect (React's own recommended pattern for "reset state when a prop changes") — an
-  // unconditional setState in an effect causes an avoidable extra render on every navigation.
   const [open, setOpen] = useState(false);
   const [openForPathname, setOpenForPathname] = useState(pathname);
   if (pathname !== openForPathname) {
@@ -48,114 +61,251 @@ export function Nav({
     setOpen(false);
   }
 
+  const navGroups: NavGroup[] = [
+    {
+      title: "Daily Operations",
+      items: [
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/inbox", label: "WhatsApp Inbox", icon: Inbox },
+        { href: "/orders", label: "Orders & Shipments", icon: ShoppingBag },
+        { href: "/operations", label: "Operations Queue", icon: Activity },
+      ],
+    },
+    {
+      title: "Commerce & Trade",
+      items: [
+        { href: "/catalogue", label: "Product Catalogue", icon: Layers },
+        { href: "/customers", label: "Customer Directory", icon: Users },
+      ],
+    },
+    {
+      title: "Analytics & Search",
+      items: [
+        { href: "/reports", label: "Financial Reports", icon: BarChart3 },
+        { href: "/search", label: "Search Directory", icon: Search },
+      ],
+    },
+  ];
+
+  const systemItems: NavItem[] = [];
+  if (userRole === "OWNER") {
+    systemItems.push({ href: "/billing", label: "Billing & Subscription", icon: CreditCard, ownerOnly: true });
+  }
+  if (isPlatformAdmin) {
+    systemItems.push({ href: "/admin", label: "Platform Operator", icon: ShieldCheck, platformAdminOnly: true });
+  }
+  if (systemItems.length > 0) {
+    navGroups.push({ title: "Account & System", items: systemItems });
+  }
+
   return (
     <>
-      <div className="flex items-center justify-between border-b border-line bg-ink px-4 py-3 text-paper md:hidden">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="rounded-md p-1.5 hover:bg-white/10"
+      {/* Mobile Sticky Bar (Clean touch targets: min 44x44px) */}
+      <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/10 bg-ink px-3 text-paper md:hidden shadow-md">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Open navigation menu"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent font-display text-xs font-bold text-white shadow-xs">
+              {orgName.charAt(0)}
+            </div>
+            <span className="truncate font-display text-sm font-semibold tracking-tight text-white max-w-[180px]">
+              {orgName}
+            </span>
+          </div>
+        </div>
+
+        <Link
+          href="/notifications"
+          className="relative flex h-11 w-11 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          aria-label="Notifications"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-            <path d="M3 5h14M3 10h14M3 15h14" />
-          </svg>
-        </button>
-        <span className="truncate font-display text-sm font-semibold tracking-tight">{orgName}</span>
-        <span className="w-8" aria-hidden="true" />
+          <Bell className="h-5 w-5" />
+          {unreadNotifications > 0 && (
+            <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-ink" />
+          )}
+        </Link>
       </div>
 
+      {/* Drawer Overlay */}
       {open && (
         <div
           onClick={() => setOpen(false)}
           aria-hidden="true"
-          className="fixed inset-0 z-30 bg-ink/50 md:hidden"
+          className="fixed inset-0 z-40 bg-ink/70 backdrop-blur-xs transition-opacity md:hidden"
         />
       )}
 
+      {/* Main Sidebar (Sticky pinned on desktop, smooth drawer on mobile) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-none -translate-x-full flex-col bg-ink text-paper transition-transform duration-200 md:relative md:z-auto md:w-56 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] flex-none -translate-x-full flex-col bg-ink text-paper shadow-2xl transition-transform duration-250 ease-out md:sticky md:top-0 md:h-screen md:w-64 md:z-20 md:translate-x-0 md:shadow-none border-r border-white/10 ${
           open ? "translate-x-0" : ""
         }`}
       >
-      <div className="px-5 py-5">
-        <span className="font-display text-base font-semibold tracking-tight">{orgName}</span>
-        {organizations.length > 1 && (
-          <form action={(formData) => switchOrganizationAction(String(formData.get("organizationId")))} className="mt-2">
-            <label htmlFor="organization-switch" className="sr-only">
-              Switch organization
-            </label>
-            <select
-              id="organization-switch"
-              name="organizationId"
-              defaultValue={activeOrganizationId}
-              onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="w-full rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs text-white outline-none focus:border-white/50"
-            >
-              {organizations.map((o) => (
-                <option key={o.id} value={o.id} className="text-ink">
-                  {o.name} · {o.role === "OWNER" ? "Owner" : "Staff"}
-                </option>
-              ))}
-            </select>
-          </form>
-        )}
-      </div>
+        {/* Brand Luxury Seal & Mobile Close Button */}
+        <div className="flex flex-col border-b border-white/10 p-4 sm:p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-white/15 to-white/5 border border-white/20 shadow-inner">
+                <span className="font-display text-lg font-bold text-paper tracking-wider">
+                  {orgName.charAt(0) || "W"}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block truncate font-display text-sm font-semibold text-white tracking-tight">
+                  {orgName}
+                </span>
+                <span className="block text-xs font-medium text-white/70 tracking-wide">
+                  Wholesale Hub
+                </span>
+              </div>
+            </div>
 
-      <nav className="flex-1 px-3">
-        <ul className="flex flex-col gap-0.5">
-          <li>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close navigation"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-white/60 hover:bg-white/10 hover:text-white md:hidden transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Organization Switcher if Multi-Tenant */}
+          {organizations.length > 1 && (
+            <div className="mt-3.5 pt-3 border-t border-white/10">
+              <form action={(formData) => switchOrganizationAction(String(formData.get("organizationId")))}>
+                <label htmlFor="organization-switch" className="sr-only">
+                  Switch organization
+                </label>
+                <div className="relative">
+                  <Building2 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+                  <select
+                    id="organization-switch"
+                    name="organizationId"
+                    defaultValue={activeOrganizationId}
+                    onChange={(e) => e.target.form?.requestSubmit()}
+                    className="w-full appearance-none rounded-xl border border-white/15 bg-white/5 py-2 pl-9 pr-8 text-xs font-semibold text-white outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                  >
+                    {organizations.map((org) => (
+                      <option key={org.id} value={org.id} className="bg-ink text-paper">
+                        {org.name} ({org.role === "OWNER" ? "Owner" : "Staff"})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation Menu */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+          {/* Notifications Highlight Link */}
+          <div>
             <Link
               href="/notifications"
-              className={`flex items-center justify-between rounded-md border-l-2 px-3 py-2 text-sm transition-colors ${
+              className={`group flex min-h-[44px] items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                 pathname.startsWith("/notifications")
-                  ? "border-accent bg-white/10 font-medium text-white"
-                  : "border-transparent text-white/65 hover:bg-white/5 hover:text-white"
+                  ? "bg-accent text-white shadow-md shadow-accent/25"
+                  : "text-white/75 hover:bg-white/[0.07] hover:text-white"
               }`}
             >
-              Notifications
-              {unreadNotifications > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-medium text-accent-ink">
-                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                </span>
-              )}
-            </Link>
-          </li>
-          {NAV_ITEMS.filter((item) => (!item.ownerOnly || userRole === "OWNER") && (!item.platformAdminOnly || isPlatformAdmin)).map((item) => {
-            const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`block rounded-md border-l-2 px-3 py-2 text-sm transition-colors ${
-                    active
-                      ? "border-accent bg-white/10 font-medium text-white"
-                      : "border-transparent text-white/65 hover:bg-white/5 hover:text-white"
+              <div className="flex items-center gap-3">
+                <Bell className="h-4 w-4 shrink-0 transition-transform group-hover:scale-105" />
+                <span>Notifications</span>
+              </div>
+              {unreadNotifications > 0 ? (
+                <span
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 font-tabular text-xs font-bold ${
+                    pathname.startsWith("/notifications")
+                      ? "bg-white text-accent"
+                      : "bg-accent text-white shadow-xs"
                   }`}
                 >
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              ) : (
+                <span className="text-xs text-white/50 font-mono">0</span>
+              )}
+            </Link>
+          </div>
 
-      <div className="border-t border-white/10 px-5 py-4">
-        <p className="truncate text-sm font-medium text-white">{userName}</p>
-        <p className="text-xs text-white/50">
-          {userRole === "OWNER" ? "Owner" : "Staff"}
-        </p>
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            className="mt-3 text-xs text-white/50 underline-offset-2 hover:text-white hover:underline"
-          >
-            Sign out
-          </button>
-        </form>
-      </div>
+          {/* Grouped Links */}
+          {navGroups.map((group) => (
+            <div key={group.title} className="space-y-1.5">
+              <span className="px-3 text-xs font-semibold uppercase tracking-wider text-white/70">
+                {group.title}
+              </span>
+              <ul className="space-y-1">
+                {group.items.map((item) => {
+                  const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={`group flex min-h-[44px] items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all ${
+                          active
+                            ? "bg-accent text-white shadow-md shadow-accent/25"
+                            : "text-white/75 hover:bg-white/[0.07] hover:text-white"
+                        }`}
+                      >
+                        <Icon
+                          className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-105 ${
+                            active ? "text-white" : "text-white/60 group-hover:text-white"
+                          }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        {/* User Presence & Sign Out Dock */}
+        <div className="border-t border-white/10 p-3.5 pb-6 md:pb-3.5">
+          <div className="flex items-center justify-between rounded-xl bg-white/[0.04] p-3 border border-white/5">
+            <div className="flex items-center gap-3 min-w-0 pr-1">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white font-display text-xs font-bold shadow-xs">
+                {userName.charAt(0) || "U"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-white">{userName}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      userRole === "OWNER" ? "bg-gold" : "bg-emerald-400"
+                    }`}
+                  />
+                  <span className="text-xs font-medium text-white/80 tracking-wide uppercase">
+                    {userRole === "OWNER" ? "Owner Account" : "Staff Member"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                title="Sign out of account"
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
+        </div>
       </aside>
     </>
   );

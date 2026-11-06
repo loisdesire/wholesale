@@ -5,7 +5,7 @@ import { tenantDb } from "@/lib/db";
 import { getStockByProduct } from "@/lib/stock";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStepper } from "@/components/order-stepper";
-import { RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
+import { OrderStatusBadge, RefundStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
 import { getReturnableQuantities } from "@/lib/returns";
 import { findDuplicateOrders } from "@/lib/orders";
 import { listOrganizationMembers } from "@/lib/membership";
@@ -17,24 +17,25 @@ import { CloseShortForm, ShipForm } from "./fulfilment-ui";
 import { AmendOrderForm } from "./amend-ui";
 import { AddItemForm } from "./add-item-form";
 import { RequestReturnForm, ReturnActions } from "./returns-ui";
+import { ArrowLeft, MessageSquare, ExternalLink } from "lucide-react";
 
 const AUDIT_ACTION_LABEL: Record<string, string> = {
   ORDER_DRAFTED: "Order drafted",
   ORDER_CONFIRMED: "Order confirmed, stock reserved",
-  PAYMENT_MARKED_PAID: "Marked as paid",
-  PAYMENT_RECORDED: "Payment recorded",
-  ORDER_FULFILLED: "Fully shipped — order fulfilled",
-  ORDER_PARTIALLY_SHIPPED: "Part of the order shipped",
-  ORDER_CLOSED_SHORT: "Closed short — unshipped items refunded",
+  PAYMENT_MARKED_PAID: "Payment recorded as settled",
+  PAYMENT_RECORDED: "Payment received",
+  ORDER_FULFILLED: "Fully dispatched — order fulfilled",
+  ORDER_PARTIALLY_SHIPPED: "Partial dispatch recorded",
+  ORDER_CLOSED_SHORT: "Closed short — unshipped items voided/refunded",
   ORDER_AMENDED: "Order amended",
   ORDER_CANCELLED: "Order cancelled",
-  ORDER_ITEM_QUANTITY_CHANGED: "Item quantity changed",
-  ORDER_DETAILS_UPDATED: "Delivery address / notes updated",
+  ORDER_ITEM_QUANTITY_CHANGED: "Item quantity adjusted",
+  ORDER_DETAILS_UPDATED: "Delivery details / instructions updated",
   RETURN_REQUESTED: "Return requested",
   RETURN_APPROVED: "Return approved",
   RETURN_REJECTED: "Return rejected",
-  RETURN_RECEIVED: "Returned goods received into stock",
-  REFUND_PAID: "Refund paid to customer",
+  RETURN_RECEIVED: "Returned stock received into inventory",
+  REFUND_PAID: "Refund settled to customer",
 };
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -55,6 +56,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   if (!order) notFound();
 
   const paidCents = order.payments.reduce((sum, p) => sum + p.amountCents, 0);
+  const totalUnits = order.items.reduce((acc, i) => acc + i.quantity, 0);
 
   const isOwner = session!.user.role === "OWNER";
   const duplicates =
@@ -97,6 +99,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     shipped: shippedByItem.get(item.id) ?? 0,
     unit: item.product.unit,
   }));
+  const shippedUnits = shipLines.reduce((sum, l) => sum + l.shipped, 0);
   const unshippedUnits = shipLines.reduce((sum, l) => sum + (l.ordered - l.shipped), 0);
   const unshippedValue = order.items.reduce(
     (sum, item) => sum + (item.quantity - (shippedByItem.get(item.id) ?? 0)) * item.unitPriceCents,
@@ -130,127 +133,109 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   });
 
   return (
-    <div className="flex flex-col gap-10">
-      <header>
-        <Link href="/orders" className="text-sm text-text-muted hover:text-ink">
-          ← Orders
-        </Link>
-        <div className="mt-2 flex items-start justify-between">
-          <div>
-            <h1 className="font-tabular text-2xl font-semibold tracking-tight text-ink">{order.reference}</h1>
-            <p className="mt-1 text-sm text-text-muted">
-              <Link href={`/customers/${order.customer.id}`} className="underline-offset-2 hover:underline">
-                {order.customer.name ?? "Unnamed"}
-              </Link>{" "}
-              · {order.customer.phone}
-              {order.conversation && (
-                <>
-                  {" · from "}
-                  <Link href="/inbox" className="underline underline-offset-2 hover:text-ink">
-                    conversation
-                  </Link>
-                </>
-              )}
-            </p>
+    <div className="flex flex-col gap-6 pb-16">
+      {/* Top Order Command Header */}
+      <header className="card-base flex flex-col gap-5 rounded-2xl p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/orders"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-paper/60 text-ink hover:bg-paper transition-colors active:scale-95"
+              title="Return to order ledger"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-mono text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                  {order.reference}
+                </h1>
+                <OrderStatusBadge status={order.status} />
+              </div>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Created on {formatDateTime(order.createdAt)} · {totalUnits} total units
+              </p>
+            </div>
           </div>
-          <p className="font-tabular text-2xl font-medium text-ink">
-            {formatMoney(order.totalCents, order.currency)}
-          </p>
+
+          {/* Value & Assignee Bar */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-baseline gap-1.5 rounded-xl border border-line bg-paper/40 px-3.5 py-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Total</span>
+              <span className="font-tabular text-lg font-bold text-ink">
+                {formatMoney(order.totalCents, order.currency)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted">
+              <span className="font-semibold text-ink">Assigned:</span>
+              <AssigneeControl
+                kind="order"
+                id={order.id}
+                currentAssigneeId={order.assignedToId}
+                members={members}
+                isOwner={isOwner}
+                currentUserId={session!.user.id}
+              />
+            </div>
+          </div>
         </div>
-        <div className="mt-4 flex items-center justify-between">
+
+        {/* Stepper & Operational Action Controls */}
+        <div className="border-t border-line/60 pt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <OrderStepper status={order.status} />
-          <div className="flex items-center gap-2 text-sm text-text-muted">
-            Assigned to
-            <AssigneeControl
-              kind="order"
-              id={order.id}
-              currentAssigneeId={order.assignedToId}
-              members={members}
-              isOwner={isOwner}
-              currentUserId={session!.user.id}
-            />
-          </div>
+          <OrderActions
+            orderId={order.id}
+            status={order.status}
+            isOwner={isOwner}
+            duplicateOf={duplicates.map((d) => d.reference)}
+          />
         </div>
       </header>
 
-      <section>
-        <OrderActions
-          orderId={order.id}
-          status={order.status}
-          isOwner={isOwner}
-          duplicateOf={duplicates.map((d) => d.reference)}
-        />
-      </section>
-
-      {order.status !== "DRAFT" && (
-        <section>
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-ink">Payments</h2>
-            <p className="font-tabular text-sm text-ink">
-              {formatMoney(paidCents, order.currency)} of {formatMoney(order.totalCents, order.currency)}
-              {paidCents > order.totalCents && (
-                <span className="ml-2 rounded-full bg-status-attention-bg px-2 py-0.5 text-xs font-medium text-status-attention-fg">
-                  Overpaid by {formatMoney(paidCents - order.totalCents, order.currency)}
-                </span>
-              )}
-            </p>
-          </div>
-          {order.payments.length === 0 ? (
-            <p className="rounded-md border border-dashed border-line px-4 py-4 text-center text-sm text-text-muted">
-              No payments recorded yet.
-            </p>
-          ) : (
-            <div className="rounded-md border border-line bg-surface">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                      <th className="px-4 py-2">Method</th>
-                      <th className="px-4 py-2 text-right">Amount</th>
-                      <th className="px-4 py-2">When</th>
-                      <th className="px-4 py-2">Recorded by</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order.payments.map((p) => (
-                      <tr key={p.id} className="border-b border-line last:border-0">
-                        <td className="px-4 py-3 text-ink">{p.method === "PROVIDER" ? "Paystack" : "Manual"}</td>
-                        <td className="px-4 py-3 text-right font-tabular text-ink">{formatMoney(p.amountCents, p.currency)}</td>
-                        <td className="px-4 py-3 text-xs text-text-muted">{formatDateTime(p.createdAt)}</td>
-                        <td className="px-4 py-3 text-text-muted">{p.recordedBy?.name ?? (p.method === "PROVIDER" ? "Verified automatically" : "—")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+      {/* Main 2-Column Trade Workspace */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column (2 Cols): Line items, Shipments, Returns, History */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Order Items Table Card */}
+          <div className="card-base overflow-hidden rounded-2xl shadow-xs">
+            <div className="flex items-center justify-between border-b border-line bg-paper/40 px-5 py-3.5">
+              <h2 className="font-display text-sm font-bold text-ink">
+                Line Items ({totalUnits} units)
+              </h2>
+              <span className="font-tabular text-sm font-bold text-ink">
+                {formatMoney(order.totalCents, order.currency)}
+              </span>
             </div>
-          )}
-        </section>
-      )}
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Items</h2>
-        <div className="rounded-md border border-line bg-surface">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-                  <th className="px-4 py-2">Product</th>
-                  <th className="px-4 py-2 text-right">Qty</th>
-                  <th className="px-4 py-2 text-right">Unit price</th>
-                  <th className="px-4 py-2 text-right">Line total</th>
-                  {order.status === "DRAFT" && <th className="px-4 py-2" />}
-                </tr>
-              </thead>
-              <tbody>
-                {order.items.map((item) => (
-                  <tr key={item.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-3 text-ink">
-                      {item.product.name}
-                      {item.variantLabel ? ` (${item.variantLabel})` : ""}
-                      <span className="ml-2 font-tabular text-xs text-text-muted">{item.product.sku}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-tabular text-ink">
+            {/* Mobile Card List (< 640px) */}
+            <div className="block sm:hidden divide-y divide-line/60">
+              {order.items.map((item) => (
+                <div key={item.id} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-ink text-sm">{item.product.name}</p>
+                      {item.variantLabel && (
+                        <p className="text-xs text-text-muted">{item.variantLabel}</p>
+                      )}
+                      <p className="font-mono text-xs text-text-muted font-medium">{item.product.sku}</p>
+                    </div>
+
+                    {order.status === "DRAFT" && (
+                      <form action={removeOrderItemAction.bind(null, order.id, item.id)}>
+                        <button
+                          type="submit"
+                          title="Remove item"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted/60 hover:text-rose-600 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </form>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-line/50 pt-2 text-xs">
+                    <div className="font-tabular text-text-muted">
                       {order.status === "DRAFT" ? (
                         <QuantityForm
                           orderId={order.id}
@@ -259,231 +244,320 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                           moq={item.product.moq}
                         />
                       ) : (
-                        item.quantity
+                        <span>{item.quantity} {item.product.unit}s × {formatMoney(item.unitPriceCents, order.currency)}</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-tabular text-text-muted">
-                      {formatMoney(item.unitPriceCents, order.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-tabular text-ink">
-                      {formatMoney(item.unitPriceCents * item.quantity, order.currency)}
-                    </td>
-                    {order.status === "DRAFT" && (
-                      <td className="px-4 py-3 text-right">
-                        <form action={removeOrderItemAction.bind(null, order.id, item.id)}>
-                          <button type="submit" className="text-xs text-status-attention-fg hover:underline">
-                            Remove
-                          </button>
-                        </form>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between border-t border-line px-4 py-3">
-            <span className="text-sm font-medium text-ink">Total</span>
-            <span className="font-tabular text-sm font-medium text-ink">
-              {formatMoney(order.totalCents, order.currency)}
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {order.status === "CONFIRMED" && (
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-ink">Amend this order</h2>
-          <AmendOrderForm
-            orderId={order.id}
-            lines={order.items.map((item) => ({
-              orderItemId: item.id,
-              label: `${item.product.name}${item.variantLabel ? ` (${item.variantLabel})` : ""}`,
-              sku: item.product.sku,
-              quantity: item.quantity,
-              moq: item.product.moq,
-            }))}
-            products={activeProducts.map((p) => {
-              const variant = p.variantAttributes as Record<string, string> | null;
-              return { id: p.id, label: `${p.name}${variant ? ` (${Object.values(variant).join(" / ")})` : ""}` };
-            })}
-          />
-        </section>
-      )}
-
-      {(canShip || shipments.length > 0) && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-ink">Shipping</h2>
-
-          {canShip && <ShipForm orderId={order.id} lines={shipLines} />}
-
-          {order.status === "PARTIALLY_FULFILLED" &&
-            (isOwner ? (
-              <CloseShortForm
-                orderId={order.id}
-                unshippedLabel={`${unshippedUnits} unit${unshippedUnits === 1 ? "" : "s"}, ${formatMoney(unshippedValue, order.currency)}`}
-              />
-            ) : (
-              <p className="text-sm text-text-muted">Closing the rest of the order short means a refund — only an owner can do it.</p>
-            ))}
-
-          {shipments.length > 0 && (
-            <div className="divide-y divide-line rounded-md border border-line bg-surface">
-              {shipments.map((sh) => (
-                <div key={sh.id} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
-                  <div>
-                    <p className="font-tabular text-ink">{sh.reference}</p>
-                    <p className="mt-1 text-text-muted">
-                      {sh.items
-                        .map((it) => `${it.quantity} × ${it.orderItem.product.name}${it.orderItem.variantLabel ? ` (${it.orderItem.variantLabel})` : ""}`)
-                        .join(", ")}
-                    </p>
-                  </div>
-                  <div className="text-right text-xs text-text-muted">
-                    <p>{formatDateTime(sh.createdAt)}</p>
-                    {(sh.carrier || sh.trackingReference) && (
-                      <p className="mt-1">
-                        {sh.carrier ?? ""}
-                        {sh.carrier && sh.trackingReference ? " · " : ""}
-                        <span className="font-tabular">{sh.trackingReference ?? ""}</span>
-                      </p>
-                    )}
+                    </div>
+                    <span className="font-tabular font-bold text-sm text-ink">
+                      {formatMoney(item.quantity * item.unitPriceCents, order.currency)}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </section>
-      )}
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Delivery &amp; notes</h2>
-        <OrderDetailsForm
-          orderId={order.id}
-          notes={order.notes}
-          deliveryAddress={order.deliveryAddress}
-          dueAt={order.dueAt}
-          addressOptions={order.customer.addresses}
-          editable={order.status !== "FULFILLED" && order.status !== "CANCELLED"}
-        />
-      </section>
+            {/* Desktop Table (>= 640px) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line bg-paper/20 text-xs font-semibold uppercase tracking-wider text-ink/80">
+                    <th className="py-3 pl-5 pr-4">Product Specification</th>
+                    <th className="py-3 pr-4 text-right">Quantity</th>
+                    <th className="py-3 pr-4 text-right">Unit Price</th>
+                    <th className="py-3 pr-5 text-right">Subtotal</th>
+                    {order.status === "DRAFT" && <th className="py-3 pr-4 w-8" />}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/60">
+                  {order.items.map((item) => (
+                    <tr key={item.id} className="transition-colors hover:bg-paper/20">
+                      <td className="py-3.5 pl-5 pr-4">
+                        <p className="font-semibold text-ink">{item.product.name}</p>
+                        {item.variantLabel && (
+                          <p className="text-xs text-text-muted">{item.variantLabel}</p>
+                        )}
+                        <p className="font-mono text-xs text-text-muted font-medium">{item.product.sku}</p>
+                      </td>
+                      <td className="py-3.5 pr-4 text-right font-tabular text-sm font-semibold text-ink">
+                        {order.status === "DRAFT" ? (
+                          <QuantityForm
+                            orderId={order.id}
+                            orderItemId={item.id}
+                            quantity={item.quantity}
+                            moq={item.product.moq}
+                          />
+                        ) : (
+                          `${item.quantity} ${item.product.unit}`
+                        )}
+                      </td>
+                      <td className="py-3.5 pr-4 text-right font-tabular text-sm text-text-muted">
+                        {formatMoney(item.unitPriceCents, order.currency)}
+                      </td>
+                      <td className="py-3.5 pr-5 text-right font-tabular text-sm font-bold text-ink">
+                        {formatMoney(item.quantity * item.unitPriceCents, order.currency)}
+                      </td>
+                      {order.status === "DRAFT" && (
+                        <td className="py-3.5 pr-4 text-right">
+                          <form action={removeOrderItemAction.bind(null, order.id, item.id)}>
+                            <button
+                              type="submit"
+                              title="Remove item"
+                              className="text-xs text-text-muted/60 hover:text-rose-600 transition-colors cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </form>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-      {order.status === "DRAFT" && (
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-ink">Add an item</h2>
-          <AddItemForm orderId={order.id} products={productOptions} />
-        </section>
-      )}
-
-      {(returns.length > 0 || canRequestReturn) && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-ink">Returns &amp; refunds</h2>
-
-          {returns.map((ret) => (
-            <div key={ret.id} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-tabular text-sm font-medium text-ink">{ret.reference}</p>
-                  <p className="mt-1 text-sm text-text-muted">
-                    {ret.reason} · requested by {ret.requestedBy?.name ?? "—"} · {formatDateTime(ret.createdAt)}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <p className="font-tabular text-lg font-medium text-ink">
-                    {formatMoney(ret.refundCents, order.currency)}
-                  </p>
-                  {ret.refundCents < ret.valueCents && (
-                    <p className="text-xs text-text-muted">
-                      partial — goods worth {formatMoney(ret.valueCents, order.currency)}
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    {ret.kind === "RETURN" && <ReturnStatusBadge status={ret.status} />}
-                    {ret.status !== "REJECTED" && ret.status !== "REQUESTED" && (
-                      <RefundStatusBadge status={ret.refundStatus} />
-                    )}
-                  </div>
-                </div>
+            {/* Add Item form if Draft */}
+            {order.status === "DRAFT" && (
+              <div className="border-t border-line bg-paper/20 p-4">
+                <AddItemForm orderId={order.id} products={productOptions} />
               </div>
+            )}
 
-              <ul className="divide-y divide-line text-sm">
-                {ret.items.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between py-2">
-                    <span className="text-ink">
-                      {item.quantity} × {item.orderItem.product.name}
-                      {item.orderItem.variantLabel ? ` (${item.orderItem.variantLabel})` : ""}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      {ret.kind !== "RETURN" ? "Not shipped" : item.condition === "DAMAGED" ? "Damaged" : "Resellable"} ·{" "}
-                      {formatMoney(item.quantity * item.orderItem.unitPriceCents, order.currency)} at the order price
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              {ret.decidedAt && (
-                <p className="text-xs text-text-muted">
-                  {ret.status === "REJECTED" ? "Rejected" : "Approved"} by {ret.decidedBy?.name ?? "—"} ·{" "}
-                  {formatDateTime(ret.decidedAt)}
-                  {ret.decisionNote ? ` · “${ret.decisionNote}”` : ""}
-                </p>
-              )}
-              {ret.refundedAt && (
-                <p className="text-xs text-text-muted">
-                  Refund paid {formatDateTime(ret.refundedAt)}
-                  {ret.refundNote ? ` · ${ret.refundNote}` : ""}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between gap-4">
-                <ReturnActions
-                  returnId={ret.id}
-                  status={ret.status}
-                  refundStatus={ret.refundStatus}
-                  isOwner={isOwner}
-                  valueNaira={ret.valueCents / 100}
+            {/* Amend Form if Confirmed */}
+            {order.status === "CONFIRMED" && (
+              <div className="border-t border-line bg-paper/20 p-4">
+                <AmendOrderForm
+                  orderId={order.id}
+                  lines={order.items.map((item) => ({
+                    orderItemId: item.id,
+                    label: `${item.product.name}${item.variantLabel ? ` (${item.variantLabel})` : ""}`,
+                    sku: item.product.sku,
+                    quantity: item.quantity,
+                    moq: item.product.moq,
+                  }))}
+                  products={activeProducts.map((p) => {
+                    const variant = p.variantAttributes as Record<string, string> | null;
+                    return { id: p.id, label: `${p.name}${variant ? ` (${Object.values(variant).join(" / ")})` : ""}` };
+                  })}
                 />
-                <div className="flex items-center gap-2 text-xs text-text-muted">
-                  Assigned to
-                  <AssigneeControl
-                    kind="return"
-                    id={ret.id}
-                    currentAssigneeId={ret.assignedToId}
-                    members={members}
-                    isOwner={isOwner}
-                    currentUserId={session!.user.id}
-                  />
-                </div>
               </div>
-            </div>
-          ))}
+            )}
+          </div>
 
-          {canRequestReturn && (
-            <div>
-              <h3 className="mb-2 text-sm text-text-muted">Request a return</h3>
-              <RequestReturnForm orderId={order.id} lines={returnableLines} />
-            </div>
-          )}
-        </section>
-      )}
-
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">History</h2>
-        {auditLog.length === 0 ? (
-          <p className="text-sm text-text-muted">No history yet.</p>
-        ) : (
-          <div className="divide-y divide-line rounded-md border border-line bg-surface">
-            {auditLog.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                <span className="text-ink">{AUDIT_ACTION_LABEL[entry.action] ?? entry.action}</span>
-                <span className="text-xs text-text-muted">
-                  {entry.actor?.name ?? "System"} · {formatDateTime(entry.createdAt)}
+          {/* Fulfilment & Shipments Section */}
+          {(canShip || shipments.length > 0) && (
+            <div className="card-base rounded-2xl p-5 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between border-b border-line/60 pb-3">
+                <div>
+                  <h2 className="font-display text-sm font-bold text-ink">Fulfillment &amp; Dispatch</h2>
+                  <p className="text-xs text-text-muted">Waybills, carrier assignments, and shipping manifests.</p>
+                </div>
+                <span className="font-tabular text-xs font-semibold text-text-muted">
+                  {unshippedUnits === 0 ? "All units dispatched" : `${shippedUnits} shipped · ${unshippedUnits} pending`}
                 </span>
               </div>
-            ))}
+
+              {canShip && <ShipForm orderId={order.id} lines={shipLines} />}
+
+              {order.status === "PARTIALLY_FULFILLED" &&
+                (isOwner ? (
+                  <CloseShortForm
+                    orderId={order.id}
+                    unshippedLabel={`${unshippedUnits} unit${unshippedUnits === 1 ? "" : "s"}, ${formatMoney(unshippedValue, order.currency)}`}
+                  />
+                ) : (
+                  <p className="text-xs text-text-muted">Closing remaining unshipped units short requires owner permission.</p>
+                ))}
+
+              {shipments.length > 0 && (
+                <div className="divide-y divide-line/70 border-t border-line/60 pt-2">
+                  {shipments.map((sh) => (
+                    <div key={sh.id} className="py-3 text-xs flex flex-col gap-1.5">
+                      <div className="flex justify-between font-semibold text-ink">
+                        <span className="font-mono">{sh.reference} {sh.carrier ? `· ${sh.carrier}` : ""}</span>
+                        <span className="font-tabular font-normal text-text-muted">{formatDateTime(sh.createdAt)}</span>
+                      </div>
+                      {sh.trackingReference && (
+                        <p className="font-tabular text-text-muted">Tracking: <strong className="text-ink">{sh.trackingReference}</strong></p>
+                      )}
+                      <div className="flex flex-wrap gap-2 pt-0.5">
+                        {sh.items.map((it) => (
+                          <span key={it.id} className="rounded-md border border-line bg-paper/60 px-2 py-0.5 font-medium text-ink">
+                            {it.quantity} × {it.orderItem.product.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Returns & Adjustments Section */}
+          {(returns.length > 0 || canRequestReturn) && (
+            <div className="card-base rounded-2xl p-5 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between border-b border-line/60 pb-3">
+                <div>
+                  <h2 className="font-display text-sm font-bold text-ink">Returns &amp; Restitution</h2>
+                  <p className="text-xs text-text-muted">Inventory intake and customer refund tracking.</p>
+                </div>
+              </div>
+
+              {returns.map((ret) => (
+                <div key={ret.id} className="rounded-xl border border-line bg-paper/30 p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-mono text-sm font-bold text-ink">{ret.reference}</p>
+                      <p className="text-xs text-text-muted">
+                        {ret.reason} · requested by {ret.requestedBy?.name ?? "—"} · {formatDateTime(ret.createdAt)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-tabular text-sm font-bold text-ink">
+                        {formatMoney(ret.refundCents, order.currency)}
+                      </p>
+                      <div className="mt-1 flex gap-1 justify-end">
+                        {ret.kind === "RETURN" && <ReturnStatusBadge status={ret.status} />}
+                        {ret.status !== "REJECTED" && ret.status !== "REQUESTED" && (
+                          <RefundStatusBadge status={ret.refundStatus} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <ReturnActions
+                    returnId={ret.id}
+                    status={ret.status}
+                    refundStatus={ret.refundStatus}
+                    isOwner={isOwner}
+                    valueNaira={ret.valueCents / 100}
+                  />
+                </div>
+              ))}
+
+              {canRequestReturn && (
+                <div className="border-t border-line/60 pt-3">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Submit Return Request</h3>
+                  <RequestReturnForm orderId={order.id} lines={returnableLines} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Audit History Log */}
+          <div className="card-base rounded-2xl p-5 shadow-xs">
+            <div className="border-b border-line/60 pb-3 mb-3">
+              <h2 className="font-display text-sm font-bold text-ink">Audit Trail</h2>
+              <p className="text-xs text-text-muted">Immutable event record for compliance and accountability.</p>
+            </div>
+            {auditLog.length === 0 ? (
+              <p className="text-xs text-text-muted">No audit events recorded yet.</p>
+            ) : (
+              <div className="divide-y divide-line/60 text-xs">
+                {auditLog.map((entry) => (
+                  <div key={entry.id} className="flex justify-between py-2 text-ink">
+                    <span className="font-medium">{AUDIT_ACTION_LABEL[entry.action] ?? entry.action}</span>
+                    <span className="font-tabular text-text-muted">
+                      {entry.actor?.name ?? "System"} · {formatDateTime(entry.createdAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </section>
+        </div>
+
+        {/* Right Column (1 Col): Customer, Delivery Details, Payments */}
+        <div className="space-y-6">
+          {/* Customer Profile Card */}
+          <div className="card-base rounded-2xl p-5 space-y-3.5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-line/60 pb-2">
+              <h3 className="font-display text-sm font-bold text-ink">Customer Account</h3>
+              <Link
+                href={`/customers/${order.customer.id}`}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+              >
+                <span>View Full Profile</span>
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between items-baseline">
+                <span className="text-text-muted">Name</span>
+                <span className="font-bold text-ink">{order.customer.name ?? "Unnamed"}</span>
+              </div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-text-muted">Phone</span>
+                <span className="font-tabular font-medium text-ink">{order.customer.phone}</span>
+              </div>
+              {order.conversation && (
+                <div className="flex justify-between items-center border-t border-line/60 pt-2">
+                  <span className="text-text-muted">WhatsApp Thread</span>
+                  <Link
+                    href={`/inbox/${order.conversation.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-500/20 transition-colors"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Open Chat</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Delivery Details Card */}
+          <div className="card-base rounded-2xl p-5 space-y-3 shadow-xs">
+            <div className="border-b border-line/60 pb-2">
+              <h3 className="font-display text-sm font-bold text-ink">Delivery Logistics &amp; Instructions</h3>
+            </div>
+            <OrderDetailsForm
+              orderId={order.id}
+              notes={order.notes}
+              deliveryAddress={order.deliveryAddress}
+              dueAt={order.dueAt}
+              addressOptions={order.customer.addresses}
+              editable={order.status !== "FULFILLED" && order.status !== "CANCELLED"}
+            />
+          </div>
+
+          {/* Payment Summary Card */}
+          {order.status !== "DRAFT" && (
+            <div className="card-base rounded-2xl p-5 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between border-b border-line/60 pb-2">
+                <h3 className="font-display text-sm font-bold text-ink">Settlement Ledger</h3>
+                <span className="font-tabular text-xs font-bold text-ink">
+                  {formatMoney(paidCents, order.currency)}
+                </span>
+              </div>
+
+              {paidCents > order.totalCents && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-2.5 text-xs font-semibold text-amber-900">
+                  Overpaid balance: {formatMoney(paidCents - order.totalCents, order.currency)}
+                </div>
+              )}
+
+              {order.payments.length === 0 ? (
+                <p className="text-xs text-text-muted">No payments recorded yet.</p>
+              ) : (
+                <div className="divide-y divide-line/60 text-xs">
+                  {order.payments.map((p) => (
+                    <div key={p.id} className="py-2.5 flex justify-between items-baseline">
+                      <div>
+                        <p className="font-semibold text-ink">
+                          {p.method === "PROVIDER" ? "Paystack Card / Transfer" : "Direct Bank Transfer"}
+                        </p>
+                        <p className="font-tabular text-xs text-text-muted">{formatDateTime(p.createdAt)}</p>
+                      </div>
+                      <span className="font-tabular text-sm font-bold text-ink">
+                        {formatMoney(p.amountCents, p.currency)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

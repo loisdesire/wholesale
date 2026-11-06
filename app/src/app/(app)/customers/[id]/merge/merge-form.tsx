@@ -2,6 +2,7 @@
 
 import { useSubmitAction } from "@/lib/use-submit-action";
 import { mergeCustomersAction, type FormState } from "../../actions";
+import { GitMerge, Loader2 } from "lucide-react";
 
 export function MergeForm({
   sourceId,
@@ -14,42 +15,57 @@ export function MergeForm({
   sourceLabel: string;
   targetLabel: string;
 }) {
-  const { state, pending, formProps } = useSubmitAction(mergeCustomersAction.bind(null, sourceId, targetId), {
-    error: null,
-  } as FormState);
+  const { state, pending, formProps } = useSubmitAction(
+    mergeCustomersAction.bind(null, sourceId, targetId),
+    { error: null } as FormState
+  );
+
   return (
     <form
       {...formProps}
       onSubmit={(e) => {
-        if (!window.confirm(`Merge ${sourceLabel} into ${targetLabel}? You can undo this afterwards.`)) {
+        if (!window.confirm(`Merge ${sourceLabel} into ${targetLabel}? This will consolidate orders and conversations.`)) {
           e.preventDefault();
           return;
         }
         formProps.onSubmit(e);
       }}
-      className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4"
+      className="card-base p-5 flex flex-col gap-4"
     >
-      <label htmlFor="note" className="text-sm font-medium text-ink">
-        Why these are the same person (kept in the history)
-      </label>
-      <input
-        id="note"
-        name="note"
-        placeholder="e.g. confirmed by phone — she has two lines"
-        className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-      />
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="note" className="text-xs font-semibold uppercase tracking-wider text-ink">
+          Merge Justification & Audit Note
+        </label>
+        <input
+          id="note"
+          name="note"
+          required
+          placeholder="e.g. Verified customer has two WhatsApp lines; requested consolidation"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+        />
+        <p className="text-xs text-text-muted">
+          This note is permanently recorded in the immutable audit trail for both customer identities.
+        </p>
+      </div>
+
       {state.error && (
-        <p role="alert" className="text-sm text-status-attention-fg">
+        <p role="alert" className="text-xs font-medium text-status-attention-fg">
           {state.error}
         </p>
       )}
-      <div>
+
+      <div className="flex items-center justify-end">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-all hover:bg-accent-2 disabled:opacity-60 shadow-sm"
         >
-          {pending ? "Merging…" : `Merge ${sourceLabel} into ${targetLabel}`}
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <GitMerge className="h-4 w-4" />
+          )}
+          <span>{pending ? "Merging Records…" : `Merge Into ${targetLabel}`}</span>
         </button>
       </div>
     </form>

@@ -28,6 +28,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       // Private — never cached by a shared/CDN cache, since this is tenant-private content
       // served from an authenticated route, not a public asset.
       "Cache-Control": "private, max-age=86400",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'",
     },
   });
 }

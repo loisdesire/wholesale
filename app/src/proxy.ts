@@ -1,10 +1,11 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PREFIXES = ["/login", "/images"];
 
 export default auth((req) => {
-  const isPublic = PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p));
+  const isExactRoot = req.nextUrl.pathname === "/";
+  const isPublic = isExactRoot || PUBLIC_PREFIXES.some((p) => req.nextUrl.pathname.startsWith(p));
   const isLoggedIn = !!req.auth;
 
   if (!isLoggedIn && !isPublic) {
@@ -13,8 +14,8 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isLoggedIn && isPublic) {
-    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  if (isLoggedIn && (req.nextUrl.pathname.startsWith("/login") || isExactRoot)) {
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 });
 

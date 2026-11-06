@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { unreadCount } from "@/lib/notifications";
@@ -5,6 +6,9 @@ import { Nav } from "@/components/nav";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const session = await auth();
+  if (!session) {
+    redirect("/login");
+  }
   // The organizations this user belongs to (identity data, not tenant data).
   const [memberships, unread] = await Promise.all([
     session
@@ -29,7 +33,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         unreadNotifications={unread}
         isPlatformAdmin={session?.user.isPlatformAdmin ?? false}
       />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 md:px-10 md:py-8">{children}</main>
+      <main className="flex-1 min-w-0 px-4 py-6 md:px-10 md:py-8">{children}</main>
     </div>
   );
 }
