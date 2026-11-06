@@ -1,9 +1,17 @@
 import { NextRequest } from "next/server";
+import crypto from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { resolveOrganizationForWhatsApp } from "@/lib/whatsapp-routing";
 import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates, fetchMediaBytes, WhatsAppMediaError } from "@/lib/whatsapp";
 import { ingestInboundMessage } from "@/lib/inbox";
 import { applyMessageStatus } from "@/lib/message-status";
+
+function safeEqual(a: string, b: string | undefined): boolean {
+  if (!b) return false;
+  const ah = crypto.createHash("sha256").update(a).digest();
+  const bh = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(ah, bh);
+}
 
 /**
  * Meta's one-time webhook verification handshake, run when the webhook URL
@@ -15,7 +23,7 @@ export async function GET(req: NextRequest) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  if (mode === "subscribe" && challenge && token && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+  if (mode === "subscribe" && challenge && token && safeEqual(token, process.env.WHATSAPP_VERIFY_TOKEN)) {
     return new Response(challenge, { status: 200 });
   }
   return new Response("Forbidden", { status: 403 });

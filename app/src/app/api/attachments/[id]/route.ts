@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
+import { imageResponseHeaders } from "@/lib/images";
 
 /**
  * Streams a stored inbound image's bytes. MessageAttachment has no organizationId of its own —
@@ -22,12 +23,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   return new Response(new Uint8Array(attachment.data), {
-    headers: {
-      "Content-Type": attachment.mimeType,
-      "Content-Length": String(attachment.sizeBytes),
-      // Private — never cached by a shared/CDN cache, since this is tenant-private content
-      // served from an authenticated route, not a public asset.
-      "Cache-Control": "private, max-age=86400",
-    },
+    headers: imageResponseHeaders(attachment.mimeType, attachment.sizeBytes),
   });
 }

@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { tenantDb, transaction } from "@/lib/db";
 import { recordStockMovement, InsufficientStockError, StockInvariantError } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
+import { isAllowedImageType } from "@/lib/images";
 import { parseProductsCsv, commitProductsImport, type ImportRowResult } from "@/lib/csv";
 
 export type FormState = { error: string | null };
@@ -307,8 +308,8 @@ export async function uploadProductImageAction(
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose an image file." };
   }
-  if (!file.type.startsWith("image/")) {
-    return { error: "That file isn't an image." };
+  if (!isAllowedImageType(file.type)) {
+    return { error: "Use a JPEG, PNG, WebP or GIF image." };
   }
   if (file.size > MAX_IMAGE_BYTES) {
     return { error: `Image is too large (max ${MAX_IMAGE_BYTES / (1024 * 1024)}MB).` };
@@ -324,7 +325,7 @@ export async function uploadProductImageAction(
   await db.productImage.create({
     data: {
       productId,
-      mimeType: file.type,
+      mimeType: file.type.toLowerCase(),
       data,
       sizeBytes: data.byteLength,
       position: (maxPosition._max.position ?? -1) + 1,

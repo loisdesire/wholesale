@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
+import { imageResponseHeaders } from "@/lib/images";
 
 /**
  * Streams a product photo's bytes — same shape as /api/attachments/[id]. ProductImage has no
@@ -19,10 +20,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   return new Response(new Uint8Array(image.data), {
-    headers: {
-      "Content-Type": image.mimeType,
-      "Content-Length": String(image.sizeBytes),
-      "Cache-Control": "private, max-age=86400",
-    },
+    headers: imageResponseHeaders(image.mimeType, image.sizeBytes),
   });
 }

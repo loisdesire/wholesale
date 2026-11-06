@@ -250,6 +250,17 @@ export async function fetchMediaBytes(mediaId: string): Promise<{ data: Buffer; 
     throw new WhatsAppMediaError(`Media ${mediaId} is too large (${meta.file_size} bytes).`);
   }
 
+  // The bearer token is only ever sent to Meta's own media hosts over HTTPS.
+  let mediaUrl: URL;
+  try {
+    mediaUrl = new URL(meta.url);
+  } catch {
+    throw new WhatsAppMediaError(`Media ${mediaId} has an invalid download URL.`);
+  }
+  if (mediaUrl.protocol !== "https:" || !/(^|\.)(fbsbx\.com|facebook\.com|fbcdn\.net|whatsapp\.net)$/.test(mediaUrl.hostname)) {
+    throw new WhatsAppMediaError(`Media ${mediaId} download URL is not a Meta host.`);
+  }
+
   const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!fileRes.ok) {
     throw new WhatsAppMediaError(`Could not download media ${mediaId} (${fileRes.status}).`);
