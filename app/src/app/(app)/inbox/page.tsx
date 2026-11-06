@@ -27,13 +27,13 @@ export default async function InboxPage() {
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">WhatsApp Desk</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Conversations Inbox</h1>
             <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
               {conversations.length} active
             </span>
           </div>
           <p className="mt-1 text-sm text-text-muted">
-            Live customer message streams, order negotiations, and catalogue inquiries.
+            Live customer message streams, order negotiations, and catalogue inquiries across Telegram and WhatsApp.
           </p>
         </div>
       </header>
@@ -46,7 +46,7 @@ export default async function InboxPage() {
           </div>
           <h2 className="mt-3 font-display text-base font-bold text-ink">No conversations active</h2>
           <p className="mt-1 max-w-sm text-xs text-text-muted">
-            Incoming WhatsApp messages from registered and prospective buyers will appear here in real-time.
+            Incoming customer messages from Telegram and WhatsApp will appear here in real-time.
           </p>
         </div>
       ) : (
@@ -66,6 +66,13 @@ export default async function InboxPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-ink text-base truncate">
                           {c.customer.name ?? "Unnamed Customer"}
+                        </span>
+                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
+                          c.channel === "TELEGRAM"
+                            ? "bg-sky-50 text-sky-700 border border-sky-200"
+                            : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        }`}>
+                          {c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}
                         </span>
                       </div>
                       <p className="font-tabular text-xs text-text-muted mt-0.5">{c.customer.phone}</p>
@@ -140,10 +147,19 @@ export default async function InboxPage() {
                         {/* Customer Info */}
                         <td className="py-3.5 pl-5 pr-4">
                           <Link href={`/inbox/${c.id}`} className="block">
-                            <p className="font-semibold text-ink group-hover:text-accent transition-colors">
-                              {c.customer.name ?? "Unnamed Customer"}
-                            </p>
-                            <p className="font-tabular text-xs text-text-muted">{c.customer.phone}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-ink group-hover:text-accent transition-colors truncate">
+                                {c.customer.name ?? "Unnamed Customer"}
+                              </p>
+                              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
+                                c.channel === "TELEGRAM"
+                                  ? "bg-sky-50 text-sky-700 border border-sky-200"
+                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              }`}>
+                                {c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}
+                              </span>
+                            </div>
+                            <p className="font-tabular text-xs text-text-muted mt-0.5">{c.customer.phone}</p>
                           </Link>
                         </td>
 

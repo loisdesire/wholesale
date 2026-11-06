@@ -1,40 +1,44 @@
-import { ConversationStatus, Prisma } from "@prisma/client";
+import { ConversationStatus, ConversationChannel, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { tenantDb, transaction } from "@/lib/db";
 import { findOrCreateCustomerByPhoneTx } from "@/lib/customers";
-import type { InboundWhatsAppMessage } from "@/lib/whatsapp";
 import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
+import { sendTelegramTextMessage, TelegramSendError } from "@/lib/telegram";
+
+export type InboundChannelMessage = {
+  externalId: string;
+  from: string;
+  contactName?: string;
+  timestamp: Date;
+  body: string;
+  channel?: ConversationChannel;
+  media?: { mediaId?: string; fileId?: string; mimeType: string };
+};
 
 /**
- * Stores one inbound WhatsApp message: finds or creates the customer and an
+ * Stores one inbound message from WhatsApp or Telegram: finds or creates the customer and an
  * open conversation for them, then inserts the message. Idempotent on
- * Message.externalId — a webhook Meta redelivers (their retry policy, or a
- * duplicate event) is detected via the unique-constraint violation and
+ * Message.externalId — a webhook redelivery is detected via the unique-constraint violation and
  * treated as a no-op rather than creating a duplicate message.
  *
- * `attachment`, if given, is already-downloaded image bytes (see
- * src/lib/whatsapp.ts's fetchMediaBytes) — downloading is network I/O and deliberately happens
- * outside this function's transaction, at the webhook route's call site, so a failed download
- * never blocks the message itself from being saved (the route logs it and moves on, same as
- * every other "couldn't fully apply, but acknowledge" case there).
- *
- * Returns null when the message was already recorded (duplicate delivery).
+ * `attachment`, if given, is already-downloaded image or voice bytes.
  */
 export async function ingestInboundMessage(
   organizationId: string,
-  message: InboundWhatsAppMessage,
+  message: InboundChannelMessage,
   attachment?: { data: Buffer; mimeType: string }
 ) {
+  const channel = message.channel || ConversationChannel.WHATSAPP;
+
   return transaction(organizationId, async (tx) => {
-    // Matched on the normalized phone, so WhatsApp's "2348031234567" finds the
-    // customer staff entered as "0803 123 4567" instead of creating a second one.
+    // Matched on the normalized phone/identifier so duplicates are prevented
     const customer = await findOrCreateCustomerByPhoneTx(tx, organizationId, message.from, message.contactName);
 
     let conversation = await tx.conversation.findFirst({
       where: {
         organizationId,
         customerId: customer.id,
-        channel: "WHATSAPP",
+        channel,
         status: { not: ConversationStatus.RESOLVED },
       },
       orderBy: { lastMessageAt: "desc" },
@@ -44,7 +48,7 @@ export async function ingestInboundMessage(
         data: {
           organizationId,
           customerId: customer.id,
-          channel: "WHATSAPP",
+          channel,
           status: ConversationStatus.NEW,
           lastMessageAt: message.timestamp,
         },
@@ -78,8 +82,6 @@ export async function ingestInboundMessage(
         where: { id: conversation.id },
         data: {
           lastMessageAt: message.timestamp,
-          // A customer messaging back into a resolved/AI-handled thread needs
-          // a human to notice; anything already further along stays as-is.
           status:
             conversation.status === ConversationStatus.AI_HANDLING
               ? ConversationStatus.AI_HANDLING
@@ -98,7 +100,7 @@ export async function ingestInboundMessage(
 }
 
 /**
- * Sends a staff reply over WhatsApp and only records it as a Message once
+ * Sends a staff reply over WhatsApp or Telegram and only records it as a Message once
  * the send actually succeeds — never claim a message went out that didn't.
  */
 export async function sendStaffReply(params: {
@@ -108,7 +110,20 @@ export async function sendStaffReply(params: {
   body: string;
 }) {
   const organization = await prisma.organization.findUnique({ where: { id: params.organizationId } });
-  const { messageId } = await sendWhatsAppTextMessage(params.to, params.body, organization?.whatsappPhoneNumberId);
+  const db = tenantDb(params.organizationId);
+  const conv = await db.conversation.findUnique({
+    where: { id: params.conversationId },
+    select: { channel: true },
+  });
+
+  let messageId: string;
+  if (conv?.channel === ConversationChannel.TELEGRAM) {
+    const res = await sendTelegramTextMessage(params.to, params.body, organization?.telegramBotToken);
+    messageId = res.messageId;
+  } else {
+    const res = await sendWhatsAppTextMessage(params.to, params.body, organization?.whatsappPhoneNumberId);
+    messageId = res.messageId;
+  }
 
   return transaction(params.organizationId, async (tx) => {
     const message = await tx.message.create({
@@ -120,9 +135,6 @@ export async function sendStaffReply(params: {
         externalId: messageId,
       },
     });
-    // Status is left alone here — replying is an action, not a state
-    // decision. Staff marks a conversation resolved explicitly; a new
-    // inbound message reopens it (see ingestInboundMessage).
     await tx.conversation.update({
       where: { id: params.conversationId },
       data: { lastMessageAt: new Date() },
@@ -144,4 +156,4 @@ export async function markConversationResolved(params: { conversationId: string;
   });
 }
 
-export { WhatsAppSendError };
+export { WhatsAppSendError, TelegramSendError };

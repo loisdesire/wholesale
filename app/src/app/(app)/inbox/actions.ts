@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tenantDb, transaction } from "@/lib/db";
-import { sendStaffReply, markConversationResolved, WhatsAppSendError } from "@/lib/inbox";
+import { sendStaffReply, markConversationResolved, WhatsAppSendError, TelegramSendError } from "@/lib/inbox";
+import { sendTelegramTextMessage } from "@/lib/telegram";
 import { sendWhatsAppTextMessage } from "@/lib/whatsapp";
 import { runAIAssist, isAIConfigured } from "@/lib/ai/engine";
 
@@ -54,7 +55,7 @@ export async function sendReplyAction(
       body: parsed.data.body,
     });
   } catch (err) {
-    if (err instanceof WhatsAppSendError) {
+    if (err instanceof WhatsAppSendError || err instanceof TelegramSendError) {
       return { error: err.message };
     }
     throw err;
@@ -108,11 +109,22 @@ export async function runAIAssistAction(conversationId: string): Promise<AIAssis
   let sent = false;
   try {
     const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
-    const { messageId } = await sendWhatsAppTextMessage(
-      conversation.customer.phone,
-      result.replyText,
-      organization?.whatsappPhoneNumberId
-    );
+    let messageId: string;
+    if (conversation.channel === "TELEGRAM") {
+      const res = await sendTelegramTextMessage(
+        conversation.customer.phone,
+        result.replyText,
+        organization?.telegramBotToken
+      );
+      messageId = res.messageId;
+    } else {
+      const res = await sendWhatsAppTextMessage(
+        conversation.customer.phone,
+        result.replyText,
+        organization?.whatsappPhoneNumberId
+      );
+      messageId = res.messageId;
+    }
     await transaction(session.user.organizationId, async (tx) => {
       await tx.message.create({
         data: {

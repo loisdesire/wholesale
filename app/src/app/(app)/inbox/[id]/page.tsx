@@ -5,6 +5,7 @@ import { tenantDb } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { ConversationStatusBadge, OrderStatusBadge } from "@/components/status-badge";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
+import { isTelegramConfigured } from "@/lib/telegram";
 import { isAIConfigured } from "@/lib/ai/engine";
 import { listOrganizationMembers } from "@/lib/membership";
 import { AssigneeControl } from "@/components/assignee-control";
@@ -47,7 +48,8 @@ export default async function ConversationDetailPage({ params }: { params: Promi
   });
   if (!conversation) notFound();
 
-  const whatsappReady = isWhatsAppConfigured();
+  const isTelegram = conversation.channel === "TELEGRAM";
+  const channelReady = isTelegram ? isTelegramConfigured() : isWhatsAppConfigured();
   const aiReady = isAIConfigured();
   const members = await listOrganizationMembers(organizationId);
   const isOwner = session!.user.role === "OWNER";
@@ -60,7 +62,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
           <Link
             href="/inbox"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-paper/60 text-ink hover:bg-paper transition-colors active:scale-95"
-            title="Return to WhatsApp desk"
+            title="Return to Inbox"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -70,6 +72,9 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                 {conversation.customer.name ?? "Unnamed Customer"}
               </h1>
               <ConversationStatusBadge status={conversation.status} />
+              <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
+                {isTelegram ? "Telegram" : "WhatsApp"}
+              </span>
             </div>
             <p className="mt-0.5 font-tabular text-xs text-text-muted flex items-center gap-1.5">
               <Phone className="h-3 w-3 text-text-muted/70" />
@@ -225,11 +230,11 @@ export default async function ConversationDetailPage({ params }: { params: Promi
 
           {/* Quick Reply Form Dock */}
           <div className="space-y-2">
-            {whatsappReady ? (
-              <ReplyForm conversationId={conversation.id} />
+            {channelReady ? (
+              <ReplyForm conversationId={conversation.id} channel={conversation.channel} />
             ) : (
               <div className="rounded-2xl border border-dashed border-line bg-paper/30 p-4 text-center text-xs text-text-muted">
-                WhatsApp credentials not connected in this environment — replies can be previewed or logged.
+                {isTelegram ? "Telegram bot token" : "WhatsApp credentials"} not connected in this environment — replies can be previewed or logged.
               </div>
             )}
           </div>

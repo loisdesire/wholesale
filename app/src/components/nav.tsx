@@ -10,8 +10,6 @@ import {
   ShoppingBag,
   Layers,
   Users,
-  Activity,
-  BarChart3,
   Search,
   CreditCard,
   ShieldCheck,
@@ -66,23 +64,16 @@ export function Nav({
       title: "Daily Operations",
       items: [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/inbox", label: "WhatsApp Inbox", icon: Inbox },
-        { href: "/orders", label: "Orders & Shipments", icon: ShoppingBag },
-        { href: "/operations", label: "Operations Queue", icon: Activity },
+        { href: "/inbox", label: "Inbox", icon: Inbox },
+        { href: "/orders", label: "Orders", icon: ShoppingBag },
       ],
     },
     {
       title: "Commerce & Trade",
       items: [
-        { href: "/catalogue", label: "Product Catalogue", icon: Layers },
-        { href: "/customers", label: "Customer Directory", icon: Users },
-      ],
-    },
-    {
-      title: "Analytics & Search",
-      items: [
-        { href: "/reports", label: "Financial Reports", icon: BarChart3 },
-        { href: "/search", label: "Search Directory", icon: Search },
+        { href: "/catalogue", label: "Catalogue & Stock", icon: Layers },
+        { href: "/customers", label: "Customers", icon: Users },
+        { href: "/search", label: "Quick Search", icon: Search },
       ],
     },
   ];

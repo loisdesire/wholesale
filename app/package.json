@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "test": "vitest run",
     "db:check-isolation": "tsx scripts/check-isolation.ts",
-    "ai:eval": "tsx scripts/run-ai-eval.ts"
+    "ai:eval": "tsx scripts/run-ai-eval.ts",
+    "telegram:poll": "tsx scripts/telegram-poll.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

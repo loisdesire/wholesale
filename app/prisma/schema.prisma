@@ -26,6 +26,7 @@ enum UserRole {
 
 enum ConversationChannel {
   WHATSAPP
+  TELEGRAM
 }
 
 enum ConversationStatus {
@@ -114,6 +115,8 @@ model Organization {
   // The WhatsApp Cloud API phone number id this organization receives messages on,
   // so an inbound webhook can be routed to the right tenant.
   whatsappPhoneNumberId String?  @unique
+  telegramBotToken      String?
+  telegramBotUsername   String?
   // Per-organization overrides of the default SLA thresholds in src/lib/ops-config.ts
   // (a partial Record<keyof typeof SLA, number>; an absent key uses the default).
   slaOverrides          Json?
