@@ -14,7 +14,7 @@ export function isAIConfigured() {
 // deliberately on cost, not capability: PLAN_LIMITS.aiRepliesPerMonth is a real per-reply cost
 // line (see docs/PROGRESS.md's pricing discussion), and this app's task doesn't need flagship
 // reasoning depth for most replies. Set OPENAI_MODEL to override without a code change.
-const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const MODEL = process.env.OPENAI_MODEL || "gpt-6-luna";
 const MAX_TOOL_ROUNDS = 4;
 
 const searchCatalogueInput = z.object({ query: z.string().min(1) });

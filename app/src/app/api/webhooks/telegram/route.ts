@@ -3,6 +3,7 @@ import { resolveOrganizationForTelegram } from "@/lib/telegram-routing";
 import { parseTelegramUpdate, fetchTelegramFileBytes, TelegramMediaError } from "@/lib/telegram";
 import { ingestInboundMessage, dispatchAIAssistReply } from "@/lib/inbox";
 import { isAIConfigured } from "@/lib/ai/engine";
+import { transcribeAudio } from "@/lib/ai/transcribe";
 import { ConversationChannel } from "@prisma/client";
 
 /**
@@ -54,6 +55,13 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const detail = err instanceof TelegramMediaError ? err.message : String(err);
       console.warn(`Telegram webhook: Could not download media ${message.media.fileId}: ${detail}`);
+    }
+
+    if (attachment && (message.media.mimeType.startsWith("audio/") || message.body.startsWith("[voice note"))) {
+      const transcript = await transcribeAudio(attachment.data, "voice.ogg", message.media.mimeType);
+      if (transcript) {
+        message.body = transcript;
+      }
     }
   }
 

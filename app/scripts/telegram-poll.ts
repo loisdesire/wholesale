@@ -5,6 +5,7 @@ import { parseTelegramUpdate, fetchTelegramFileBytes } from "../src/lib/telegram
 import { resolveOrganizationForTelegram } from "../src/lib/telegram-routing";
 import { ingestInboundMessage, dispatchAIAssistReply } from "../src/lib/inbox";
 import { isAIConfigured } from "../src/lib/ai/engine";
+import { transcribeAudio } from "../src/lib/ai/transcribe";
 import { ConversationChannel } from "@prisma/client";
 
 /**
@@ -68,6 +69,14 @@ async function main() {
             try {
               attachment = await fetchTelegramFileBytes(message.media.fileId, token);
               console.log(`   ✓ Downloaded ${attachment.data.byteLength} bytes.`);
+              if (message.media.mimeType.startsWith("audio/") || message.body.startsWith("[voice note")) {
+                console.log("   🎙️ Transcribing voice note via Whisper...");
+                const transcript = await transcribeAudio(attachment.data, "voice.ogg", message.media.mimeType);
+                if (transcript) {
+                  console.log(`   📝 Transcript: "${transcript}"`);
+                  message.body = transcript;
+                }
+              }
             } catch (err) {
               console.warn(`   ⚠️ Media download failed: ${err}`);
             }
