@@ -98,8 +98,8 @@ export async function sendTelegramTextMessage(
     return { messageId: `mock_tg_${Date.now()}` };
   }
 
-  // Strip tg_ prefix if passed from customer identity
-  const cleanChatId = chatId.replace(/^tg_/, "");
+  // Strip tg_ prefix and leading + if passed from customer identity or phone formatter
+  const cleanChatId = chatId.replace(/^tg_/, "").replace(/^\+/, "").trim();
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",

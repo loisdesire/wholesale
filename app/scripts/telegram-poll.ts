@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config({ override: true });
+
 import { parseTelegramUpdate, fetchTelegramFileBytes } from "../src/lib/telegram";
 import { resolveOrganizationForTelegram } from "../src/lib/telegram-routing";
 import { ingestInboundMessage, dispatchAIAssistReply } from "../src/lib/inbox";
