@@ -182,7 +182,7 @@ export function AdminTable({ overview }: Props) {
           <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-paper/60 text-left text-xs font-semibold uppercase tracking-wider text-ink/80">
-                <th className="w-64 px-4 py-3">
+                <th className="w-56 px-4 py-3">
                   <button
                     onClick={() => toggleSort("name")}
                     className="inline-flex items-center gap-1 text-text-muted hover:text-ink transition-colors"
@@ -191,15 +191,15 @@ export function AdminTable({ overview }: Props) {
                     <ArrowUpDown className="h-3 w-3" />
                   </button>
                 </th>
-                <th className="w-32 px-4 py-3">Plan</th>
-                <th className="w-32 px-4 py-3">Status</th>
-                <th className="w-48 px-4 py-3">Runway / Cycle</th>
-                <th className="w-40 px-4 py-3 text-right">
+                <th className="w-28 px-4 py-3">Plan</th>
+                <th className="w-28 px-4 py-3">Status</th>
+                <th className="w-44 px-4 py-3">Runway / Cycle</th>
+                <th className="w-28 px-4 py-3 text-right">
                   <span className="inline-flex items-center justify-end gap-1">
                     <Users className="h-3 w-3" /> Seats
                   </span>
                 </th>
-                <th className="w-44 px-4 py-3 text-right">
+                <th className="w-32 px-4 py-3 text-right">
                   <button
                     onClick={() => toggleSort("orders")}
                     className="inline-flex items-center justify-end gap-1 text-text-muted hover:text-ink transition-colors ml-auto"
@@ -209,12 +209,14 @@ export function AdminTable({ overview }: Props) {
                     <ArrowUpDown className="h-3 w-3" />
                   </button>
                 </th>
-                <th className="w-40 px-4 py-3 text-right">
+                <th className="w-32 px-4 py-3 text-right">
                   <span className="inline-flex items-center justify-end gap-1">
                     <Sparkles className="h-3 w-3" /> AI Usage
                   </span>
                 </th>
-                <th className="w-64 px-4 py-3 text-right">Support Action</th>
+                <th className="w-60 px-4 py-3 text-right sticky right-0 z-10 bg-paper/95 backdrop-blur-xs border-l border-line/60 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.06)]">
+                  Support Action
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -330,7 +332,7 @@ export function AdminTable({ overview }: Props) {
                     </td>
 
                     {/* Actions Column */}
-                    <td className="px-4 py-3.5 text-right align-middle">
+                    <td className="px-4 py-3.5 text-right align-middle sticky right-0 z-10 bg-surface/95 backdrop-blur-xs border-l border-line/60 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.06)]">
                       <div className="flex justify-end">
                         <AdminRowActions organizationId={org.id} status={org.subscriptionStatus} />
                       </div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatMoney } from "@/lib/format";
 import type { OwnerAIBriefing } from "@/lib/owner-ai";
-import { ArrowRight, TrendingUp, ShieldAlert, ArrowUpRight } from "lucide-react";
+import { ArrowRight, ShieldAlert, ArrowUpRight } from "lucide-react";
 
 export function OwnerAIBriefingCard({ briefing }: { briefing: OwnerAIBriefing }) {
   const { metrics, criticalAlerts } = briefing;
@@ -15,9 +15,8 @@ export function OwnerAIBriefingCard({ briefing }: { briefing: OwnerAIBriefing })
           <div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-text-muted">Cash Settled (24h)</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-                <TrendingUp className="h-3 w-3" />
-                <span>+18.4%</span>
+              <span className="rounded-md bg-paper border border-line px-1.5 py-0.5 font-mono text-[11px] font-bold text-ink/75">
+                24 Hours
               </span>
             </div>
             <p className="font-display text-2xl sm:text-3xl font-bold font-tabular text-ink mt-2">
@@ -45,7 +44,7 @@ export function OwnerAIBriefingCard({ briefing }: { briefing: OwnerAIBriefing })
           </div>
           <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between text-xs text-text-muted">
             <span>Settled bank receipts</span>
-            <span className="font-medium text-emerald-700">Healthy velocity</span>
+            <span className="font-medium text-ink/75">Bank &amp; Paystack</span>
           </div>
         </div>
 

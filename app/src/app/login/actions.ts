@@ -19,7 +19,8 @@ export async function loginAction(
         typeof callbackUrl === "string" &&
         callbackUrl.startsWith("/") &&
         !callbackUrl.startsWith("//") &&
-        !callbackUrl.startsWith("/\\")
+        !callbackUrl.startsWith("/\\") &&
+        callbackUrl !== "/"
           ? callbackUrl
           : "/dashboard",
     });

@@ -6,7 +6,10 @@ export default async function LoginPage({
 }: PageProps<"/login">) {
   const params = await searchParams;
   const callbackUrlRaw = params.callbackUrl;
-  const callbackUrl = typeof callbackUrlRaw === "string" ? callbackUrlRaw : "/";
+  const callbackUrl =
+    typeof callbackUrlRaw === "string" && callbackUrlRaw !== "/"
+      ? callbackUrlRaw
+      : "/dashboard";
 
   return (
     <div className="relative flex min-h-screen w-full flex-col md:flex-row bg-paper selection:bg-accent selection:text-white">

@@ -33,10 +33,17 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: true, ignored: true });
   }
 
-  const organization = await resolveOrganizationForTelegram();
+  const { searchParams } = new URL(req.url);
+  const token =
+    searchParams.get("token") ||
+    searchParams.get("secret") ||
+    req.headers.get("x-telegram-bot-api-secret-token") ||
+    process.env.TELEGRAM_BOT_TOKEN;
+
+  const organization = await resolveOrganizationForTelegram(token);
   if (!organization) {
-    console.error("Telegram webhook: No organization found to route message to.");
-    return Response.json({ ok: false, error: "unrouted" });
+    console.warn("Telegram webhook: Message matches no organization (unrouted) — not stored.");
+    return Response.json({ ok: true, ignored: true, error: "unrouted" });
   }
 
   let attachment: { data: Buffer; mimeType: string } | undefined;
