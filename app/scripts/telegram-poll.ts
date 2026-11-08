@@ -7,6 +7,7 @@ import { ingestInboundMessage, dispatchAIAssistReply } from "../src/lib/inbox";
 import { isAIConfigured } from "../src/lib/ai/engine";
 import { transcribeAudio } from "../src/lib/ai/transcribe";
 import { ConversationChannel } from "@prisma/client";
+import { prisma } from "../src/lib/prisma";
 
 /**
  * Local Telegram Long-Polling Script
@@ -24,10 +25,19 @@ async function main() {
     process.exit(1);
   }
 
-  const org = await resolveOrganizationForTelegram(token);
+  let org = await resolveOrganizationForTelegram(token);
   if (!org) {
-    console.error("❌ Error: No organization found in the database. Run `npm run db:seed` first.");
-    process.exit(1);
+    const primary = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
+    if (primary) {
+      org = await prisma.organization.update({
+        where: { id: primary.id },
+        data: { telegramBotToken: token },
+      });
+      console.log(`🔗 Linked Telegram bot token to organization "${org.name}" in database.`);
+    } else {
+      console.error("❌ Error: No organization found in the database. Run `npm run db:seed` first.");
+      process.exit(1);
+    }
   }
 
   console.log(`\n🚀 Telegram Poller Active for Organization: "${org.name}" (${org.id})`);
