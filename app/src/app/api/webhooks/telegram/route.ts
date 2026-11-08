@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { resolveOrganizationForTelegram } from "@/lib/telegram-routing";
 import { parseTelegramUpdate, fetchTelegramFileBytes, TelegramMediaError } from "@/lib/telegram";
-import { ingestInboundMessage } from "@/lib/inbox";
+import { ingestInboundMessage, dispatchAIAssistReply } from "@/lib/inbox";
+import { isAIConfigured } from "@/lib/ai/engine";
 import { ConversationChannel } from "@prisma/client";
 
 /**
@@ -64,6 +65,13 @@ export async function POST(req: NextRequest) {
     },
     attachment
   );
+
+  if (created && isAIConfigured()) {
+    dispatchAIAssistReply({
+      organizationId: organization.id,
+      conversationId: created.conversationId,
+    }).catch((err) => console.warn("Telegram webhook AI dispatch failed:", err));
+  }
 
   return Response.json({
     ok: true,

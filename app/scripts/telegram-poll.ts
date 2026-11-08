@@ -1,6 +1,7 @@
 import { parseTelegramUpdate, fetchTelegramFileBytes } from "../src/lib/telegram";
 import { resolveOrganizationForTelegram } from "../src/lib/telegram-routing";
-import { ingestInboundMessage } from "../src/lib/inbox";
+import { ingestInboundMessage, dispatchAIAssistReply } from "../src/lib/inbox";
+import { isAIConfigured } from "../src/lib/ai/engine";
 import { ConversationChannel } from "@prisma/client";
 
 /**
@@ -80,6 +81,26 @@ async function main() {
 
           if (created) {
             console.log(`   ✅ Ingested to Adaeze Inbox (Message ID: ${created.id})`);
+
+            if (isAIConfigured()) {
+              console.log(`   🤖 Processing with Adaeze AI Copilot...`);
+              try {
+                const ai = await dispatchAIAssistReply({
+                  organizationId: org.id,
+                  conversationId: created.conversationId,
+                });
+                if (ai) {
+                  console.log(`   💬 AI Replied: "${ai.replyText}"`);
+                  if (ai.draftOrderReference) {
+                    console.log(`   📦 Created Draft Order: ${ai.draftOrderReference}`);
+                  }
+                }
+              } catch (aiErr) {
+                console.warn(`   ⚠️ AI auto-reply error:`, aiErr);
+              }
+            } else {
+              console.log("   ℹ️ OPENAI_API_KEY not configured — reply via web inbox at http://localhost:3100/inbox");
+            }
           } else {
             console.log("   ℹ️ Duplicate message ignored.");
           }

@@ -4,6 +4,7 @@ import { tenantDb, transaction } from "@/lib/db";
 import { findOrCreateCustomerByPhoneTx } from "@/lib/customers";
 import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
 import { sendTelegramTextMessage, TelegramSendError } from "@/lib/telegram";
+import { runAIAssist, isAIConfigured } from "@/lib/ai/engine";
 
 export type InboundChannelMessage = {
   externalId: string;
@@ -154,6 +155,92 @@ export async function markConversationResolved(params: { conversationId: string;
     where: { id: conversation.id },
     data: { status: ConversationStatus.RESOLVED },
   });
+}
+
+/**
+ * Evaluates the conversation with Adaeze AI and dispatches the response
+ * back to the customer on Telegram or WhatsApp.
+ */
+export async function dispatchAIAssistReply(params: {
+  organizationId: string;
+  conversationId: string;
+}): Promise<{ replyText: string; sent: boolean; draftOrderReference?: string } | null> {
+  if (!isAIConfigured()) return null;
+
+  const db = tenantDb(params.organizationId);
+  const conversation = await db.conversation.findFirst({
+    where: { id: params.conversationId, organizationId: params.organizationId },
+    include: { customer: true },
+  });
+  if (!conversation) return null;
+
+  const member = await prisma.membership.findFirst({
+    where: { organizationId: params.organizationId },
+    orderBy: { role: "asc" },
+  });
+  if (!member) return null;
+
+  const result = await runAIAssist({
+    organizationId: params.organizationId,
+    conversationId: params.conversationId,
+    customerId: conversation.customerId,
+    createdById: member.userId,
+  });
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: params.organizationId },
+  });
+
+  let messageId: string;
+  let sent = false;
+
+  try {
+    if (conversation.channel === ConversationChannel.TELEGRAM) {
+      const res = await sendTelegramTextMessage(
+        conversation.customer.phone,
+        result.replyText,
+        organization?.telegramBotToken
+      );
+      messageId = res.messageId;
+    } else {
+      const res = await sendWhatsAppTextMessage(
+        conversation.customer.phone,
+        result.replyText,
+        organization?.whatsappPhoneNumberId
+      );
+      messageId = res.messageId;
+    }
+    sent = true;
+  } catch (err) {
+    console.warn("[AI Dispatch] Failed to send outbound AI reply:", err);
+    return null;
+  }
+
+  await transaction(params.organizationId, async (tx) => {
+    await tx.message.create({
+      data: {
+        conversationId: params.conversationId,
+        direction: "OUTBOUND",
+        sender: "AI",
+        body: result.replyText,
+        externalId: messageId,
+      },
+    });
+
+    await tx.conversation.update({
+      where: { id: params.conversationId },
+      data: {
+        lastMessageAt: new Date(),
+        status: ConversationStatus.AI_HANDLING,
+      },
+    });
+  });
+
+  return {
+    replyText: result.replyText,
+    sent,
+    draftOrderReference: result.draftOrder?.reference,
+  };
 }
 
 export { WhatsAppSendError, TelegramSendError };
