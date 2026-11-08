@@ -118,7 +118,13 @@ export async function findOrCreateCustomerByPhoneTx(
   rawPhone: string,
   name?: string | null
 ) {
-  const key = phoneKeyOf(rawPhone) ?? (rawPhone.replace(/\D/g, "") || null);
+  // Telegram's raw numeric chat id (message.from = "tg_<chatId>") is NOT a phone number — running
+  // it through phoneKeyOf's Nigerian-local-number heuristic corrupts any id that happens to be 10
+  // digits starting with 7/8/9 (e.g. "8825226318" -> wrongly becomes "2348825226318"), breaking
+  // outbound sends with Telegram's "chat not found". Keep it as the verbatim digits instead.
+  const key = rawPhone.startsWith("tg_")
+    ? rawPhone.slice(3).replace(/\D/g, "") || null
+    : (phoneKeyOf(rawPhone) ?? (rawPhone.replace(/\D/g, "") || null));
   if (!key) throw new CustomerError("Message sender has no usable phone number.");
   const where = { organizationId_phoneKey: { organizationId, phoneKey: key } };
 

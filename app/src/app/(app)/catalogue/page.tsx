@@ -337,9 +337,12 @@ export default async function CataloguePage({
                         </td>
 
                         {/* Variant Attributes */}
-                        <td className="py-3.5 pr-4 text-xs font-medium text-text-muted align-middle">
+                        <td className="py-3.5 pr-4 text-xs font-medium text-text-muted align-middle overflow-hidden">
                           {variant ? (
-                            <span className="inline-block rounded-md border border-line/60 bg-paper/60 px-2 py-0.5 text-xs font-semibold text-ink whitespace-nowrap">
+                            <span
+                              title={Object.values(variant).join(" / ")}
+                              className="block max-w-full truncate rounded-md border border-line/60 bg-paper/60 px-2 py-0.5 text-xs font-semibold text-ink"
+                            >
                               {Object.values(variant).join(" / ")}
                             </span>
                           ) : (

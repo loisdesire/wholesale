@@ -300,6 +300,10 @@ model ProductImage {
   // Display order — staff-controlled via upload order, not alphabetical/chronological-only.
   position  Int      @default(0)
   createdAt DateTime @default(now())
+  // Voyage AI multimodal embedding (voyage-multimodal-3.5, input_type "document") of this photo,
+  // for real image-to-image visual search — see src/lib/ai/voyage.ts. Empty when VOYAGE_API_KEY
+  // wasn't configured at upload time; those rows are just skipped by visual search, not backfilled.
+  embedding Float[]
 
   @@index([productId])
 }

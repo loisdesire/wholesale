@@ -9,6 +9,20 @@ import { tenantDb, transaction } from "@/lib/db";
 import { recordStockMovement, InsufficientStockError, StockInvariantError } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
 import { parseProductsCsv, commitProductsImport, type ImportRowResult } from "@/lib/csv";
+import { embedImage, isVisualSearchConfigured } from "@/lib/ai/voyage";
+
+// Best-effort: a photo upload should never fail just because Voyage is down or unconfigured —
+// the photo still saves, just without a visual-search vector (skipped by visual search, not
+// treated as a non-match). See src/lib/ai/visual-search.ts.
+async function tryEmbedImage(mimeType: string, base64: string): Promise<number[]> {
+  if (!isVisualSearchConfigured()) return [];
+  try {
+    return await embedImage(mimeType, base64, "document");
+  } catch (err) {
+    console.warn("Voyage embedding failed for uploaded product image:", err);
+    return [];
+  }
+}
 
 export type FormState = { error: string | null };
 
@@ -21,6 +35,8 @@ const MANUAL_REASON_DIRECTION = {
   [StockMovementReason.DAMAGE_WRITTEN_OFF]: "out", // damaged stock discarded
   [StockMovementReason.MANUAL_ADJUSTMENT]: "either",
 } as const;
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const productSchema = z.object({
   sku: z.string().trim().min(1, "SKU is required").max(64),
@@ -144,6 +160,18 @@ export async function createProductAction(
       reason: StockMovementReason.INITIAL_STOCK,
       reference: "OPENING-BALANCE",
       createdById: session.user.id,
+    });
+  }
+
+  // Best-effort: the product itself is already created at this point, so a bad photo
+  // shouldn't fail the whole submission — the photo can always be added from the product
+  // page afterward, same as uploadProductImageAction below.
+  const imageFile = formData.get("image");
+  if (imageFile instanceof File && imageFile.size > 0 && imageFile.type.startsWith("image/") && imageFile.size <= MAX_IMAGE_BYTES) {
+    const data = new Uint8Array(await imageFile.arrayBuffer());
+    const embedding = await tryEmbedImage(imageFile.type, Buffer.from(data).toString("base64"));
+    await tenantDb(session.user.organizationId).productImage.create({
+      data: { productId, mimeType: imageFile.type, data, sizeBytes: data.byteLength, position: 0, embedding },
     });
   }
 
@@ -291,8 +319,6 @@ export async function recordStockMovementAction(
   return { error: null };
 }
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-
 export type ProductImageState = { error: string | null };
 
 export async function uploadProductImageAction(
@@ -320,6 +346,7 @@ export async function uploadProductImageAction(
 
   const maxPosition = await db.productImage.aggregate({ where: { productId }, _max: { position: true } });
   const data = new Uint8Array(await file.arrayBuffer());
+  const embedding = await tryEmbedImage(file.type, Buffer.from(data).toString("base64"));
 
   await db.productImage.create({
     data: {
@@ -328,6 +355,7 @@ export async function uploadProductImageAction(
       data,
       sizeBytes: data.byteLength,
       position: (maxPosition._max.position ?? -1) + 1,
+      embedding,
     },
   });
 

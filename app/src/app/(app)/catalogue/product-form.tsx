@@ -22,9 +22,10 @@ type Props = {
     priceTiers?: { minQuantity: number; priceNaira: number }[];
   };
   showOpeningStock?: boolean;
+  showImageUpload?: boolean;
 };
 
-export function ProductForm({ action, submitLabel, defaultValues, showOpeningStock }: Props) {
+export function ProductForm({ action, submitLabel, defaultValues, showOpeningStock, showImageUpload }: Props) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {
     error: null,
   });
@@ -165,6 +166,21 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
           min="0"
           defaultValue={0}
         />
+      )}
+
+      {showImageUpload && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="image" className="text-xs font-semibold uppercase tracking-wider text-ink">
+            Product Photo (optional)
+          </label>
+          <input
+            id="image"
+            name="image"
+            type="file"
+            accept="image/*"
+            className="text-sm text-text-muted file:mr-3 file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink"
+          />
+        </div>
       )}
 
       {/* 5. Wholesale Price Tiers */}

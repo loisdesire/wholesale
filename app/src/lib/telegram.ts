@@ -125,6 +125,69 @@ export async function sendTelegramTextMessage(
 }
 
 /**
+ * Sends an outbound photo (with caption) to a Telegram chat — e.g. the catalogue photo a real
+ * visual-search match found, so the customer can see exactly what matched instead of trusting a
+ * text claim. Caption text, not a separate message, same as Telegram's own native photo+text UX.
+ */
+export async function sendTelegramPhoto(
+  chatId: string,
+  photo: { data: Buffer; mimeType: string },
+  caption: string,
+  tokenOverride?: string | null
+): Promise<{ messageId: string }> {
+  const token = tokenOverride || process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    console.warn("Telegram not configured (missing TELEGRAM_BOT_TOKEN). Mocking photo send.");
+    return { messageId: `mock_tg_${Date.now()}` };
+  }
+
+  const cleanChatId = chatId.replace(/^tg_/, "").replace(/^\+/, "").trim();
+  const ext = photo.mimeType === "image/png" ? "png" : "jpg";
+
+  const form = new FormData();
+  form.append("chat_id", cleanChatId);
+  form.append("caption", caption);
+  form.append("parse_mode", "HTML");
+  form.append("photo", new Blob([new Uint8Array(photo.data)], { type: photo.mimeType }), `product.${ext}`);
+
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new TelegramSendError(`Telegram photo send failed (${res.status}): ${detail.slice(0, 300)}`);
+  }
+
+  const json = (await res.json()) as { ok?: boolean; result?: { message_id?: number } };
+  const messageId = json.result?.message_id ? `tg_msg_${json.result.message_id}` : undefined;
+  if (!messageId) {
+    throw new TelegramSendError("Telegram photo send returned no message id.");
+  }
+  return { messageId };
+}
+
+/**
+ * Tells Telegram to show the "X is typing…" indicator in the chat. Telegram only holds this for
+ * ~5 seconds, so callers waiting on something slower (an AI reply) should re-send it on an
+ * interval for the duration of the wait, not just once.
+ */
+export async function sendTelegramChatAction(
+  chatId: string,
+  tokenOverride?: string | null
+): Promise<void> {
+  const token = tokenOverride || process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  const cleanChatId = chatId.replace(/^tg_/, "").replace(/^\+/, "").trim();
+  await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: cleanChatId, action: "typing" }),
+  }).catch(() => {});
+}
+
+/**
  * Downloads voice or image file bytes from Telegram API.
  */
 export async function fetchTelegramFileBytes(

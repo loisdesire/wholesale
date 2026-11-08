@@ -57,6 +57,7 @@ async function main() {
       returnSeq: 1001,
       // The WhatsApp business number this organization receives on (Meta's phone_number_id).
       whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "100000000000001",
+      telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
       plan: "GROWTH",
       subscriptionStatus: "ACTIVE",
       currentPeriodEnd: periodEnd,

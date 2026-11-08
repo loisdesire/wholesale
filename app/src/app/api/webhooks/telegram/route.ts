@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { resolveOrganizationForTelegram } from "@/lib/telegram-routing";
-import { parseTelegramUpdate, fetchTelegramFileBytes, TelegramMediaError } from "@/lib/telegram";
+import { parseTelegramUpdate, fetchTelegramFileBytes, sendTelegramChatAction, TelegramMediaError } from "@/lib/telegram";
 import { ingestInboundMessage, dispatchAIAssistReply } from "@/lib/inbox";
 import { isAIConfigured } from "@/lib/ai/engine";
 import { transcribeAudio } from "@/lib/ai/transcribe";
@@ -75,10 +75,20 @@ export async function POST(req: NextRequest) {
   );
 
   if (created && isAIConfigured()) {
+    // The webhook response below is instant, but the customer's actual reply only shows up once
+    // this background dispatch resolves — which can take a while (catalogue search, possibly an
+    // image-comparison round-trip too). Re-send Telegram's "typing…" indicator for the duration
+    // so the chat doesn't look dead in the meantime.
+    sendTelegramChatAction(message.from, organization.telegramBotToken).catch(() => {});
+    const typingInterval = setInterval(() => {
+      sendTelegramChatAction(message.from, organization.telegramBotToken).catch(() => {});
+    }, 4000);
     dispatchAIAssistReply({
       organizationId: organization.id,
       conversationId: created.conversationId,
-    }).catch((err) => console.warn("Telegram webhook AI dispatch failed:", err));
+    })
+      .catch((err) => console.warn("Telegram webhook AI dispatch failed:", err))
+      .finally(() => clearInterval(typingInterval));
   }
 
   return Response.json({

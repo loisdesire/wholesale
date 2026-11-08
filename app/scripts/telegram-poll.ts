@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config({ override: true });
 
-import { parseTelegramUpdate, fetchTelegramFileBytes } from "../src/lib/telegram";
+import { parseTelegramUpdate, fetchTelegramFileBytes, sendTelegramChatAction } from "../src/lib/telegram";
 import { resolveOrganizationForTelegram } from "../src/lib/telegram-routing";
 import { ingestInboundMessage, dispatchAIAssistReply } from "../src/lib/inbox";
 import { isAIConfigured } from "../src/lib/ai/engine";
@@ -106,6 +106,13 @@ async function main() {
 
             if (isAIConfigured()) {
               console.log(`   🤖 Processing with Adaeze AI Copilot...`);
+              // Telegram only shows "typing…" for ~5s per call, so keep re-sending it for as
+              // long as the AI reply (which can involve multiple OpenAI round-trips, e.g. a
+              // catalogue search followed by an image-comparison turn) is still in flight.
+              await sendTelegramChatAction(message.from, token);
+              const typingInterval = setInterval(() => {
+                sendTelegramChatAction(message.from, token);
+              }, 4000);
               try {
                 const ai = await dispatchAIAssistReply({
                   organizationId: org.id,
@@ -119,6 +126,8 @@ async function main() {
                 }
               } catch (aiErr) {
                 console.warn(`   ⚠️ AI auto-reply error:`, aiErr);
+              } finally {
+                clearInterval(typingInterval);
               }
             } else {
               console.log("   ℹ️ OPENAI_API_KEY not configured — reply via web inbox at http://localhost:3100/inbox");

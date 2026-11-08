@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { tenantDb, transaction } from "@/lib/db";
 import { findOrCreateCustomerByPhoneTx } from "@/lib/customers";
 import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
-import { sendTelegramTextMessage, TelegramSendError } from "@/lib/telegram";
+import { sendTelegramTextMessage, sendTelegramPhoto, TelegramSendError } from "@/lib/telegram";
 import { runAIAssist, isAIConfigured } from "@/lib/ai/engine";
 
 export type InboundChannelMessage = {
@@ -196,11 +196,21 @@ export async function dispatchAIAssistReply(params: {
 
   try {
     if (conversation.channel === ConversationChannel.TELEGRAM) {
-      const res = await sendTelegramTextMessage(
-        conversation.customer.phone,
-        result.replyText,
-        organization?.telegramBotToken
-      );
+      const res = result.matchedProductImage
+        ? await sendTelegramPhoto(
+            conversation.customer.phone,
+            {
+              data: Buffer.from(result.matchedProductImage.base64, "base64"),
+              mimeType: result.matchedProductImage.mimeType,
+            },
+            result.replyText,
+            organization?.telegramBotToken
+          )
+        : await sendTelegramTextMessage(
+            conversation.customer.phone,
+            result.replyText,
+            organization?.telegramBotToken
+          );
       messageId = res.messageId;
     } else {
       const res = await sendWhatsAppTextMessage(

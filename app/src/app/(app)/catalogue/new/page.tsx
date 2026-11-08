@@ -29,7 +29,7 @@ export default function NewProductPage() {
       </header>
 
       <div className="card-base p-6">
-        <ProductForm action={createProductAction} submitLabel="Create product" showOpeningStock />
+        <ProductForm action={createProductAction} submitLabel="Create product" showOpeningStock showImageUpload />
       </div>
     </div>
   );
