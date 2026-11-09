@@ -204,10 +204,10 @@ export async function getOwnerAIBriefing(organizationId: string): Promise<OwnerA
     criticalAlerts.push({
       id: "alert-stockout",
       type: "STOCKOUT",
-      title: `${critCount} High-Velocity SKUs in Imminent Stockout`,
-      detail: `${stockoutRisks[0].name} (${stockoutRisks[0].sku}) has ${stockoutRisks[0].available} units left with active market demand.`,
+      title: critCount === 1 ? "1 fast-moving item is about to run out" : `${critCount} fast-moving items are about to run out`,
+      detail: `${stockoutRisks[0].name} (${stockoutRisks[0].sku}) has ${stockoutRisks[0].available} left, and buyers keep asking for it.`,
       impact: "Risk of lost sales and customer redirection to competitors.",
-      actionLabel: "Generate Supplier Reorder Sheet",
+      actionLabel: "Reorder from supplier",
       actionHref: "/catalogue",
       severity: "HIGH",
     });
