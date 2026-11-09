@@ -138,7 +138,7 @@ export default async function PlatformAdminPage() {
               {totalAiReplies.toLocaleString()}
             </span>
             <p className="mt-1 text-xs text-text-muted">
-              WhatsApp customer inquiries handled
+              Customer inquiries handled (WhatsApp &amp; Telegram)
             </p>
           </div>
         </div>

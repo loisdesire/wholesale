@@ -332,7 +332,7 @@ export default async function CataloguePage({
                             <p className="font-semibold text-ink group-hover:text-accent transition-colors">
                               {p.name}
                             </p>
-                            <p className="text-xs text-text-muted">MOQ: {p.moq} {p.unit}s</p>
+                            <p className="text-xs text-text-muted">MOQ: {p.moq} {p.unit}{p.moq === 1 ? "" : "s"}</p>
                           </Link>
                         </td>
 

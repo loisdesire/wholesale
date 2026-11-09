@@ -92,7 +92,7 @@ export default async function ProductDetailPage({
                   </>
                 )}
                 <span>·</span>
-                <span>MOQ: {product.moq} {product.unit}s</span>
+                <span>MOQ: {product.moq} {product.unit}{product.moq === 1 ? "" : "s"}</span>
               </p>
             </div>
           </div>
@@ -144,7 +144,7 @@ export default async function ProductDetailPage({
           <div className="card-base rounded-2xl p-5 shadow-xs space-y-3.5">
             <div className="border-b border-line/60 pb-2.5">
               <h2 className="font-display text-sm font-bold text-ink">Product Photography &amp; Swatches</h2>
-              <p className="text-xs text-text-muted">Visual references sent automatically to buyers over WhatsApp inquiries.</p>
+              <p className="text-xs text-text-muted">Visual references sent automatically to buyers over WhatsApp &amp; Telegram inquiries.</p>
             </div>
             <ProductImages productId={product.id} images={product.images} />
           </div>
@@ -193,7 +193,7 @@ export default async function ProductDetailPage({
                       <th className="py-3 pl-5 pr-4 w-[160px]">Timestamp</th>
                       <th className="py-3 pr-4 w-[170px]">Ledger Reason</th>
                       <th className="py-3 pr-4 w-[120px]">Reference</th>
-                      <th className="py-3 pr-4 min-w-[150px]">Note</th>
+                      <th className="py-3 pr-4 w-[150px]">Note</th>
                       <th className="py-3 pr-4 w-[110px]">Actor</th>
                       <th className="py-3 pr-4 text-right w-[80px]">Physical</th>
                       <th className="py-3 pr-4 text-right w-[80px]">Reserved</th>
