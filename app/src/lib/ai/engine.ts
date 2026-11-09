@@ -4,6 +4,7 @@ import { tenantDb } from "@/lib/db";
 import { createDraftOrder, OrderStateError } from "@/lib/orders";
 import { searchCatalogue, getCandidateImages, getCatalogueEntriesByIds } from "./catalogue-search";
 import { findVisuallySimilarProducts } from "./visual-search";
+import { formatMoney } from "@/lib/format";
 
 export function isAIConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
@@ -17,12 +18,19 @@ export function isAIConfigured() {
 // reasoning depth for most replies. Set OPENAI_MODEL to override without a code change.
 const MODEL = process.env.OPENAI_MODEL || "gpt-6-luna";
 const MAX_TOOL_ROUNDS = 4;
+// A customer wanting to browse several options at once (e.g. "show me all the blue jeans") gets
+// a batch of photos in one reply, not endless separate messages — but capped, so one reply can't
+// turn into a wall of images. They can always ask for more in their next message.
+const MAX_PHOTOS_PER_REPLY = 3;
 
 const searchCatalogueInput = z.object({ query: z.string().min(1) });
 const createDraftOrderInput = z.object({
   items: z
     .array(z.object({ productId: z.string().min(1), quantity: z.number().int().positive() }))
     .min(1),
+});
+const showProductPhotosInput = z.object({
+  productIds: z.array(z.string().min(1)).min(1).max(MAX_PHOTOS_PER_REPLY),
 });
 
 const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
@@ -66,6 +74,26 @@ const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "show_product_photos",
+      description:
+        `Attaches up to ${MAX_PHOTOS_PER_REPLY} real catalogue photos to your reply (each sent as its own Telegram photo message with its own name/price/stock caption, followed by your written reply as a final message), using productIds already returned by search_catalogue in this conversation. Call this whenever the customer asks to see what something looks like, or wants to browse multiple options — even if they haven't sent you a photo themselves. Don't say you can't send images. Call this at most once per reply, with all the products you want to show in that one call — it can't be called more than once, and a second call will be rejected.`,
+      parameters: {
+        type: "object",
+        properties: {
+          productIds: {
+            type: "array",
+            items: { type: "string" },
+            maxItems: MAX_PHOTOS_PER_REPLY,
+            description: "Exact productId values from a prior search_catalogue result, most relevant first.",
+          },
+        },
+        required: ["productIds"],
+      },
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are the order-assistant for Adaeze Fashion Wholesale, a wholesale fashion/footwear distributor, replying to a customer over WhatsApp or Telegram.
@@ -81,6 +109,7 @@ Rules:
   2. When visual search results appear, current price/MOQ/stock for those exact same products is already given right after them — use it directly, don't call search_catalogue again for those specific products (that would just be a slower, redundant lookup of data you already have). Only call search_catalogue if you need something visual search didn't return, or no visual search results appeared at all (e.g. no photo embeddings exist yet) — in that case, call it with your own best keyword guess from the photo, since you still can't quote a price or confirm stock without it.
   3. If visual search found no match (or wasn't available) and search_catalogue's keyword guess returns results but none is a confident match, never say you found nothing or have no matching style — that's false when the tool actually returned items. Tell the customer exactly what those results are (name, price, stock) and say plainly you're not sure it's the exact same style/colour/detailing as their photo, then ask them to confirm.
   4. Only say you don't carry anything like it if you genuinely got zero results (from visual search and/or search_catalogue) for every approach you tried.
+- If the customer asks to see what something looks like, or wants to browse options (e.g. "show me the blue jeans you have") — even without sending you a photo themselves — call show_product_photos with up to ${MAX_PHOTOS_PER_REPLY} product ids (from search_catalogue results earlier in this conversation), most relevant first. You CAN send real photos; never say you can't send an image. Call it at most once per reply — a second call in the same reply is rejected, so include every product you want to show in that one call. If there are more than ${MAX_PHOTOS_PER_REPLY} relevant options, show the top ${MAX_PHOTOS_PER_REPLY} and say there's more — the customer can ask for another batch.
 - Once you have confident matches with exact products and quantities (meeting each product's moq), call create_draft_order to draft the order using the exact productId values search_catalogue returned — it prices and validates the order itself, so you don't need to compute the total. This never confirms or charges anything — say clearly that a staff member will confirm before it's finalized.
 - If requested stock is short, say exactly how many are available (from search_catalogue) and offer to draft the order for the available quantity, or suggest a close alternative you found via search_catalogue — never an invented one.
 - Keep replies short, natural, and specific — like a knowledgeable staff member texting back, not a formal chatbot. No markdown formatting.
@@ -90,9 +119,11 @@ export type AIAssistResult = {
   replyText: string;
   draftOrder?: { id: string; reference: string; totalCents: number };
   toolCalls: { name: string; input: unknown }[];
-  // The top real visual-search match for a customer photo, if any — so the reply can carry the
-  // actual catalogue photo back, not just a text claim the customer has no way to verify.
-  matchedProductImage?: { mimeType: string; base64: string; sku: string; similarity: number };
+  // Real catalogue photos to attach to the reply (visual-search matches for a customer photo, or
+  // products the model explicitly chose to show via show_product_photos) — so the reply can carry
+  // actual photos back, not just a text claim the customer has no way to verify. Each is sent as
+  // its own Telegram photo message with its own caption, in order, before the reply text.
+  matchedProductImages?: { mimeType: string; base64: string; sku: string; caption: string }[];
 };
 
 export async function runAIAssist(params: {
@@ -150,17 +181,14 @@ export async function runAIAssist(params: {
   // photo — ranked by actual cosine similarity between stored catalogue-photo embeddings and this
   // photo's own embedding. See src/lib/ai/visual-search.ts.
   let visualMatchInjected = false;
-  let topVisualMatch: AIAssistResult["matchedProductImage"];
+  let topVisualMatch: AIAssistResult["matchedProductImages"];
+  // Set by the show_product_photos tool when the model explicitly asks to attach known
+  // products' photos (e.g. the customer asked to see them without sending one themselves).
+  let requestedProductImages: AIAssistResult["matchedProductImages"];
   if (latestInboundImage) {
-    const visualMatches = await findVisuallySimilarProducts(params.organizationId, latestInboundImage, 3);
+    const visualMatches = await findVisuallySimilarProducts(params.organizationId, latestInboundImage, MAX_PHOTOS_PER_REPLY);
     if (visualMatches.length > 0) {
       visualMatchInjected = true;
-      topVisualMatch = {
-        mimeType: visualMatches[0].mimeType,
-        base64: visualMatches[0].base64,
-        sku: visualMatches[0].sku,
-        similarity: visualMatches[0].similarity,
-      };
       transcriptContent.push({
         type: "text",
         text: "Real visual search results — our own catalogue photos ranked by actual image similarity to the customer's photo above (most similar first, as a percentage). This is a genuine visual comparison, not a guess — trust it over your own impression of whether the item looks familiar:",
@@ -190,6 +218,20 @@ export async function runAIAssist(params: {
           text: `Current price/MOQ/stock for those same matches (no need to call search_catalogue again for these specific products — only for something else): ${JSON.stringify(entries)}`,
         });
       }
+
+      // Auto-attach the real photos too — always the top match, plus any other genuinely close
+      // ones (not every low-similarity candidate, which would just be noise). The customer can
+      // still ask to see more via show_product_photos.
+      const entryByProductId = new Map(entries.map((e) => [e.productId, e]));
+      topVisualMatch = visualMatches
+        .filter((m, i) => i === 0 || m.similarity >= 0.5)
+        .map((m) => {
+          const entry = entryByProductId.get(m.productId);
+          const caption = entry
+            ? `${entry.name}${entry.variant ? ` (${entry.variant})` : ""} — ${formatMoney(entry.priceCents)}, ${entry.stock} ${entry.unit}${entry.stock === 1 ? "" : "s"} in stock`
+            : m.name;
+          return { mimeType: m.mimeType, base64: m.base64, sku: m.sku, caption };
+        });
     }
   }
 
@@ -219,7 +261,7 @@ export async function runAIAssist(params: {
         replyText: choice.message.content?.trim() || "Let me check and get back to you.",
         draftOrder,
         toolCalls: toolCallLog,
-        matchedProductImage: topVisualMatch,
+        matchedProductImages: topVisualMatch ?? requestedProductImages,
       };
     }
 
@@ -296,6 +338,59 @@ export async function runAIAssist(params: {
           const message = err instanceof OrderStateError ? err.message : "Could not create the draft order.";
           messages.push({ role: "tool", tool_call_id: toolCall.id, content: message });
         }
+      } else if (name === "show_product_photos") {
+        const parsed = showProductPhotosInput.safeParse(input);
+        if (!parsed.success) {
+          messages.push({ role: "tool", tool_call_id: toolCall.id, content: "Invalid input — max 3 productIds." });
+          continue;
+        }
+        // Enforced here, not just requested in the prompt: photos can only be attached once per
+        // reply, so a second call would silently replace the first batch and risk the model
+        // describing photos to the customer that never go out.
+        if (topVisualMatch || requestedProductImages) {
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: "Already attached photos to this reply this turn — can't call this again. Mention any extra products in words instead.",
+          });
+          continue;
+        }
+        const productIds = parsed.data.productIds.slice(0, MAX_PHOTOS_PER_REPLY);
+        const [images, entries] = await Promise.all([
+          tenantDb(params.organizationId).productImage.findMany({
+            where: { productId: { in: productIds } },
+            orderBy: { position: "asc" },
+          }),
+          getCatalogueEntriesByIds(params.organizationId, productIds),
+        ]);
+        const imageByProductId = new Map<string, (typeof images)[number]>();
+        for (const img of images) if (!imageByProductId.has(img.productId)) imageByProductId.set(img.productId, img);
+        const entryByProductId = new Map(entries.map((e) => [e.productId, e]));
+
+        const found: AIAssistResult["matchedProductImages"] = [];
+        const missing: string[] = [];
+        for (const productId of productIds) {
+          const image = imageByProductId.get(productId);
+          const entry = entryByProductId.get(productId);
+          if (!image) {
+            missing.push(entry?.sku ?? productId);
+            continue;
+          }
+          const caption = entry
+            ? `${entry.name}${entry.variant ? ` (${entry.variant})` : ""} — ${formatMoney(entry.priceCents)}, ${entry.stock} ${entry.unit}${entry.stock === 1 ? "" : "s"} in stock`
+            : "";
+          found!.push({ mimeType: image.mimeType, base64: Buffer.from(image.data).toString("base64"), sku: entry?.sku ?? "", caption });
+        }
+
+        if (found!.length > 0) requestedProductImages = found;
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content:
+            found!.length > 0
+              ? `${found!.length} photo(s) attached to your reply — just mention them naturally, don't describe needing to send them separately.${missing.length > 0 ? ` No photo on file for: ${missing.join(", ")}.` : ""}`
+              : "No photo on file for any of those products.",
+        });
       } else {
         messages.push({ role: "tool", tool_call_id: toolCall.id, content: "Unknown tool." });
       }
@@ -319,6 +414,6 @@ export async function runAIAssist(params: {
     replyText: "Let me check on this and get back to you shortly.",
     draftOrder,
     toolCalls: toolCallLog,
-    matchedProductImage: topVisualMatch,
+    matchedProductImages: topVisualMatch ?? requestedProductImages,
   };
 }

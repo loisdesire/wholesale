@@ -57,7 +57,9 @@ export async function searchCatalogue(
       where: {
         organizationId,
         active: true,
-        OR: terms.flatMap(termVariants).flatMap((term) => [{ name: ci(term) }, { sku: ci(term) }]),
+        OR: terms
+          .flatMap(termVariants)
+          .flatMap((term) => [{ name: ci(term) }, { sku: ci(term) }, { visualDescription: ci(term) }]),
       },
       include: { priceTiers: true },
       take: CANDIDATE_POOL_LIMIT,
@@ -91,6 +93,7 @@ export async function searchCatalogue(
     const variantText = variant ? Object.values(variant).join(" ").toLowerCase() : "";
     const nameLower = product.name.toLowerCase();
     const skuLower = product.sku.toLowerCase();
+    const descriptionLower = product.visualDescription?.toLowerCase() ?? "";
 
     let matchedTermsCount = 0;
     let score = 0;
@@ -107,6 +110,12 @@ export async function searchCatalogue(
       }
       if (matchesTerm(variantText, term)) {
         score += 10;
+        matched = true;
+      }
+      // Lower weight than an explicit name/SKU/variant hit — this is an AI-inferred style
+      // description (e.g. "bootcut"), not something staff deliberately labelled the product as.
+      if (matchesTerm(descriptionLower, term)) {
+        score += 8;
         matched = true;
       }
       if (matched) matchedTermsCount++;

@@ -10,6 +10,7 @@ import { recordStockMovement, InsufficientStockError, StockInvariantError } from
 import { recordAudit } from "@/lib/audit";
 import { parseProductsCsv, commitProductsImport, type ImportRowResult } from "@/lib/csv";
 import { embedImage, isVisualSearchConfigured } from "@/lib/ai/voyage";
+import { describeProductImage } from "@/lib/ai/product-description";
 
 // Best-effort: a photo upload should never fail just because Voyage is down or unconfigured —
 // the photo still saves, just without a visual-search vector (skipped by visual search, not
@@ -21,6 +22,17 @@ async function tryEmbedImage(mimeType: string, base64: string): Promise<number[]
   } catch (err) {
     console.warn("Voyage embedding failed for uploaded product image:", err);
     return [];
+  }
+}
+
+// Same best-effort pattern: a photo upload never fails just because OpenAI is down or
+// unconfigured. See src/lib/ai/product-description.ts.
+async function tryDescribeImage(mimeType: string, base64: string): Promise<string | null> {
+  try {
+    return await describeProductImage(mimeType, base64);
+  } catch (err) {
+    console.warn("Visual description generation failed for uploaded product image:", err);
+    return null;
   }
 }
 
@@ -169,10 +181,20 @@ export async function createProductAction(
   const imageFile = formData.get("image");
   if (imageFile instanceof File && imageFile.size > 0 && imageFile.type.startsWith("image/") && imageFile.size <= MAX_IMAGE_BYTES) {
     const data = new Uint8Array(await imageFile.arrayBuffer());
-    const embedding = await tryEmbedImage(imageFile.type, Buffer.from(data).toString("base64"));
+    const base64 = Buffer.from(data).toString("base64");
+    const [embedding, visualDescription] = await Promise.all([
+      tryEmbedImage(imageFile.type, base64),
+      tryDescribeImage(imageFile.type, base64),
+    ]);
     await tenantDb(session.user.organizationId).productImage.create({
       data: { productId, mimeType: imageFile.type, data, sizeBytes: data.byteLength, position: 0, embedding },
     });
+    if (visualDescription) {
+      await tenantDb(session.user.organizationId).product.update({
+        where: { id: productId },
+        data: { visualDescription },
+      });
+    }
   }
 
   revalidatePath("/catalogue");
@@ -345,8 +367,16 @@ export async function uploadProductImageAction(
   if (!product) return { error: "Product not found." };
 
   const maxPosition = await db.productImage.aggregate({ where: { productId }, _max: { position: true } });
+  const isFirstPhoto = maxPosition._max.position == null;
   const data = new Uint8Array(await file.arrayBuffer());
-  const embedding = await tryEmbedImage(file.type, Buffer.from(data).toString("base64"));
+  const base64 = Buffer.from(data).toString("base64");
+  const [embedding, visualDescription] = await Promise.all([
+    tryEmbedImage(file.type, base64),
+    isFirstPhoto ? tryDescribeImage(file.type, base64) : Promise.resolve(null),
+  ]);
+  if (visualDescription) {
+    await db.product.update({ where: { id: productId }, data: { visualDescription } });
+  }
 
   await db.productImage.create({
     data: {

@@ -272,6 +272,12 @@ model Product {
   // mixing pieces and cartons; it is not a multi-unit conversion system.
   unit              String       @default("piece")
   active            Boolean      @default(true)
+  // AI-generated description of the product's own photo (cut/silhouette, colour, pattern,
+  // material, distinctive features — e.g. "bootcut", "star appliqué") — generated once at
+  // upload time (see src/lib/ai/product-description.ts), so a text search like "bootcut
+  // jeans" can match a product whose name/SKU never says "bootcut". Null until a photo with
+  // OPENAI_API_KEY configured has been uploaded; never backfilled automatically.
+  visualDescription String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 

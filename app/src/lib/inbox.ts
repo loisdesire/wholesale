@@ -196,21 +196,22 @@ export async function dispatchAIAssistReply(params: {
 
   try {
     if (conversation.channel === ConversationChannel.TELEGRAM) {
-      const res = result.matchedProductImage
-        ? await sendTelegramPhoto(
-            conversation.customer.phone,
-            {
-              data: Buffer.from(result.matchedProductImage.base64, "base64"),
-              mimeType: result.matchedProductImage.mimeType,
-            },
-            result.replyText,
-            organization?.telegramBotToken
-          )
-        : await sendTelegramTextMessage(
-            conversation.customer.phone,
-            result.replyText,
-            organization?.telegramBotToken
-          );
+      // Each matched product's photo goes out as its own message (with its own name/price/stock
+      // caption), in order, oldest-shown-first — then the model's actual reply text always
+      // follows as its own final message, rather than being crammed into one photo's caption.
+      for (const photo of result.matchedProductImages ?? []) {
+        await sendTelegramPhoto(
+          conversation.customer.phone,
+          { data: Buffer.from(photo.base64, "base64"), mimeType: photo.mimeType },
+          photo.caption,
+          organization?.telegramBotToken
+        );
+      }
+      const res = await sendTelegramTextMessage(
+        conversation.customer.phone,
+        result.replyText,
+        organization?.telegramBotToken
+      );
       messageId = res.messageId;
     } else {
       const res = await sendWhatsAppTextMessage(
