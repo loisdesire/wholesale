@@ -217,6 +217,66 @@ export async function sendWhatsAppTextMessage(
   return { messageId };
 }
 
+/**
+ * Sends an outbound photo (with caption) via the WhatsApp Cloud API. Unlike Telegram (which
+ * accepts the raw bytes directly on the send call), WhatsApp requires uploading the image to
+ * their Media API first to get a media id, then referencing that id in a separate send call —
+ * two round trips, not one.
+ */
+export async function sendWhatsAppMediaMessage(
+  to: string,
+  photo: { data: Buffer; mimeType: string },
+  caption: string,
+  organizationPhoneNumberId?: string | null
+): Promise<{ messageId: string }> {
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = organizationPhoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!accessToken || !phoneNumberId) {
+    throw new WhatsAppSendError(
+      "WhatsApp isn't configured (missing WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)."
+    );
+  }
+
+  const form = new FormData();
+  form.append("messaging_product", "whatsapp");
+  form.append("type", photo.mimeType);
+  form.append("file", new Blob([new Uint8Array(photo.data)], { type: photo.mimeType }), "product.jpg");
+
+  const uploadRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: form,
+  });
+  if (!uploadRes.ok) {
+    const detail = await uploadRes.text().catch(() => "");
+    throw new WhatsAppSendError(`WhatsApp media upload failed (${uploadRes.status}): ${detail.slice(0, 300)}`);
+  }
+  const uploadJson = (await uploadRes.json()) as { id?: string };
+  if (!uploadJson.id) throw new WhatsAppSendError("WhatsApp media upload returned no media id.");
+
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "image",
+      image: { id: uploadJson.id, caption },
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new WhatsAppSendError(`WhatsApp send failed (${res.status}): ${detail.slice(0, 300)}`);
+  }
+  const json = (await res.json()) as { messages?: { id: string }[] };
+  const messageId = json.messages?.[0]?.id;
+  if (!messageId) throw new WhatsAppSendError("WhatsApp send returned no message id.");
+  return { messageId };
+}
+
 export class WhatsAppMediaError extends Error {}
 
 // Meta caps WhatsApp image uploads at 5MB; refuse anything larger rather than trust a

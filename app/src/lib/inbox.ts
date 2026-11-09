@@ -2,7 +2,7 @@ import { ConversationStatus, ConversationChannel, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma";
 import { tenantDb, transaction } from "@/lib/db";
 import { findOrCreateCustomerByPhoneTx } from "@/lib/customers";
-import { sendWhatsAppTextMessage, WhatsAppSendError } from "@/lib/whatsapp";
+import { sendWhatsAppTextMessage, sendWhatsAppMediaMessage, WhatsAppSendError } from "@/lib/whatsapp";
 import { sendTelegramTextMessage, sendTelegramPhoto, TelegramSendError } from "@/lib/telegram";
 import { runAIAssist, isAIConfigured } from "@/lib/ai/engine";
 
@@ -214,6 +214,18 @@ export async function dispatchAIAssistReply(params: {
       );
       messageId = res.messageId;
     } else {
+      // Same pattern as Telegram above: each matched photo as its own message first, then the
+      // reply text as a final message. WhatsApp's send call is heavier per photo (an extra media
+      // upload round trip each time — see sendWhatsAppMediaMessage), not just a different payload
+      // shape, but the customer-facing behavior is the same either channel.
+      for (const photo of result.matchedProductImages ?? []) {
+        await sendWhatsAppMediaMessage(
+          conversation.customer.phone,
+          { data: Buffer.from(photo.base64, "base64"), mimeType: photo.mimeType },
+          photo.caption,
+          organization?.whatsappPhoneNumberId
+        );
+      }
       const res = await sendWhatsAppTextMessage(
         conversation.customer.phone,
         result.replyText,
