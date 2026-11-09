@@ -25,7 +25,7 @@ export function NewCustomerForm() {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="phone" className="text-xs font-semibold uppercase tracking-wider text-ink">
-            WhatsApp Phone Number <span className="text-accent">*</span>
+            Phone Number (WhatsApp &amp; Telegram) <span className="text-accent">*</span>
           </label>
           <input 
             id="phone" 

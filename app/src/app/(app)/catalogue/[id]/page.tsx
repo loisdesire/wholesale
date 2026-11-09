@@ -111,25 +111,25 @@ export default async function ProductDetailPage({
             <div className="rounded-xl border border-line bg-paper/40 p-3.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Available to Sell</span>
               <p className={`mt-0.5 font-tabular text-xl font-bold ${figures.available === 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                {figures.available} <span className="text-xs font-normal text-text-muted">{product.unit}s</span>
+                {figures.available} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.available === 1 ? "" : "s"}</span>
               </p>
             </div>
             <div className="rounded-xl border border-line bg-paper/40 p-3.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Physical On Hand</span>
               <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
-                {figures.physical} <span className="text-xs font-normal text-text-muted">{product.unit}s</span>
+                {figures.physical} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.physical === 1 ? "" : "s"}</span>
               </p>
             </div>
             <div className="rounded-xl border border-line bg-paper/40 p-3.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Allocated to Orders</span>
               <p className="mt-0.5 font-tabular text-xl font-bold text-amber-700">
-                {figures.reserved} <span className="text-xs font-normal text-text-muted">{product.unit}s</span>
+                {figures.reserved} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.reserved === 1 ? "" : "s"}</span>
               </p>
             </div>
             <div className="rounded-xl border border-line bg-paper/40 p-3.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Quarantine / Damaged</span>
               <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
-                {figures.damaged} <span className="text-xs font-normal text-text-muted">{product.unit}s</span>
+                {figures.damaged} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.damaged === 1 ? "" : "s"}</span>
               </p>
             </div>
           </div>

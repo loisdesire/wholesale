@@ -244,7 +244,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                           moq={item.product.moq}
                         />
                       ) : (
-                        <span>{item.quantity} {item.product.unit}s × {formatMoney(item.unitPriceCents, order.currency)}</span>
+                        <span>{item.quantity} {item.product.unit}{item.quantity === 1 ? "" : "s"} × {formatMoney(item.unitPriceCents, order.currency)}</span>
                       )}
                     </div>
                     <span className="font-tabular font-bold text-sm text-ink">

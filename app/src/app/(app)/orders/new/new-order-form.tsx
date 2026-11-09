@@ -77,7 +77,7 @@ export function NewOrderForm({
     const existingQty = cart.find((l) => l.productId === selectedProductId)?.quantity ?? 0;
     const newQty = existingQty + quantity;
     if (newQty < product.moq) {
-      setAddError(`${product.name} has a minimum order quantity of ${product.moq} ${product.unit}s.`);
+      setAddError(`${product.name} has a minimum order quantity of ${product.moq} ${product.unit}${product.moq === 1 ? "" : "s"}.`);
       return;
     }
 
@@ -100,6 +100,7 @@ export function NewOrderForm({
   return (
     <form {...formProps} className="flex flex-col gap-6">
       <input type="hidden" name="itemsJson" value={JSON.stringify(cart)} />
+      <input type="hidden" name="customerMode" value={customerMode} />
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
 
       {/* 1. Customer Section */}
@@ -173,7 +174,7 @@ export function NewOrderForm({
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="customerPhone" className="text-xs font-medium text-text-muted">
-                  Phone (WhatsApp Number)
+                  Phone (WhatsApp &amp; Telegram)
                 </label>
                 <input
                   id="customerPhone"
@@ -296,7 +297,7 @@ export function NewOrderForm({
 
                       <div className="flex items-center justify-between text-xs pt-1 border-t border-line/50">
                         <span className="font-tabular text-text-muted">
-                          {line.quantity} {product.unit}s × {formatMoney(unitPrice)}
+                          {line.quantity} {product.unit}{line.quantity === 1 ? "" : "s"} × {formatMoney(unitPrice)}
                           {isAgreed && <span className="text-accent ml-1 font-medium">(agreed)</span>}
                         </span>
                         <span className="font-tabular font-bold text-sm text-ink">
@@ -342,7 +343,7 @@ export function NewOrderForm({
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right font-tabular text-ink align-middle">
-                            {line.quantity} <span className="text-text-muted text-xs">{product.unit}s</span>
+                            {line.quantity} <span className="text-text-muted text-xs">{product.unit}{line.quantity === 1 ? "" : "s"}</span>
                           </td>
                           <td className="px-4 py-3 text-right font-tabular text-ink align-middle">
                             <div>{formatMoney(unitPrice)}</div>
