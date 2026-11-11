@@ -76,11 +76,9 @@ export default async function OrdersPage({
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-2.5">
             <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Orders Ledger</h1>
-            <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
-              {totalCount} total
-            </span>
+            <span className="font-tabular text-sm text-text-muted">{totalCount} total</span>
           </div>
           <p className="mt-1 text-sm text-text-muted">
             Trade commitments, dispatch manifests, and live customer orders.
@@ -88,7 +86,7 @@ export default async function OrdersPage({
         </div>
         <Link
           href="/orders/new"
-          className="inline-flex items-center gap-2 self-start rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-accent/25 transition-all hover:bg-accent-2 hover:shadow-md hover:shadow-accent/30 active:scale-95 sm:self-auto cursor-pointer"
+          className="inline-flex h-10 items-center gap-2 self-start bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-2 sm:self-auto cursor-pointer"
         >
           <Plus className="h-4 w-4 stroke-[2.5]" />
           <span>New Order</span>
@@ -96,10 +94,10 @@ export default async function OrdersPage({
       </header>
 
       {/* Filter & Search Bar */}
-      <div className="card-base flex flex-col gap-3 rounded-2xl p-4 sm:p-5">
+      <div className="border border-line flex flex-col gap-3 p-4 sm:p-5">
         <form action="/orders" className="flex flex-wrap items-center gap-3">
           {filters.status && <input type="hidden" name="status" value={filters.status} />}
-          
+
           <div className="relative min-w-[260px] flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
             <input
@@ -107,13 +105,13 @@ export default async function OrdersPage({
               type="search"
               defaultValue={filters.q}
               placeholder="Search reference, customer name, phone, product…"
-              className="w-full rounded-xl border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted/60 focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
+              className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted/60 focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted">
-              <span className="font-semibold uppercase tracking-wider text-xs text-ink/80">From</span>
+            <div className="flex items-center gap-1.5 border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted">
+              <span className="font-medium text-ink/80">From</span>
               <input
                 name="from"
                 type="date"
@@ -122,8 +120,8 @@ export default async function OrdersPage({
               />
             </div>
 
-            <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted">
-              <span className="font-semibold uppercase tracking-wider text-xs text-ink/80">To</span>
+            <div className="flex items-center gap-1.5 border border-line bg-paper/40 px-3 py-1.5 text-xs text-text-muted">
+              <span className="font-medium text-ink/80">To</span>
               <input
                 name="to"
                 type="date"
@@ -134,7 +132,7 @@ export default async function OrdersPage({
 
             <button
               type="submit"
-              className="rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-paper hover:bg-ink-2 transition-colors cursor-pointer"
+              className="h-9 bg-ink px-4 text-xs font-semibold text-paper hover:bg-ink-2 transition-colors cursor-pointer"
             >
               Filter
             </button>
@@ -142,7 +140,7 @@ export default async function OrdersPage({
             {filtered && (
               <Link
                 href="/orders"
-                className="inline-flex items-center gap-1 rounded-xl border border-line px-3 py-2 text-xs font-medium text-text-muted hover:text-ink hover:bg-paper transition-colors"
+                className="inline-flex items-center gap-1 border border-line px-3 py-2 text-xs font-medium text-text-muted hover:text-ink hover:bg-paper transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
                 <span>Reset</span>
@@ -151,28 +149,24 @@ export default async function OrdersPage({
           </div>
         </form>
 
-        {/* Status Filter Tab Ribbon */}
-        <div className="border-t border-line/60 pt-3">
-          <nav aria-label="Filter by status" className="flex flex-wrap items-center gap-1.5">
-            {STATUS_FILTERS.map((f) => {
-              const active = filters.status === f.value;
-              return (
-                <Link
-                  key={f.label}
-                  href={link({ status: f.value, page: undefined })}
-                  aria-current={active ? "true" : undefined}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                    active
-                      ? "bg-accent text-white shadow-xs shadow-accent/20"
-                      : "border border-line/70 bg-surface/80 text-text-muted hover:border-line hover:text-ink hover:bg-paper/60"
-                  }`}
-                >
-                  {f.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        {/* Status Filter Tab Ribbon — plain underline tabs, not filled pills */}
+        <nav aria-label="Filter by status" className="flex flex-wrap items-center gap-5 border-t border-line/60 pt-3 text-xs font-semibold">
+          {STATUS_FILTERS.map((f) => {
+            const active = filters.status === f.value;
+            return (
+              <Link
+                key={f.label}
+                href={link({ status: f.value, page: undefined })}
+                aria-current={active ? "true" : undefined}
+                className={`border-b-2 pb-0.5 transition-colors ${
+                  active ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
+                }`}
+              >
+                {f.label}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
 
       {/* Main Table Card View */}

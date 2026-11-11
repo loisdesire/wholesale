@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { formatRelativeTime } from "@/lib/format";
 import { ConversationStatusBadge } from "@/components/status-badge";
-import { MessageSquare, ArrowUpRight, ShoppingBag } from "lucide-react";
+import { MessageSquare, ShoppingBag } from "lucide-react";
 
 export default async function InboxPage() {
   const session = await auth();
@@ -26,11 +26,9 @@ export default async function InboxPage() {
       {/* Header */}
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-2.5">
             <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Conversations Inbox</h1>
-            <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
-              {conversations.length} active
-            </span>
+            <span className="font-tabular text-sm text-text-muted">{conversations.length} active</span>
           </div>
           <p className="mt-1 text-sm text-text-muted">
             Live customer message streams, order negotiations, and catalogue inquiries across Telegram and WhatsApp.
@@ -40,10 +38,8 @@ export default async function InboxPage() {
 
       {/* Main Table & Mobile Card View */}
       {conversations.length === 0 ? (
-        <div className="card-base flex flex-col items-center justify-center rounded-2xl p-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper text-text-muted">
-            <MessageSquare className="h-6 w-6" />
-          </div>
+        <div className="border border-line flex flex-col items-center justify-center p-12 text-center">
+          <MessageSquare className="h-6 w-6 text-text-muted" />
           <h2 className="mt-3 font-display text-base font-bold text-ink">No conversations active</h2>
           <p className="mt-1 max-w-sm text-xs text-text-muted">
             Incoming customer messages from Telegram and WhatsApp will appear here in real-time.
@@ -59,22 +55,14 @@ export default async function InboxPage() {
                 <Link
                   key={c.id}
                   href={`/inbox/${c.id}`}
-                  className="card-base block rounded-2xl p-4 shadow-xs transition-colors active:bg-paper/80"
+                  className="card-base block p-4 transition-colors active:bg-paper/80"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-ink text-base truncate">
-                          {c.customer.name ?? "Unnamed Customer"}
-                        </span>
-                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
-                          c.channel === "TELEGRAM"
-                            ? "bg-sky-50 text-sky-700 border border-sky-200"
-                            : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        }`}>
-                          {c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}
-                        </span>
-                      </div>
+                      <p className="text-xs text-text-muted">{c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}</p>
+                      <span className="font-semibold text-ink text-base truncate">
+                        {c.customer.name ?? "Unnamed Customer"}
+                      </span>
                       <p className="font-tabular text-xs text-text-muted mt-0.5">{c.customer.phone}</p>
                     </div>
 
@@ -87,7 +75,7 @@ export default async function InboxPage() {
                   </div>
 
                   {/* Latest Message Preview */}
-                  <div className="mt-3 rounded-xl bg-paper/60 px-3 py-2 text-xs text-ink/80 line-clamp-2">
+                  <div className="mt-3 bg-paper/60 px-3 py-2 text-xs text-ink/80 line-clamp-2">
                     {lastMsg?.body ? (
                       <span>{lastMsg.body}</span>
                     ) : (
@@ -123,17 +111,18 @@ export default async function InboxPage() {
           </div>
 
           {/* Desktop Table View (>= 640px) */}
-          <div className="hidden sm:block card-base overflow-hidden rounded-2xl">
+          <div className="hidden sm:block card-base overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-sm table-fixed">
                 <thead>
-                  <tr className="border-b border-line bg-paper/60 text-xs font-semibold uppercase tracking-wider text-ink/80">
-                    <th className="py-3.5 pl-5 pr-4 w-[220px]">Customer</th>
+                  <tr className="border-b border-line text-xs font-medium text-text-muted">
+                    <th className="py-3.5 pl-5 pr-4 w-[200px]">Customer</th>
+                    <th className="py-3.5 pr-4 w-[90px]">Channel</th>
                     <th className="py-3.5 pr-4 w-[130px]">Status</th>
-                    <th className="py-3.5 pr-4 min-w-[280px]">Latest Message</th>
-                    <th className="py-3.5 pr-4 w-[160px]">Linked Orders</th>
-                    <th className="py-3.5 pr-4 w-[140px]">Assigned</th>
-                    <th className="py-3.5 pl-4 pr-5 text-right w-[110px]">Active</th>
+                    <th className="py-3.5 pr-4 min-w-[240px]">Latest message</th>
+                    <th className="py-3.5 pr-4 w-[150px]">Linked orders</th>
+                    <th className="py-3.5 pr-4 w-[130px]">Assigned</th>
+                    <th className="py-3.5 pl-4 pr-5 text-right w-[100px]">Active</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/60">
@@ -147,20 +136,14 @@ export default async function InboxPage() {
                         {/* Customer Info */}
                         <td className="py-3.5 pl-5 pr-4">
                           <Link href={`/inbox/${c.id}`} className="block">
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-ink group-hover:text-accent transition-colors truncate">
-                                {c.customer.name ?? "Unnamed Customer"}
-                              </p>
-                              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
-                                c.channel === "TELEGRAM"
-                                  ? "bg-sky-50 text-sky-700 border border-sky-200"
-                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              }`}>
-                                {c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}
-                              </span>
-                            </div>
+                            <p className="font-semibold text-ink group-hover:text-accent transition-colors truncate">
+                              {c.customer.name ?? "Unnamed Customer"}
+                            </p>
                             <p className="font-tabular text-xs text-text-muted mt-0.5">{c.customer.phone}</p>
                           </Link>
+                        </td>
+                        <td className="py-3.5 pr-4 align-middle text-xs text-text-muted">
+                          {c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}
                         </td>
 
                         {/* Status */}
@@ -217,10 +200,9 @@ export default async function InboxPage() {
                         <td className="py-3.5 pl-4 pr-5 text-right font-tabular text-xs text-text-muted align-middle">
                           <Link
                             href={`/inbox/${c.id}`}
-                            className="inline-flex items-center gap-1 group-hover:text-accent transition-colors"
+                            className="group-hover:text-accent transition-colors"
                           >
-                            <span>{formatRelativeTime(c.lastMessageAt)}</span>
-                            <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {formatRelativeTime(c.lastMessageAt)}
                           </Link>
                         </td>
                       </tr>

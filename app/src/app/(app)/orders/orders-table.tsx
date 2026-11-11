@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { applyBulkAssignAction, previewBulkAssignAction, type BulkAssignOutcome } from "../operations/actions";
-import { ArrowUpRight, Loader2, Inbox, ChevronRight } from "lucide-react";
+import { Loader2, Inbox, ChevronRight } from "lucide-react";
 
 export type OrderRow = {
   id: string;
@@ -68,7 +68,7 @@ export function OrdersTable({
     <div className="flex flex-col gap-4">
       {/* Bulk Action Bar if items selected */}
       {canBulkAssign && selected.size > 0 && (
-        <div className="card-base flex flex-col gap-3 rounded-2xl bg-ink p-4 text-paper shadow-xl border border-white/10 animate-in fade-in">
+        <div className="flex flex-col gap-3 bg-ink p-4 text-paper border border-white/10 animate-in fade-in">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
             <div className="flex items-center gap-2.5">
               <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-2 text-xs font-bold text-white shadow-xs">
@@ -143,10 +143,8 @@ export function OrdersTable({
 
       {/* Main Order View */}
       {orders.length === 0 ? (
-        <div className="card-base flex flex-col items-center justify-center rounded-2xl p-10 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper text-text-muted">
-            <Inbox className="h-6 w-6" />
-          </div>
+        <div className="border border-line flex flex-col items-center justify-center p-10 text-center">
+          <Inbox className="h-6 w-6 text-text-muted" />
           <h2 className="mt-3 font-display text-base font-semibold text-ink">No matching orders found</h2>
           <p className="mt-1 text-xs text-text-muted">
             Try adjusting your search query, status filters, or date range.
@@ -159,7 +157,7 @@ export function OrdersTable({
             {orders.map((o) => (
               <div
                 key={o.id}
-                className="card-base rounded-2xl p-4 shadow-xs hover:border-line transition-all active:scale-[0.99]"
+                className="card-base p-4 hover:border-line transition-all active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-2.5">
                   <div className="flex items-center gap-2">
@@ -207,11 +205,11 @@ export function OrdersTable({
           </div>
 
           {/* Desktop Table View (hidden sm:block) */}
-          <div className="card-base overflow-hidden rounded-2xl hidden sm:block">
+          <div className="card-base overflow-hidden hidden sm:block">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-paper/60 text-xs font-semibold uppercase tracking-wider text-ink/80">
+                  <tr className="border-b border-line text-xs font-medium text-text-muted">
                     {canBulkAssign && (
                       <th className="w-10 py-3.5 pl-5 pr-2">
                         <input
@@ -301,10 +299,9 @@ export function OrdersTable({
                       <td className="py-3.5 pl-4 pr-5 text-right">
                         <Link
                           href={`/orders/${o.id}`}
-                          className="inline-flex items-center gap-1 font-tabular text-sm font-bold text-ink group-hover:text-accent transition-colors"
+                          className="inline-flex items-center font-tabular text-sm font-bold text-ink group-hover:text-accent transition-colors"
                         >
-                          <span>{formatMoney(o.totalCents, o.currency)}</span>
-                          <ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100 text-accent" />
+                          {formatMoney(o.totalCents, o.currency)}
                         </Link>
                       </td>
                     </tr>
