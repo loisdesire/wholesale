@@ -60,6 +60,16 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-display: var(--font-display);
+
+  /* Default Tailwind scale (12/14/16px) reads as too small across a data-dense
+     app used heavily on mobile. Nudge the whole scale up one notch so text-xs
+     is no longer fine-print-sized and text-sm/base keep a clear, readable gap. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.625rem;
 }
 
 body {
