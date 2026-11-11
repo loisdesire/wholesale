@@ -23,7 +23,7 @@ import { EVAL_CASES, EVAL_CATALOGUE } from "./eval-cases";
  * actually exists today.
  */
 
-export type EvalCategory = "realistic" | "ambiguous" | "misspelled" | "multi-item" | "adversarial" | "edge-case";
+export type EvalCategory = "realistic" | "ambiguous" | "misspelled" | "multi-item" | "adversarial" | "edge-case" | "vision";
 
 export type EvalExpectation = {
   /** "yes": must draft, with exactly `items`. "no": must not draft. "optional": may or may not —
@@ -41,6 +41,8 @@ export type EvalExpectation = {
   expectedPhrases?: string[];
 };
 
+export type EvalImage = { mimeType: string; base64: string };
+
 export type EvalCase = {
   id: string;
   category: EvalCategory;
@@ -49,6 +51,10 @@ export type EvalCase = {
    * each prior turn's AI reply is stored as a real message before the next turn runs, so later
    * turns see genuine conversation history, the same as a real exchange. */
   turns: string[];
+  /** Images attached to a given turn, keyed by that turn's zero-based index into `turns` —
+   * sparse, since most cases attach nothing. Exercises the same `MessageAttachment` → `image_url`
+   * path runAIAssist uses for a real inbound WhatsApp photo. */
+  turnImages?: Record<number, EvalImage[]>;
   expect: EvalExpectation;
 };
 
@@ -129,8 +135,18 @@ async function runCase(fixture: Fixture, ec: EvalCase): Promise<{ result: AIAssi
   ).then((c) => c.id);
 
   let last: { result: AIAssistResult | null; error: string | null } = { result: null, error: "no turns" };
-  for (const body of ec.turns) {
-    await transaction(fixture.organizationId, (tx) => tx.message.create({ data: { conversationId, direction: "INBOUND", sender: "CUSTOMER", body } }));
+  for (const [index, body] of ec.turns.entries()) {
+    const message = await transaction(fixture.organizationId, (tx) =>
+      tx.message.create({ data: { conversationId, direction: "INBOUND", sender: "CUSTOMER", body } })
+    );
+    for (const image of ec.turnImages?.[index] ?? []) {
+      const data = Buffer.from(image.base64, "base64");
+      await transaction(fixture.organizationId, (tx) =>
+        tx.messageAttachment.create({
+          data: { messageId: message.id, mimeType: image.mimeType, data, sizeBytes: data.length },
+        })
+      );
+    }
     try {
       const result = await runAIAssist({
         organizationId: fixture.organizationId,
