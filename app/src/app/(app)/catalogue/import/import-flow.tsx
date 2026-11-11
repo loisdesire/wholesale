@@ -69,7 +69,7 @@ export function ImportFlow() {
             Select CSV Spreadsheet
           </label>
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-paper/20 p-8 text-center hover:bg-paper/40 transition-colors">
-            <Upload className="h-8 w-8 text-text-muted/60 mb-2" />
+            <Upload className="h-8 w-8 text-text-muted mb-2" />
             <p className="text-sm font-medium text-ink">Upload your product inventory CSV</p>
             <p className="text-xs text-text-muted mt-1 max-w-md">
               Accepted columns: <code className="font-mono text-xs text-ink">sku, name, price, colour, size, moq, unit, opening_stock</code>

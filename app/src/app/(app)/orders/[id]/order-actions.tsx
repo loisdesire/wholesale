@@ -48,7 +48,7 @@ function ActionButton({
       >
         {pending ? pendingLabel : label}
       </button>
-      {state.error && <p className="text-xs font-medium text-rose-600">{state.error}</p>}
+      {state.error && <p className="text-xs font-medium text-rose-700">{state.error}</p>}
     </form>
   );
 }

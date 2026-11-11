@@ -25,13 +25,13 @@ export function HeroAppMockup() {
     <div className="relative mx-auto w-full max-w-6xl">
       {/* Floating Tactical Badges */}
       <div className="hidden lg:flex absolute -top-5 -left-4 z-20 items-center gap-2 rounded-full border border-emerald-400/30 bg-ink/95 px-4 py-2 text-xs font-semibold text-white shadow-xl backdrop-blur-md">
-        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="h-2 w-2 rounded-full bg-emerald-400" />
         <span>Paystack Settled: <strong className="text-emerald-400 font-tabular">₦3,875,000</strong></span>
       </div>
 
       <div className="hidden lg:flex absolute -top-5 -right-4 z-20 items-center gap-2 rounded-full border border-accent/40 bg-ink/95 px-4 py-2 text-xs font-semibold text-white shadow-xl backdrop-blur-md">
         <Lock className="h-3.5 w-3.5 text-accent" />
-        <span>Row-Locked: <strong className="text-accent font-tabular">35 Units Deducted</strong></span>
+        <span>Row-Locked: <strong className="text-white font-tabular">35 Units Deducted</strong></span>
       </div>
 
       <div className="hidden lg:flex absolute -bottom-5 -left-4 z-20 items-center gap-2 rounded-full border border-amber-400/30 bg-ink/95 px-4 py-2 text-xs font-semibold text-white shadow-xl backdrop-blur-md">
@@ -66,7 +66,7 @@ export function HeroAppMockup() {
               onClick={() => setActiveTab("orders")}
               className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
                 activeTab === "orders"
-                  ? "bg-accent text-white shadow-2xs shadow-accent/25"
+                  ? "bg-accent text-white"
                   : "text-ink/70 hover:text-ink"
               }`}
             >
@@ -77,7 +77,7 @@ export function HeroAppMockup() {
               onClick={() => setActiveTab("whatsapp")}
               className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
                 activeTab === "whatsapp"
-                  ? "bg-accent text-white shadow-2xs shadow-accent/25"
+                  ? "bg-accent text-white"
                   : "text-ink/70 hover:text-ink"
               }`}
             >
@@ -88,7 +88,7 @@ export function HeroAppMockup() {
               onClick={() => setActiveTab("inventory")}
               className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
                 activeTab === "inventory"
-                  ? "bg-accent text-white shadow-2xs shadow-accent/25"
+                  ? "bg-accent text-white"
                   : "text-ink/70 hover:text-ink"
               }`}
             >
@@ -107,7 +107,7 @@ export function HeroAppMockup() {
                   <span className="font-bold text-ink">4</span>
                 </div>
                 <p className="font-display text-lg font-bold font-tabular text-ink mt-1">₦3,120,000</p>
-                <span className="text-[11px] text-text-muted">Awaiting confirmation</span>
+                <span className="text-xs text-text-muted">Awaiting confirmation</span>
               </div>
 
               <div className="rounded-xl border border-accent/30 bg-accent/5 p-3.5">
@@ -116,7 +116,7 @@ export function HeroAppMockup() {
                   <span className="font-bold">2</span>
                 </div>
                 <p className="font-display text-lg font-bold font-tabular text-accent mt-1">₦5,315,000</p>
-                <span className="text-[11px] text-accent/80">Awaiting bank alert</span>
+                <span className="text-xs text-accent/80">Awaiting bank alert</span>
               </div>
 
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5">
@@ -125,7 +125,7 @@ export function HeroAppMockup() {
                   <span className="font-bold">6</span>
                 </div>
                 <p className="font-display text-lg font-bold font-tabular text-emerald-800 mt-1">₦18,450,000</p>
-                <span className="text-[11px] text-emerald-700">Released to warehouse</span>
+                <span className="text-xs text-emerald-700">Released to warehouse</span>
               </div>
 
               <div className="rounded-xl border border-line bg-paper/50 p-3.5">
@@ -134,7 +134,7 @@ export function HeroAppMockup() {
                   <span className="font-bold text-ink">12</span>
                 </div>
                 <p className="font-display text-lg font-bold font-tabular text-ink mt-1">₦34,800,000</p>
-                <span className="text-[11px] text-text-muted">In interstate transit</span>
+                <span className="text-xs text-text-muted">In interstate transit</span>
               </div>
             </div>
 
@@ -155,13 +155,13 @@ export function HeroAppMockup() {
                       <td className="py-3 px-4 font-mono font-bold text-ink">#ORD-1004</td>
                       <td className="py-3 px-4">
                         <span className="font-semibold text-ink block">Madam Blessing Fabrics</span>
-                        <span className="text-[11px] text-text-muted">Ariaria Market, Aba</span>
+                        <span className="text-xs text-text-muted">Ariaria Market, Aba</span>
                       </td>
                       <td className="py-3 px-4 text-text-muted">
                         20 cartons Dutch Wax, 15 bundles Swiss Voile
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
                           <Check className="h-3 w-3" />
                           <span>35 units locked</span>
                         </span>
@@ -174,13 +174,13 @@ export function HeroAppMockup() {
                       <td className="py-3 px-4 font-mono font-bold text-ink">#ORD-1003</td>
                       <td className="py-3 px-4">
                         <span className="font-semibold text-ink block">Alhaji Sani &amp; Sons</span>
-                        <span className="text-[11px] text-text-muted">Kantin Kwari, Kano</span>
+                        <span className="text-xs text-text-muted">Kantin Kwari, Kano</span>
                       </td>
                       <td className="py-3 px-4 text-text-muted">
                         50 bundles Super Wax Hollandais
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold text-accent">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-bold text-accent">
                           <Lock className="h-3 w-3" />
                           <span>Pending VA alert</span>
                         </span>
@@ -201,9 +201,9 @@ export function HeroAppMockup() {
           <div className="p-4 sm:p-6 lg:p-8 space-y-4">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 <span className="font-display text-sm font-bold text-ink">
-                  WhatsApp Cloud API · Live Inbound Channel
+                  WhatsApp Cloud API, live inbound channel
                 </span>
               </div>
               <span className="font-mono text-xs text-text-muted">Session: +234 803 441 2981</span>
@@ -211,18 +211,18 @@ export function HeroAppMockup() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-line bg-paper/50 p-4 space-y-3">
-                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted block">
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-text-muted block">
                   Inbound Buyer Audio (0.84s parse)
                 </span>
                 <div className="flex items-center gap-3 bg-surface border border-line rounded-xl p-3 shadow-2xs">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white font-bold">
                     <Volume2 className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="h-2 w-full bg-line rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-600 w-3/4" />
+                      <div className="h-full bg-emerald-700 w-3/4" />
                     </div>
-                    <span className="text-[11px] text-text-muted mt-1 block truncate">
+                    <span className="text-xs text-text-muted mt-1 block truncate">
                       &quot;Send 20 cartons of the Dutch Wax to Aba...&quot;
                     </span>
                   </div>
@@ -231,7 +231,7 @@ export function HeroAppMockup() {
               </div>
 
               <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4 space-y-2">
-                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-accent block">
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-accent block">
                   Generated Draft Order
                 </span>
                 <div className="bg-surface border border-accent/20 rounded-xl p-3 text-xs space-y-1 shadow-2xs">
@@ -279,15 +279,15 @@ export function HeroAppMockup() {
                 </div>
                 <div className="flex items-center gap-4 text-right">
                   <div>
-                    <span className="text-text-muted block text-[11px]">Floor Stock</span>
+                    <span className="text-text-muted block text-xs">Floor Stock</span>
                     <strong className="font-tabular text-ink">140 cartons</strong>
                   </div>
                   <div>
-                    <span className="text-text-muted block text-[11px]">Locked</span>
+                    <span className="text-text-muted block text-xs">Locked</span>
                     <strong className="font-tabular text-accent">20 cartons</strong>
                   </div>
                   <div>
-                    <span className="text-text-muted block text-[11px]">Free to Sell</span>
+                    <span className="text-text-muted block text-xs">Free to Sell</span>
                     <strong className="font-tabular text-emerald-700">120 cartons</strong>
                   </div>
                 </div>
@@ -300,15 +300,15 @@ export function HeroAppMockup() {
                 </div>
                 <div className="flex items-center gap-4 text-right">
                   <div>
-                    <span className="text-text-muted block text-[11px]">Floor Stock</span>
+                    <span className="text-text-muted block text-xs">Floor Stock</span>
                     <strong className="font-tabular text-ink">85 bundles</strong>
                   </div>
                   <div>
-                    <span className="text-text-muted block text-[11px]">Locked</span>
+                    <span className="text-text-muted block text-xs">Locked</span>
                     <strong className="font-tabular text-accent">15 bundles</strong>
                   </div>
                   <div>
-                    <span className="text-text-muted block text-[11px]">Free to Sell</span>
+                    <span className="text-text-muted block text-xs">Free to Sell</span>
                     <strong className="font-tabular text-emerald-700">70 bundles</strong>
                   </div>
                 </div>
@@ -380,7 +380,7 @@ export function VisualFeatureShowcase() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-5 space-y-4">
               <span className="font-mono text-xs font-bold text-accent uppercase tracking-wider block">
-                01 · Audio &amp; DM Parsing
+                Audio &amp; DM Parsing
               </span>
               <h3 className="font-display text-2xl sm:text-3xl font-bold text-ink leading-tight">
                 Buyers speak on WhatsApp. You fulfill with precision.
@@ -394,28 +394,26 @@ export function VisualFeatureShowcase() {
               </div>
             </div>
 
-            <div className="lg:col-span-7 rounded-2xl border border-line bg-paper/60 p-6 space-y-4 shadow-sm">
+            <div className="lg:col-span-7 rounded-2xl border border-line bg-paper/60 p-6 space-y-4">
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <span className="font-display text-xs font-bold text-ink">Inbound Audio Message</span>
                 <span className="font-mono text-xs text-emerald-700 font-bold">0.84s parse SLA</span>
               </div>
-              <div className="bg-surface rounded-xl p-4 border border-line shadow-2xs space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white font-bold">
-                    <Volume2 className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="h-2.5 w-full bg-line rounded-full overflow-hidden">
-                      <div className="h-full bg-accent w-4/5" />
-                    </div>
-                    <span className="text-xs text-text-muted mt-1 block">
-                      &quot;Send 50 bundles of the Super Wax Hollandais to our Kano warehouse...&quot;
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs font-bold text-ink">₦6,250,000</span>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white font-bold">
+                  <Volume2 className="h-5 w-5" />
                 </div>
+                <div className="flex-1">
+                  <div className="h-2.5 w-full bg-line rounded-full overflow-hidden">
+                    <div className="h-full bg-accent w-4/5" />
+                  </div>
+                  <span className="text-xs text-text-muted mt-1 block">
+                    &quot;Send 50 bundles of the Super Wax Hollandais to our Kano warehouse...&quot;
+                  </span>
+                </div>
+                <span className="font-mono text-xs font-bold text-ink">₦6,250,000</span>
               </div>
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 flex items-center justify-between text-xs">
+              <div className="pt-3 border-t border-line/60 flex items-center justify-between text-xs">
                 <span className="font-semibold text-emerald-900">Mapped to SKU: WAX-DUTCH-01 (Kano Tier 2 Applied)</span>
                 <span className="font-mono font-bold text-emerald-800">₦125,000 / bundle</span>
               </div>
@@ -427,7 +425,7 @@ export function VisualFeatureShowcase() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-5 space-y-4">
               <span className="font-mono text-xs font-bold text-accent uppercase tracking-wider block">
-                02 · Concurrency Guard
+                Concurrency Guard
               </span>
               <h3 className="font-display text-2xl sm:text-3xl font-bold text-ink leading-tight">
                 PostgreSQL row locks stop overselling cold.
@@ -469,7 +467,7 @@ COMMIT;`}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-5 space-y-4">
               <span className="font-mono text-xs font-bold text-accent uppercase tracking-wider block">
-                03 · Verified Bank Settlement
+                Verified Bank Settlement
               </span>
               <h3 className="font-display text-2xl sm:text-3xl font-bold text-ink leading-tight">
                 Zero goods released on fake transfer receipts.
@@ -483,7 +481,7 @@ COMMIT;`}
               </div>
             </div>
 
-            <div className="lg:col-span-7 rounded-2xl border border-line bg-paper/60 p-6 space-y-4 shadow-sm">
+            <div className="lg:col-span-7 space-y-4">
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold text-emerald-900">
                   <span>Paystack Webhook Settled</span>
@@ -493,7 +491,7 @@ COMMIT;`}
                   <span className="font-display text-3xl font-bold font-tabular text-emerald-950">
                     ₦18,450,000.00
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 text-white px-2.5 py-0.5 text-xs font-bold">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-700 text-white px-2.5 py-0.5 text-xs font-bold">
                     <Check className="h-3 w-3" />
                     <span>Settled</span>
                   </span>
@@ -503,7 +501,7 @@ COMMIT;`}
                 </p>
               </div>
 
-              <div className="flex items-center justify-between bg-surface border border-line rounded-xl p-4 shadow-2xs text-xs">
+              <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-4 text-xs">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
                     <Printer className="h-4 w-4" />
@@ -544,12 +542,12 @@ export function VisualOrderPipeline() {
           </p>
         </div>
 
-        <div className="mt-6 rounded-xl border border-line bg-paper/60 p-3.5 space-y-1.5 text-xs">
+        <div className="mt-6 pt-3.5 border-t border-line/60 space-y-1.5 text-xs">
           <div className="flex items-center justify-between font-semibold text-ink">
             <span>Madam Blessing Fabrics</span>
             <span className="text-emerald-700 font-mono">0.84s SLA</span>
           </div>
-          <span className="text-text-muted block text-[11px] truncate">
+          <span className="text-text-muted block text-xs truncate">
             &quot;Send 20 cartons Dutch Wax...&quot;
           </span>
         </div>
@@ -569,12 +567,12 @@ export function VisualOrderPipeline() {
           </p>
         </div>
 
-        <div className="mt-6 rounded-xl border border-accent/25 bg-accent/5 p-3.5 space-y-1.5 text-xs">
+        <div className="mt-6 pt-3.5 border-t border-line/60 space-y-1.5 text-xs">
           <div className="flex items-center justify-between text-accent font-semibold">
             <span>35 Units Reserved</span>
             <span className="font-mono font-bold">₦3,875,000</span>
           </div>
-          <span className="text-[11px] text-text-muted block">
+          <span className="text-xs text-text-muted block">
             0% oversell collision guarantee
           </span>
         </div>
@@ -594,12 +592,12 @@ export function VisualOrderPipeline() {
           </p>
         </div>
 
-        <div className="mt-6 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3.5 space-y-1.5 text-xs">
+        <div className="mt-6 pt-3.5 border-t border-line/60 space-y-1.5 text-xs">
           <div className="flex items-center justify-between text-emerald-800 font-semibold">
             <span>Waybill #GIG-99120</span>
             <PackageCheck className="h-4 w-4" />
           </div>
-          <span className="text-[11px] text-text-muted block">
+          <span className="text-xs text-text-muted block">
             Driver dispatched to Jibowu Park
           </span>
         </div>
@@ -638,7 +636,7 @@ export function StreamlinedPricing() {
         <span className={`text-xs font-bold ${yearly ? "text-ink" : "text-text-muted"}`}>
           Billed Annually
         </span>
-        <span className="rounded-full bg-accent/10 border border-accent/25 px-2.5 py-0.5 font-mono text-[11px] font-bold text-accent">
+        <span className="rounded-full bg-accent/10 border border-accent/25 px-2.5 py-0.5 font-mono text-xs font-bold text-accent">
           Save 2 Months
         </span>
       </div>
@@ -684,7 +682,7 @@ export function StreamlinedPricing() {
 
         {/* Commercial Scale (Featured) */}
         <div className="relative rounded-[28px] border-2 border-accent bg-ink p-7 flex flex-col justify-between text-paper shadow-2xl scale-[1.02]">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-0.5 text-xs font-bold text-white">
             Most Popular
           </div>
 
@@ -721,7 +719,7 @@ export function StreamlinedPricing() {
 
           <Link
             href="/login"
-            className="mt-8 block w-full rounded-xl bg-accent py-3.5 text-center text-xs font-bold text-white hover:bg-accent-2 transition-all shadow-lg shadow-accent/30 cursor-pointer"
+            className="mt-8 block w-full rounded-xl bg-accent py-3.5 text-center text-xs font-bold text-white hover:bg-accent-2 transition-colors cursor-pointer"
           >
             Get Started
           </Link>

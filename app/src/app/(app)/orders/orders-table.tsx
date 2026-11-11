@@ -286,7 +286,7 @@ export function OrdersTable({
                             <span>{o.assignedToName}</span>
                           </span>
                         ) : (
-                          <span className="text-text-muted/60 italic">Unassigned</span>
+                          <span className="text-text-muted italic">Unassigned</span>
                         )}
                       </td>
 

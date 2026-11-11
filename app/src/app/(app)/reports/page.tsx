@@ -136,7 +136,7 @@ export default async function ReportsPage({
             {formatMoney(sales.netCashCents)}
           </p>
           <p className="mt-1 text-sm text-text-muted">
-            Net cash settled this period: <span className="text-emerald-700 font-tabular">+{formatMoney(sales.cashReceivedCents)} in</span>, <span className="text-rose-600 font-tabular">-{formatMoney(sales.refundsPaidCents)} out</span>
+            Net cash settled this period: <span className="text-emerald-700 font-tabular">+{formatMoney(sales.cashReceivedCents)} in</span>, <span className="text-rose-700 font-tabular">-{formatMoney(sales.refundsPaidCents)} out</span>
           </p>
           <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-1.5 text-sm">
             <span className="text-text-muted">
@@ -175,7 +175,7 @@ export default async function ReportsPage({
             <div className="p-4 flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-                  <ArrowUpRight className="h-3.5 w-3.5 text-rose-600" />
+                  <ArrowUpRight className="h-3.5 w-3.5 text-rose-700" />
                   <span>Pending refunds (owed by us)</span>
                 </div>
                 <p className="mt-1 text-xs text-text-muted">
@@ -184,7 +184,7 @@ export default async function ReportsPage({
               </div>
               <span
                 className={`font-tabular text-xl font-bold shrink-0 ml-4 ${
-                  sales.refundsOwedCents > 0 ? "text-rose-600" : "text-text-muted"
+                  sales.refundsOwedCents > 0 ? "text-rose-700" : "text-text-muted"
                 }`}
               >
                 {formatMoney(sales.refundsOwedCents)}
@@ -286,7 +286,7 @@ export default async function ReportsPage({
                       <td className="py-3 pr-4 text-right font-tabular font-bold text-amber-800 align-middle">
                         {r.owesUsCents > 0 ? formatMoney(r.owesUsCents) : "—"}
                       </td>
-                      <td className={`py-3 pr-4 text-right font-tabular font-bold align-middle ${r.weOweCents > 0 ? "text-rose-600" : "text-text-muted"}`}>
+                      <td className={`py-3 pr-4 text-right font-tabular font-bold align-middle ${r.weOweCents > 0 ? "text-rose-700" : "text-text-muted"}`}>
                         {r.weOweCents > 0 ? formatMoney(r.weOweCents) : "—"}
                       </td>
                       <td className="py-3 pr-5 text-right font-tabular font-bold text-ink align-middle">
@@ -338,13 +338,13 @@ export default async function ReportsPage({
                       <td className="py-3.5 pr-4 text-center font-tabular text-text-muted align-middle">
                         {r.movements}
                       </td>
-                      <td className={`py-3.5 pr-4 text-right font-tabular font-bold align-middle ${r.physical > 0 ? "text-emerald-700" : r.physical < 0 ? "text-rose-600" : "text-text-muted"}`}>
+                      <td className={`py-3.5 pr-4 text-right font-tabular font-bold align-middle ${r.physical > 0 ? "text-emerald-700" : r.physical < 0 ? "text-rose-700" : "text-text-muted"}`}>
                         {signed(r.physical)}
                       </td>
                       <td className={`py-3.5 pr-4 text-right font-tabular font-bold align-middle ${r.reserved > 0 ? "text-amber-700" : r.reserved < 0 ? "text-emerald-700" : "text-text-muted"}`}>
                         {signed(r.reserved)}
                       </td>
-                      <td className={`py-3.5 pl-4 pr-5 text-right font-tabular font-bold align-middle ${r.damaged > 0 ? "text-rose-600" : "text-text-muted"}`}>
+                      <td className={`py-3.5 pl-4 pr-5 text-right font-tabular font-bold align-middle ${r.damaged > 0 ? "text-rose-700" : "text-text-muted"}`}>
                         {signed(r.damaged)}
                       </td>
                     </tr>

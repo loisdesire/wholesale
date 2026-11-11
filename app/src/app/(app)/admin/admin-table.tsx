@@ -154,7 +154,7 @@ export function AdminTable({ overview }: Props) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter organizations…"
-            className="w-full border border-line bg-surface py-2 sm:py-1.5 pl-8 pr-3 text-base sm:text-xs text-ink placeholder:text-text-muted/60 outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+            className="w-full border border-line bg-surface py-2 sm:py-1.5 pl-8 pr-3 text-base sm:text-xs text-ink placeholder:text-text-muted outline-none focus:border-ink focus:ring-1 focus:ring-ink"
           />
         </div>
       </div>
@@ -162,7 +162,7 @@ export function AdminTable({ overview }: Props) {
       {/* Main Table */}
       {filtered.length === 0 ? (
         <div className="p-12 text-center">
-          <Building2 className="mx-auto h-8 w-8 text-text-muted/40" />
+          <Building2 className="mx-auto h-8 w-8 text-text-muted" />
           <p className="mt-2 text-sm font-medium text-ink">No organizations match filter</p>
           <p className="mt-1 text-xs text-text-muted">
             Try adjusting your search query or switching the status filter tab above.

@@ -76,7 +76,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
               </span>
             </div>
             <p className="mt-0.5 font-tabular text-xs text-text-muted flex items-center gap-1.5">
-              <Phone className="h-3 w-3 text-text-muted/70" />
+              <Phone className="h-3 w-3 text-text-muted" />
               <span>{conversation.customer.phone}</span>
             </p>
           </div>

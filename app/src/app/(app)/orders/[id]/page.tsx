@@ -226,7 +226,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                         <button
                           type="submit"
                           title="Remove item"
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted/60 hover:text-rose-600 transition-colors"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted hover:text-rose-700 transition-colors"
                         >
                           ✕
                         </button>
@@ -301,7 +301,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                             <button
                               type="submit"
                               title="Remove item"
-                              className="text-xs text-text-muted/60 hover:text-rose-600 transition-colors cursor-pointer"
+                              className="text-xs text-text-muted hover:text-rose-700 transition-colors cursor-pointer"
                             >
                               ✕
                             </button>

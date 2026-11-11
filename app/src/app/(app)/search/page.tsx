@@ -43,7 +43,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 autoFocus
                 placeholder="Enter order reference, customer phone, SKU, or name…"
                 aria-label="Search"
-                className="w-full bg-transparent py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none placeholder:text-text-muted/60"
+                className="w-full bg-transparent py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none placeholder:text-text-muted"
               />
             </div>
             <button

@@ -116,7 +116,7 @@ export default async function CataloguePage({
             name="q"
             defaultValue={query}
             placeholder="Search catalogue by product name or SKU…"
-            className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted/60 focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
+            className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
           />
         </form>
 
@@ -199,7 +199,7 @@ export default async function CataloguePage({
                           className="h-14 w-14 rounded-xl border border-line object-cover shadow-2xs"
                         />
                       ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-line bg-paper/50 text-text-muted/60">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-line bg-paper/50 text-text-muted">
                           <Package className="h-6 w-6" />
                         </div>
                       )}
@@ -246,7 +246,7 @@ export default async function CataloguePage({
                         <div className="text-right">
                           <span
                             className={`font-tabular text-xs font-bold ${
-                              available === 0 ? "text-rose-600" : "text-ink"
+                              available === 0 ? "text-rose-700" : "text-ink"
                             }`}
                           >
                             {available} {p.unit}{available === 1 ? "" : "s"} avail
@@ -302,7 +302,7 @@ export default async function CataloguePage({
                                 className="h-10 w-10 rounded-xl border border-line object-cover shadow-2xs transition-transform group-hover:scale-105"
                               />
                             ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-line bg-paper/50 text-text-muted/60">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-line bg-paper/50 text-text-muted">
                                 <Package className="h-4 w-4" />
                               </div>
                             )}
@@ -339,7 +339,7 @@ export default async function CataloguePage({
                               {Object.values(variant).join(" / ")}
                             </span>
                           ) : (
-                            <span className="text-text-muted/60">—</span>
+                            <span className="text-text-muted">—</span>
                           )}
                         </td>
 
@@ -363,7 +363,7 @@ export default async function CataloguePage({
                           <div className="flex flex-col items-end">
                             <span
                               className={`font-tabular text-sm font-bold ${
-                                available === 0 ? "text-rose-600" : "text-ink"
+                                available === 0 ? "text-rose-700" : "text-ink"
                               }`}
                             >
                               {available} {p.unit}{available === 1 ? "" : "s"}

@@ -28,7 +28,7 @@ export function ReplyForm({
           rows={3}
           placeholder={`Type a ${channelName} message to the customer… (Enter to add lines)`}
           required
-          className="w-full resize-none bg-transparent px-3 py-2 text-base sm:text-sm text-ink placeholder:text-text-muted/60 outline-none"
+          className="w-full resize-none bg-transparent px-3 py-2 text-base sm:text-sm text-ink placeholder:text-text-muted outline-none"
         />
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border-t border-line/60 pt-2 px-1">

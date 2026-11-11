@@ -183,7 +183,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <p
                 className={`mt-1 font-tabular text-xl sm:text-2xl font-bold ${
                   f.tone === "rose" && f.isAttention
-                    ? "text-rose-600"
+                    ? "text-rose-700"
                     : f.tone === "amber" && f.isAttention
                       ? "text-amber-800"
                       : "text-ink"
@@ -281,7 +281,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                         {isOwner && (
                           <td className="py-3 text-right">
                             <form action={removePriceAction.bind(null, customer.id, p.productId)}>
-                              <button type="submit" className="text-xs text-rose-600 hover:underline cursor-pointer">
+                              <button type="submit" className="text-xs text-rose-700 hover:underline cursor-pointer">
                                 Remove
                               </button>
                             </form>
@@ -382,7 +382,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                         </form>
                       )}
                       <form action={removeAddressAction.bind(null, customer.id, a.id)}>
-                        <button type="submit" className="text-rose-600 hover:underline cursor-pointer">
+                        <button type="submit" className="text-rose-700 hover:underline cursor-pointer">
                           Delete
                         </button>
                       </form>

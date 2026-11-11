@@ -16,7 +16,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-ink/80">
+        <label htmlFor="email" className="text-xs font-semibold text-ink">
           Email address
         </label>
         <div className="relative flex items-center">
@@ -30,14 +30,14 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
             autoComplete="email"
             placeholder="name@company.com"
             required
-            className="w-full rounded-xl border border-line bg-paper/30 py-2.5 pl-10 pr-3.5 text-sm text-ink transition-all placeholder:text-text-muted/60 outline-none focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
+            className="w-full rounded-xl border border-line bg-paper/30 py-2.5 pl-10 pr-3.5 text-sm text-ink transition-all placeholder:text-text-muted outline-none focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
           />
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-ink/80">
+          <label htmlFor="password" className="text-xs font-semibold text-ink">
             Password
           </label>
         </div>
@@ -52,7 +52,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
             autoComplete="current-password"
             placeholder="••••••••••••"
             required
-            className="w-full rounded-xl border border-line bg-paper/30 py-2.5 pl-10 pr-10 text-sm text-ink transition-all placeholder:text-text-muted/60 outline-none focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
+            className="w-full rounded-xl border border-line bg-paper/30 py-2.5 pl-10 pr-10 text-sm text-ink transition-all placeholder:text-text-muted outline-none focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
           />
           <button
             type="button"
@@ -78,7 +78,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="group relative mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-md shadow-accent/20 transition-all hover:bg-accent-2 hover:shadow-lg hover:shadow-accent/30 active:scale-[0.99] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+        className="group relative mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-2 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >
         {pending ? (
           <>

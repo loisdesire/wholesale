@@ -79,7 +79,7 @@ export default async function InboxPage() {
                     {lastMsg?.body ? (
                       <span>{lastMsg.body}</span>
                     ) : (
-                      <span className="italic text-text-muted/60">No message content</span>
+                      <span className="italic text-text-muted">No message content</span>
                     )}
                   </div>
 
@@ -92,7 +92,7 @@ export default async function InboxPage() {
                           <span>{c.assignedTo.name}</span>
                         </span>
                       ) : (
-                        <span className="text-text-muted/60 italic text-xs">Unassigned</span>
+                        <span className="text-text-muted italic text-xs">Unassigned</span>
                       )}
                     </div>
 
@@ -180,7 +180,7 @@ export default async function InboxPage() {
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-text-muted/60">—</span>
+                            <span className="text-xs text-text-muted">—</span>
                           )}
                         </td>
 
@@ -192,7 +192,7 @@ export default async function InboxPage() {
                               <span>{c.assignedTo.name}</span>
                             </span>
                           ) : (
-                            <span className="text-text-muted/60 italic">Unassigned</span>
+                            <span className="text-text-muted italic">Unassigned</span>
                           )}
                         </td>
 

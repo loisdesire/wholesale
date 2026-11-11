@@ -67,7 +67,7 @@ export default async function BillingPage() {
 
           <div className="text-left sm:text-right text-xs text-text-muted space-y-1">
             {org.subscriptionStatus === "TRIALING" && org.trialEndsAt && (
-              <p className={trialExpired ? "font-bold text-rose-600" : "font-semibold text-ink"}>
+              <p className={trialExpired ? "font-bold text-rose-700" : "font-semibold text-ink"}>
                 {trialExpired ? "Trial concluded on" : "Complimentary trial active until"}{" "}
                 <span className="font-tabular">{formatDateTime(org.trialEndsAt)}</span>
               </p>
@@ -83,7 +83,7 @@ export default async function BillingPage() {
         {/* Warning Banner if expired / past due */}
         {(trialExpired || org.subscriptionStatus === "PAST_DUE") && (
           <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 text-xs text-rose-900">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-700" />
             <span>
               {trialExpired ? "Your complimentary trial period has concluded." : "Your monthly platform subscription payment is currently past due."} Renew via Paystack to maintain seamless WhatsApp integration.
             </span>
@@ -112,7 +112,7 @@ export default async function BillingPage() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-ink">{row.label}</span>
                     <span className="font-tabular font-medium text-ink">
-                      <strong className={row.over ? "text-rose-600 font-bold" : "text-ink"}>{row.used}</strong> / {row.limit}
+                      <strong className={row.over ? "text-rose-700 font-bold" : "text-ink"}>{row.used}</strong> / {row.limit}
                     </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-paper">

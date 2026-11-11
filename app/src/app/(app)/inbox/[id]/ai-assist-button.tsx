@@ -43,7 +43,7 @@ export function AIAssistButton({ conversationId }: { conversationId: string }) {
       </form>
 
       {state.error && (
-        <p className="text-xs font-medium text-rose-600 bg-rose-50/70 border border-rose-200 p-2.5 rounded-xl">
+        <p className="text-xs font-medium text-rose-700 bg-rose-50/70 border border-rose-200 p-2.5 rounded-xl">
           {state.error}
         </p>
       )}

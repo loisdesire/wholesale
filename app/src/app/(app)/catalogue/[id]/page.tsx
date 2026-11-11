@@ -103,7 +103,7 @@ export default async function ProductDetailPage({
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-line/70 border border-line">
           <div className="p-3.5">
             <span className="text-xs text-text-muted">Available to sell</span>
-            <p className={`mt-0.5 font-tabular text-xl font-bold ${figures.available === 0 ? "text-rose-600" : "text-emerald-700"}`}>
+            <p className={`mt-0.5 font-tabular text-xl font-bold ${figures.available === 0 ? "text-rose-700" : "text-emerald-700"}`}>
               {figures.available} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.available === 1 ? "" : "s"}</span>
             </p>
           </div>
@@ -210,13 +210,13 @@ export default async function ProductDetailPage({
                         <td className="py-3 pr-4 text-text-muted">
                           {m.createdBy?.name ?? "System"}
                         </td>
-                        <td className={`py-3 pr-4 text-right font-tabular font-semibold ${m.physicalDelta > 0 ? "text-emerald-700" : m.physicalDelta < 0 ? "text-rose-600" : "text-text-muted"}`}>
+                        <td className={`py-3 pr-4 text-right font-tabular font-semibold ${m.physicalDelta > 0 ? "text-emerald-700" : m.physicalDelta < 0 ? "text-rose-700" : "text-text-muted"}`}>
                           {m.physicalDelta === 0 ? "—" : `${m.physicalDelta > 0 ? "+" : ""}${m.physicalDelta}`}
                         </td>
                         <td className={`py-3 pr-4 text-right font-tabular font-semibold ${m.reservedDelta > 0 ? "text-amber-700" : m.reservedDelta < 0 ? "text-emerald-700" : "text-text-muted"}`}>
                           {m.reservedDelta === 0 ? "—" : `${m.reservedDelta > 0 ? "+" : ""}${m.reservedDelta}`}
                         </td>
-                        <td className={`py-3 pr-5 text-right font-tabular font-semibold ${m.damagedDelta > 0 ? "text-rose-600" : "text-text-muted"}`}>
+                        <td className={`py-3 pr-5 text-right font-tabular font-semibold ${m.damagedDelta > 0 ? "text-rose-700" : "text-text-muted"}`}>
                           {m.damagedDelta === 0 ? "—" : `${m.damagedDelta > 0 ? "+" : ""}${m.damagedDelta}`}
                         </td>
                       </tr>

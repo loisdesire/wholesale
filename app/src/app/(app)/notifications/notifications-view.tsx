@@ -113,7 +113,6 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
       return {
         badge: "Refund Required",
         badgeClass: "bg-amber-500/10 text-amber-700 border-amber-500/20",
-        borderClass: "border-l-amber-500",
         icon: <DollarSign className="h-4 w-4 text-amber-600" />,
         actionText: "Process Refund",
       };
@@ -122,7 +121,6 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
       return {
         badge: "Payment Verified",
         badgeClass: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-        borderClass: "border-l-emerald-500",
         icon: <Check className="h-4 w-4 text-emerald-600" />,
         actionText: "View Order",
       };
@@ -131,8 +129,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
       return {
         badge: "Return Triage",
         badgeClass: "bg-rose-500/10 text-rose-700 border-rose-500/20",
-        borderClass: "border-l-rose-500",
-        icon: <RotateCcw className="h-4 w-4 text-rose-600" />,
+        icon: <RotateCcw className="h-4 w-4 text-rose-700" />,
         actionText: "Inspect Return",
       };
     }
@@ -140,7 +137,6 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
       return {
         badge: "Assignment",
         badgeClass: "bg-accent/10 text-accent border-accent/20",
-        borderClass: "border-l-accent",
         icon: <UserCheck className="h-4 w-4 text-accent" />,
         actionText: "Open Task",
       };
@@ -148,7 +144,6 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
     return {
       badge: "Operational Notice",
       badgeClass: "bg-ink/5 text-ink border-ink/10",
-      borderClass: "border-l-ink/40",
       icon: <Bell className="h-4 w-4 text-ink" />,
       actionText: "View Details",
     };
@@ -183,7 +178,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
         >
           <div className="flex items-center justify-between text-text-muted">
             <span className="text-xs text-text-muted">Unread alerts</span>
-            <div className={`h-2 w-2 rounded-full ${unreadCount > 0 ? "bg-accent animate-pulse" : "bg-text-muted/30"}`} />
+            <div className={`h-2 w-2 rounded-full ${unreadCount > 0 ? "bg-accent animate-pulse" : "bg-text-muted"}`} />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className={`font-display text-2xl font-bold ${unreadCount > 0 ? "text-accent" : "text-ink"}`}>
@@ -219,7 +214,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
         >
           <div className="flex items-center justify-between text-text-muted">
             <span className="text-xs text-text-muted">Returns triage</span>
-            <RotateCcw className="h-4 w-4 text-rose-600" />
+            <RotateCcw className="h-4 w-4 text-rose-700" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold text-ink">{returnsCount}</span>
@@ -283,7 +278,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search notifications…"
-              className="w-full border border-line bg-surface py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-text-muted/60 outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+              className="w-full border border-line bg-surface py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-text-muted outline-none focus:border-ink focus:ring-1 focus:ring-ink"
             />
           </div>
 
@@ -309,7 +304,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
       {/* Main Notification Card Feed */}
       {filteredNotifications.length === 0 ? (
         <div className="border border-line p-16 text-center flex flex-col items-center">
-          <Inbox className="h-6 w-6 text-text-muted/50 mb-3" />
+          <Inbox className="h-6 w-6 text-text-muted mb-3" />
           <h3 className="font-display text-base font-semibold text-ink">No notifications found</h3>
           <p className="mt-1 text-xs text-text-muted max-w-sm">
             {search || category !== "ALL"
@@ -339,9 +334,9 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
             return (
               <div
                 key={n.id}
-                className={`card-base relative overflow-hidden transition-colors border-l-4 ${
-                  meta.borderClass
-                } ${isUnread ? "bg-white ring-1 ring-accent/15" : "bg-surface/80"}`}
+                className={`card-base relative overflow-hidden transition-colors ${
+                  isUnread ? "bg-white ring-1 ring-accent/15" : "bg-surface/80"
+                }`}
               >
                 <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   {/* Left Content Area */}
@@ -357,7 +352,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
                         </span>
                         {isUnread && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-white">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
                             New
                           </span>
                         )}
@@ -367,9 +362,9 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
                         </span>
                       </div>
 
-                      <h4 className={`mt-1.5 text-sm ${isUnread ? "font-semibold text-ink" : "font-medium text-ink"}`}>
+                      <p className={`mt-1.5 text-sm ${isUnread ? "font-semibold text-ink" : "font-medium text-ink"}`}>
                         {n.title}
-                      </h4>
+                      </p>
 
                       {n.body && (
                         <p className="mt-1 text-xs text-text-muted leading-relaxed line-clamp-2">

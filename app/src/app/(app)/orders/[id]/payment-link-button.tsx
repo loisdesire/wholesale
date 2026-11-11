@@ -29,7 +29,7 @@ export function PaymentLinkButton({ orderId }: { orderId: string }) {
         <Link2 className="h-3.5 w-3.5 text-text-muted" />
         <span>{pending ? "Generating…" : "Generate Paystack Link"}</span>
       </button>
-      {state.error && <p className="text-xs text-rose-600">{state.error}</p>}
+      {state.error && <p className="text-xs text-rose-700">{state.error}</p>}
       {state.authorizationUrl && (
         <div className="flex flex-col gap-1.5 rounded-xl border border-line bg-paper/60 p-3 text-xs">
           <p className="font-semibold text-ink">Paystack Hosted Checkout:</p>

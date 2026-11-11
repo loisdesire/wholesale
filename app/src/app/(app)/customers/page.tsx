@@ -101,7 +101,7 @@ export default async function CustomersPage({
             type="search"
             defaultValue={q}
             placeholder="Search by customer name, phone number, or notes…"
-            className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted/60 focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
+            className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
           />
         </form>
 
@@ -209,11 +209,11 @@ export default async function CustomersPage({
                           Owes {formatMoney(owes)}
                         </span>
                       ) : owed > 0 ? (
-                        <span className="rounded-md bg-rose-500/10 px-2 py-0.5 font-tabular text-xs font-bold text-rose-600">
+                        <span className="rounded-md bg-rose-500/10 px-2 py-0.5 font-tabular text-xs font-bold text-rose-700">
                           Refund {formatMoney(owed)}
                         </span>
                       ) : (
-                        <span className="font-tabular text-xs text-text-muted/60">
+                        <span className="font-tabular text-xs text-text-muted">
                           Settled
                         </span>
                       )}
@@ -290,7 +290,7 @@ export default async function CustomersPage({
                         <td className="py-3.5 pr-4 text-right align-middle">
                           <span
                             className={`font-tabular text-sm font-bold ${
-                              owes > 0 ? "text-amber-800" : "text-text-muted/60"
+                              owes > 0 ? "text-amber-800" : "text-text-muted"
                             }`}
                           >
                             {formatMoney(owes)}
@@ -304,7 +304,7 @@ export default async function CustomersPage({
                             className="inline-flex items-center justify-end font-tabular text-sm font-bold group-hover:text-accent transition-colors"
                           >
                             <span
-                              className={owed > 0 ? "text-rose-600 font-bold" : "text-text-muted/60"}
+                              className={owed > 0 ? "text-rose-700 font-bold" : "text-text-muted"}
                             >
                               {formatMoney(owed)}
                             </span>

@@ -105,7 +105,7 @@ export default async function OrdersPage({
               type="search"
               defaultValue={filters.q}
               placeholder="Search reference, customer name, phone, product…"
-              className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted/60 focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
+              className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
             />
           </div>
 

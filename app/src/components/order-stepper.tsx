@@ -12,7 +12,7 @@ export function OrderStepper({ status }: { status: string }) {
   if (status === "CANCELLED") {
     return (
       <div className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-1.5 text-xs font-semibold text-rose-800">
-        <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+        <AlertCircle className="h-3.5 w-3.5 text-rose-700" />
         <span>Order Cancelled</span>
       </div>
     );
