@@ -51,8 +51,8 @@ export function AIAssistButton({ conversationId }: { conversationId: string }) {
       {state.replyText && (
         <div className="rounded-xl border border-line bg-paper/60 p-3.5 text-xs space-y-2.5 animate-in fade-in">
           <div className="flex items-center justify-between">
-            <span className="font-semibold uppercase tracking-wider text-xs text-ink/80">
-              {state.sent ? "Sent to Customer via WhatsApp" : "Proposed Draft (Pending Review)"}
+            <span className="font-semibold text-xs text-ink">
+              {state.sent ? "Sent to customer via WhatsApp" : "Proposed draft (pending review)"}
             </span>
             <button
               type="button"

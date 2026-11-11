@@ -9,7 +9,6 @@ import {
   Users,
   Package,
   RotateCcw,
-  ArrowUpRight,
 } from "lucide-react";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
@@ -26,19 +25,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       {/* Header & Global Command Search */}
       <header className="flex flex-col gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Global Search</h1>
-            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-accent/10 px-2 text-xs font-bold text-accent">
-              Instant
-            </span>
-          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Global Search</h1>
           <p className="mt-1 text-sm text-text-muted">
             Search orders, customer accounts, phone numbers in any format, catalogue SKUs, and returns across the whole organization.
           </p>
         </div>
 
-        {/* Elevated Search Bar */}
-        <div className="card-base flex items-center gap-3 rounded-2xl p-2.5 shadow-xs max-w-2xl">
+        {/* Search Bar */}
+        <div className="card-base flex items-center gap-3 p-2.5 max-w-2xl">
           <form action="/search" className="flex flex-1 items-center gap-2 sm:gap-3">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -49,12 +43,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 autoFocus
                 placeholder="Enter order reference, customer phone, SKU, or name…"
                 aria-label="Search"
-                className="w-full rounded-xl bg-transparent py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none placeholder:text-text-muted/60"
+                className="w-full bg-transparent py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none placeholder:text-text-muted/60"
               />
             </div>
             <button
               type="submit"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-5 py-2 text-xs font-semibold text-white shadow-sm shadow-accent/20 transition-all hover:bg-accent-2 active:scale-95 cursor-pointer"
+              className="inline-flex min-h-[44px] items-center justify-center bg-accent px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-2 cursor-pointer"
             >
               Search
             </button>
@@ -64,16 +58,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       {/* Query status helpers */}
       {query.length > 0 && query.length < 2 && (
-        <div className="card-base rounded-2xl p-6 text-center text-xs text-text-muted">
+        <div className="border border-line p-6 text-center text-xs text-text-muted">
           Type at least two characters to search.
         </div>
       )}
 
       {query.length >= 2 && total === 0 && (
-        <div className="card-base flex flex-col items-center justify-center rounded-2xl p-12 text-center shadow-xs">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper text-text-muted">
-            <Search className="h-6 w-6" />
-          </div>
+        <div className="border border-line flex flex-col items-center justify-center p-12 text-center">
+          <Search className="h-6 w-6 text-text-muted" />
           <h2 className="mt-3 font-display text-base font-bold text-ink">
             No results found for &ldquo;{query}&rdquo;
           </h2>
@@ -89,7 +81,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {results.orders.length > 0 && (
           <Group
             icon={ShoppingBag}
-            title="Matching Orders"
+            title="Matching orders"
             count={results.orders.length}
             seeAll={`/orders?q=${encodeURIComponent(query)}`}
           >
@@ -108,7 +100,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   <span className="font-tabular text-sm font-bold text-ink">
                     {formatMoney(o.totalCents, o.currency)}
                   </span>
-                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
                 </div>
               </Row>
             ))}
@@ -119,7 +110,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {results.customers.length > 0 && (
           <Group
             icon={Users}
-            title="Matching Customers"
+            title="Matching customers"
             count={results.customers.length}
             seeAll={`/customers?q=${encodeURIComponent(query)}`}
           >
@@ -132,8 +123,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   <span className="font-tabular text-xs text-text-muted">{c.phone}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-text-muted">Customer Profile</span>
-                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <span className="text-xs font-semibold text-text-muted">Customer profile</span>
                 </div>
               </Row>
             ))}
@@ -144,7 +134,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {results.products.length > 0 && (
           <Group
             icon={Package}
-            title="Matching Products"
+            title="Matching products"
             count={results.products.length}
             seeAll={`/catalogue?q=${encodeURIComponent(query)}`}
           >
@@ -159,8 +149,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-tabular text-xs text-text-muted font-medium">SKU Detail</span>
-                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <span className="font-tabular text-xs text-text-muted font-medium">SKU detail</span>
                 </div>
               </Row>
             ))}
@@ -171,7 +160,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {results.returns.length > 0 && (
           <Group
             icon={RotateCcw}
-            title="Matching Returns &amp; Refunds"
+            title="Matching returns &amp; refunds"
             count={results.returns.length}
           >
             {results.returns.map((r) => (
@@ -189,7 +178,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   <span className="font-tabular text-sm font-bold text-ink">
                     {formatMoney(r.refundCents, r.order.currency)}
                   </span>
-                  <ArrowUpRight className="h-4 w-4 text-text-muted/60 opacity-0 transition-opacity group-hover:opacity-100" />
                 </div>
               </Row>
             ))}
@@ -214,19 +202,16 @@ function Group({
   children: React.ReactNode;
 }) {
   return (
-    <div className="card-base overflow-hidden rounded-2xl shadow-xs">
-      <div className="flex items-center justify-between border-b border-line bg-paper/40 px-5 py-3">
+    <div className="card-base overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 text-accent" />
           <h2 className="font-display text-sm font-bold text-ink">{title}</h2>
-          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-            {count}
-          </span>
+          <span className="font-tabular text-xs text-text-muted">{count}</span>
         </div>
         {seeAll && (
-          <Link href={seeAll} className="text-xs font-semibold text-accent hover:underline flex items-center gap-1">
-            <span>View all</span>
-            <ArrowUpRight className="h-3 w-3" />
+          <Link href={seeAll} className="text-xs font-semibold text-accent hover:underline">
+            View all
           </Link>
         )}
       </div>

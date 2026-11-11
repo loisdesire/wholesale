@@ -56,7 +56,7 @@ export default async function ProductDetailPage({
   return (
     <div className="flex flex-col gap-6 pb-16">
       {/* Top Header Card */}
-      <header className="card-base flex flex-col gap-5 rounded-2xl p-5 sm:p-6 shadow-xs">
+      <header className="card-base flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
@@ -83,55 +83,47 @@ export default async function ProductDetailPage({
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 font-tabular text-xs text-text-muted flex items-center gap-2">
-                <span>SKU: <strong className="font-mono text-ink">{product.sku}</strong></span>
-                {variant && (
-                  <>
-                    <span>·</span>
-                    <span className="font-semibold text-ink/80">{Object.values(variant).join(" / ")}</span>
-                  </>
-                )}
-                <span>·</span>
-                <span>MOQ: {product.moq} {product.unit}{product.moq === 1 ? "" : "s"}</span>
+              <p className="mt-0.5 font-tabular text-xs text-text-muted">
+                {product.sku}
+                {variant && <span className="ml-3 font-semibold text-ink/80">{Object.values(variant).join(" / ")}</span>}
+                <span className="ml-3">MOQ: {product.moq} {product.unit}{product.moq === 1 ? "" : "s"}</span>
               </p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-line bg-paper/40 px-4 py-2 text-right">
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Standard List Price</span>
+          <div className="text-right">
+            <span className="text-xs text-text-muted">Standard list price</span>
             <p className="font-tabular text-xl font-bold text-ink">
               {formatMoney(product.priceCents, product.currency)}
             </p>
           </div>
         </div>
 
-        {/* Stock Breakdown Figures Bar */}
-        <div className="border-t border-line/60 pt-4">
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            <div className="rounded-xl border border-line bg-paper/40 p-3.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Available to Sell</span>
-              <p className={`mt-0.5 font-tabular text-xl font-bold ${figures.available === 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                {figures.available} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.available === 1 ? "" : "s"}</span>
-              </p>
-            </div>
-            <div className="rounded-xl border border-line bg-paper/40 p-3.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Physical On Hand</span>
-              <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
-                {figures.physical} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.physical === 1 ? "" : "s"}</span>
-              </p>
-            </div>
-            <div className="rounded-xl border border-line bg-paper/40 p-3.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Allocated to Orders</span>
-              <p className="mt-0.5 font-tabular text-xl font-bold text-amber-700">
-                {figures.reserved} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.reserved === 1 ? "" : "s"}</span>
-              </p>
-            </div>
-            <div className="rounded-xl border border-line bg-paper/40 p-3.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Quarantine / Damaged</span>
-              <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
-                {figures.damaged} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.damaged === 1 ? "" : "s"}</span>
-              </p>
-            </div>
+        {/* Stock breakdown — one hairline-divided row, not four boxed stat cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-line/70 border border-line">
+          <div className="p-3.5">
+            <span className="text-xs text-text-muted">Available to sell</span>
+            <p className={`mt-0.5 font-tabular text-xl font-bold ${figures.available === 0 ? "text-rose-600" : "text-emerald-700"}`}>
+              {figures.available} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.available === 1 ? "" : "s"}</span>
+            </p>
+          </div>
+          <div className="p-3.5">
+            <span className="text-xs text-text-muted">Physical on hand</span>
+            <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
+              {figures.physical} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.physical === 1 ? "" : "s"}</span>
+            </p>
+          </div>
+          <div className="p-3.5">
+            <span className="text-xs text-text-muted">Allocated to orders</span>
+            <p className="mt-0.5 font-tabular text-xl font-bold text-amber-700">
+              {figures.reserved} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.reserved === 1 ? "" : "s"}</span>
+            </p>
+          </div>
+          <div className="p-3.5">
+            <span className="text-xs text-text-muted">Quarantine / damaged</span>
+            <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
+              {figures.damaged} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.damaged === 1 ? "" : "s"}</span>
+            </p>
           </div>
         </div>
       </header>
@@ -141,18 +133,18 @@ export default async function ProductDetailPage({
         {/* Left Column (2 Cols): Photo Manager, Specs & Movement History */}
         <div className="lg:col-span-2 space-y-6">
           {/* Photo Gallery Card */}
-          <div className="card-base rounded-2xl p-5 shadow-xs space-y-3.5">
+          <div className="card-base p-5 space-y-3.5">
             <div className="border-b border-line/60 pb-2.5">
-              <h2 className="font-display text-sm font-bold text-ink">Product Photography &amp; Swatches</h2>
+              <h2 className="font-display text-sm font-bold text-ink">Product photography &amp; swatches</h2>
               <p className="text-xs text-text-muted">Visual references sent automatically to buyers over WhatsApp &amp; Telegram inquiries.</p>
             </div>
             <ProductImages productId={product.id} images={product.images} />
           </div>
 
           {/* Edit Product Specifications Form Card */}
-          <div className="card-base rounded-2xl p-5 shadow-xs space-y-3.5">
+          <div className="card-base p-5 space-y-3.5">
             <div className="border-b border-line/60 pb-2.5">
-              <h2 className="font-display text-sm font-bold text-ink">Product Specifications &amp; Quantity Tiers</h2>
+              <h2 className="font-display text-sm font-bold text-ink">Product specifications &amp; quantity tiers</h2>
               <p className="text-xs text-text-muted">Base unit costs, list pricing, minimum order quantities, and wholesale volume bands.</p>
             </div>
             <EditProductForm
@@ -175,9 +167,9 @@ export default async function ProductDetailPage({
           </div>
 
           {/* Stock Movement History Table */}
-          <div className="card-base overflow-hidden rounded-2xl shadow-xs">
-            <div className="flex items-center justify-between border-b border-line bg-paper/40 px-5 py-3.5">
-              <h2 className="font-display text-sm font-bold text-ink">Stock Movement Audit Trail</h2>
+          <div className="card-base overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+              <h2 className="font-display text-sm font-bold text-ink">Stock movement audit trail</h2>
               <span className="font-tabular text-xs font-semibold text-text-muted">
                 Last {movements.length} ledger entries
               </span>
@@ -189,9 +181,9 @@ export default async function ProductDetailPage({
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-left text-sm table-fixed">
                   <thead>
-                    <tr className="border-b border-line bg-paper/20 text-xs font-semibold uppercase tracking-wider text-ink/80">
+                    <tr className="border-b border-line text-xs font-medium text-text-muted">
                       <th className="py-3 pl-5 pr-4 w-[160px]">Timestamp</th>
-                      <th className="py-3 pr-4 w-[170px]">Ledger Reason</th>
+                      <th className="py-3 pr-4 w-[170px]">Ledger reason</th>
                       <th className="py-3 pr-4 w-[120px]">Reference</th>
                       <th className="py-3 pr-4 w-[150px]">Note</th>
                       <th className="py-3 pr-4 w-[110px]">Actor</th>
@@ -238,9 +230,9 @@ export default async function ProductDetailPage({
 
         {/* Right Column (1 Col): Stock Movement Ledger Intake */}
         <div className="space-y-6">
-          <div className="card-base rounded-2xl p-5 shadow-xs space-y-3.5 sticky top-4">
+          <div className="card-base p-5 space-y-3.5 sticky top-4">
             <div className="border-b border-line/60 pb-2.5">
-              <h3 className="font-display text-sm font-bold text-ink">Post Stock Movement</h3>
+              <h3 className="font-display text-sm font-bold text-ink">Post stock movement</h3>
               <p className="text-xs text-text-muted">
                 Record intake deliveries, supplier receipts, damaged write-offs, or reconciliation counts.
               </p>

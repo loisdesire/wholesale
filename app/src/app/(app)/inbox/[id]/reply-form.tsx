@@ -38,7 +38,7 @@ export function ReplyForm({
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex min-h-[44px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-accent/20 transition-all hover:bg-accent-2 hover:shadow-md hover:shadow-accent/30 active:scale-95 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+            className="inline-flex min-h-[44px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-2 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
           >
             {pending ? (
               <>

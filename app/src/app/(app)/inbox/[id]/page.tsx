@@ -22,7 +22,6 @@ import {
   CheckCheck,
   AlertCircle,
   MessageSquare,
-  ExternalLink,
 } from "lucide-react";
 
 const SENDER_LABEL: Record<string, string> = {
@@ -57,7 +56,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
   return (
     <div className="flex flex-col gap-6 pb-14">
       {/* Top Header & Context */}
-      <header className="card-base flex flex-col gap-4 rounded-2xl p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between shadow-xs">
+      <header className="card-base flex flex-col gap-4 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/inbox"
@@ -72,7 +71,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                 {conversation.customer.name ?? "Unnamed Customer"}
               </h1>
               <ConversationStatusBadge status={conversation.status} />
-              <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
+              <span className="font-tabular text-xs text-text-muted">
                 {isTelegram ? "Telegram" : "WhatsApp"}
               </span>
             </div>
@@ -99,10 +98,10 @@ export default async function ConversationDetailPage({ params }: { params: Promi
 
           <Link
             href={`/orders/new?customerId=${conversation.customerId}&conversationId=${conversation.id}`}
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-xs font-semibold text-white shadow-xs shadow-accent/25 transition-all hover:bg-accent-2 active:scale-95 cursor-pointer"
+            className="inline-flex min-h-[40px] items-center gap-1.5 bg-accent px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-2 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>Create Order</span>
+            <span>Create order</span>
           </Link>
 
           {conversation.status !== "RESOLVED" && (
@@ -112,7 +111,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                 className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3.5 py-2 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 active:scale-95 cursor-pointer"
               >
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Mark Resolved</span>
+                <span>Mark resolved</span>
               </button>
             </form>
           )}
@@ -121,9 +120,9 @@ export default async function ConversationDetailPage({ params }: { params: Promi
 
       {/* Linked Orders Ribbon */}
       {conversation.orders.length > 0 && (
-        <div className="card-base flex flex-wrap items-center gap-3 rounded-2xl px-5 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">
-            Commercial Orders ({conversation.orders.length}):
+        <div className="card-base flex flex-wrap items-center gap-3 px-5 py-3">
+          <span className="text-xs text-text-muted">
+            Commercial orders ({conversation.orders.length}):
           </span>
           <div className="flex flex-wrap gap-2">
             {conversation.orders.map((o) => (
@@ -144,7 +143,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left 2 Cols: Message Feed & Chat Viewport */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="card-base flex flex-col rounded-2xl p-4 sm:p-6 min-h-[360px] sm:min-h-[480px] max-h-[60vh] sm:max-h-[660px] overflow-y-auto">
+          <div className="card-base flex flex-col p-4 sm:p-6 min-h-[360px] sm:min-h-[480px] max-h-[60vh] sm:max-h-[660px] overflow-y-auto">
             {conversation.messages.length === 0 ? (
               <div className="m-auto flex flex-col items-center justify-center p-8 text-center text-text-muted">
                 <MessageSquare className="h-8 w-8 text-line" />
@@ -243,9 +242,9 @@ export default async function ConversationDetailPage({ params }: { params: Promi
         {/* Right 1 Col: AI Copilot & Customer Card */}
         <div className="space-y-6">
           {/* AI Copilot Card */}
-          <div className="card-base rounded-2xl p-5 space-y-3.5 shadow-xs">
+          <div className="card-base p-5 space-y-3.5">
             <div className="border-b border-line/60 pb-2.5">
-              <h3 className="font-display text-sm font-bold text-ink">Commercial Copilot</h3>
+              <h3 className="font-display text-sm font-bold text-ink">Commercial copilot</h3>
               <p className="text-xs text-text-muted">Analyze messages against active catalogue stock to prepare quote replies.</p>
             </div>
 
@@ -259,15 +258,14 @@ export default async function ConversationDetailPage({ params }: { params: Promi
           </div>
 
           {/* Customer Profile Summary */}
-          <div className="card-base rounded-2xl p-5 space-y-3.5 shadow-xs">
+          <div className="card-base p-5 space-y-3.5">
             <div className="flex items-center justify-between border-b border-line/60 pb-2.5">
-              <h3 className="font-display text-sm font-bold text-ink">Customer Account</h3>
+              <h3 className="font-display text-sm font-bold text-ink">Customer account</h3>
               <Link
                 href={`/customers/${conversation.customerId}`}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                className="text-xs font-semibold text-accent hover:underline"
               >
-                <span>Full Ledger</span>
-                <ExternalLink className="h-3 w-3" />
+                Full ledger
               </Link>
             </div>
 
@@ -281,12 +279,12 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                 <span className="font-tabular font-medium text-ink">{conversation.customer.phone}</span>
               </div>
               <div className="flex justify-between items-baseline">
-                <span className="text-text-muted">Associated Orders</span>
+                <span className="text-text-muted">Associated orders</span>
                 <span className="font-tabular font-bold text-ink">{conversation.orders.length}</span>
               </div>
               {conversation.customer.addresses.length > 0 && (
                 <div className="border-t border-line/60 pt-2 text-xs text-text-muted">
-                  <span className="font-semibold text-ink">Primary Address:</span>
+                  <span className="font-semibold text-ink">Primary address:</span>
                   <p className="mt-0.5 line-clamp-2">{conversation.customer.addresses[0].text}</p>
                 </div>
               )}
