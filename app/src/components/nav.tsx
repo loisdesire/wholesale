@@ -232,7 +232,7 @@ export function Nav({
           {/* Grouped Links */}
           {navGroups.map((group) => (
             <div key={group.title} className="space-y-1.5">
-              <span className="px-3 text-xs font-semibold uppercase tracking-wider text-white/70">
+              <span className="px-3 text-xs font-medium text-white/50">
                 {group.title}
               </span>
               <ul className="space-y-1">

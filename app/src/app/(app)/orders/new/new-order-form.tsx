@@ -108,7 +108,7 @@ export function NewOrderForm({
         <div className="border-b border-line bg-paper/50 px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-ink" />
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink">Customer Identity</h2>
+            <h2 className="text-xs font-semibold text-ink">Customer Identity</h2>
           </div>
           <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface p-0.5 text-xs">
             <button
@@ -116,7 +116,7 @@ export function NewOrderForm({
               onClick={() => setCustomerMode("existing")}
               className={`rounded-md px-2.5 py-1 font-medium transition-all ${
                 customerMode === "existing"
-                  ? "bg-ink text-paper shadow-xs"
+                  ? "bg-ink text-paper"
                   : "text-text-muted hover:text-ink"
               }`}
             >
@@ -127,7 +127,7 @@ export function NewOrderForm({
               onClick={() => setCustomerMode("new")}
               className={`rounded-md px-2.5 py-1 font-medium transition-all ${
                 customerMode === "new"
-                  ? "bg-ink text-paper shadow-xs"
+                  ? "bg-ink text-paper"
                   : "text-text-muted hover:text-ink"
               }`}
             >
@@ -195,7 +195,7 @@ export function NewOrderForm({
         <div className="border-b border-line bg-paper/50 px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-ink" />
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink">Order Items &amp; Pricing</h2>
+            <h2 className="text-xs font-semibold text-ink">Order Items &amp; Pricing</h2>
           </div>
           <span className="text-xs text-text-muted font-tabular">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
         </div>
@@ -313,11 +313,11 @@ export function NewOrderForm({
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full table-fixed border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-paper/60 text-left text-xs font-semibold uppercase tracking-wider text-ink/80">
+                    <tr className="border-b border-line text-left text-xs text-text-muted">
                       <th className="w-1/2 px-4 py-2.5">Item</th>
                       <th className="w-24 px-4 py-2.5 text-right">Qty</th>
-                      <th className="w-32 px-4 py-2.5 text-right">Unit Price</th>
-                      <th className="w-32 px-4 py-2.5 text-right">Line Total</th>
+                      <th className="w-32 px-4 py-2.5 text-right">Unit price</th>
+                      <th className="w-32 px-4 py-2.5 text-right">Line total</th>
                       <th className="w-16 px-4 py-2.5 text-right" />
                     </tr>
                   </thead>
@@ -375,7 +375,7 @@ export function NewOrderForm({
 
               {/* Cart Footer */}
               <div className="flex items-center justify-between border-t border-line bg-paper/40 px-5 py-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink">Estimated Draft Total</span>
+                <span className="text-xs font-semibold text-ink">Estimated Draft Total</span>
                 <span className="font-display text-xl font-bold text-ink font-tabular">
                   {formatMoney(total)}
                 </span>
@@ -389,7 +389,7 @@ export function NewOrderForm({
       <section className="card-base overflow-hidden">
         <div className="border-b border-line bg-paper/50 px-5 py-3 flex items-center gap-2">
           <Truck className="h-4 w-4 text-ink" />
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-ink">
+          <h2 className="text-xs font-semibold text-ink">
             Delivery &amp; Fulfillment Instructions
           </h2>
         </div>

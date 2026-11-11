@@ -43,13 +43,13 @@ export function EditCustomerForm({
     <form {...formProps} className="card-base p-5 flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="name" className="text-xs font-semibold uppercase tracking-wider text-ink">
+          <label htmlFor="name" className="text-xs font-semibold text-ink">
             Customer / Business Name
           </label>
           <input id="name" name="name" defaultValue={name ?? ""} className={inputClass} />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-ink">
+          <label htmlFor="email" className="text-xs font-semibold text-ink">
             Email Address
           </label>
           <input id="email" name="email" type="email" defaultValue={email ?? ""} className={inputClass} />
@@ -57,7 +57,7 @@ export function EditCustomerForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="notes" className="text-xs font-semibold uppercase tracking-wider text-ink">
+        <label htmlFor="notes" className="text-xs font-semibold text-ink">
           Operational Notes &amp; Habits
         </label>
         <textarea id="notes" name="notes" rows={3} defaultValue={notes ?? ""} className={inputClass} />
@@ -89,7 +89,7 @@ export function AddAddressForm({ customerId }: { customerId: string }) {
     <form {...formProps} className="card-base p-4 flex flex-col gap-3">
       <div className="flex items-center gap-2 border-b border-line pb-2">
         <MapPin className="h-3.5 w-3.5 text-ink" />
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-ink">Add Delivery Address</h4>
+        <h4 className="text-xs font-semibold text-ink">Add Delivery Address</h4>
       </div>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -147,7 +147,7 @@ export function AgreedPriceForm({
     <form {...formProps} className="card-base p-4 flex flex-col gap-3">
       <div className="flex items-center gap-2 border-b border-line pb-2">
         <Tag className="h-3.5 w-3.5 text-ink" />
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-ink">Set Agreed Wholesale Price</h4>
+        <h4 className="text-xs font-semibold text-ink">Set Agreed Wholesale Price</h4>
       </div>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">

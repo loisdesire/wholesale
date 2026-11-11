@@ -11,9 +11,8 @@ import {
   DollarSign, 
   UserCheck, 
   Search, 
-  Check, 
-  ArrowUpRight, 
-  Loader2, 
+  Check,
+  Loader2,
   Inbox, 
   Clock
 } from "lucide-react";
@@ -173,17 +172,17 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 4 KPI Summary Cards */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {/* Unread Alerts */}
-        <div 
+      {/* Category metrics — one hairline-divided row, each cell doubling as a filter */}
+      <section className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-line border border-line">
+        <button
+          type="button"
           onClick={() => setCategory("UNREAD")}
-          className={`card-base p-4 cursor-pointer transition-all hover:border-ink ${
-            category === "UNREAD" ? "ring-2 ring-accent border-accent" : ""
+          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
+            category === "UNREAD" ? "bg-paper/60" : ""
           }`}
         >
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Unread Alerts</span>
+            <span className="text-xs text-text-muted">Unread alerts</span>
             <div className={`h-2 w-2 rounded-full ${unreadCount > 0 ? "bg-accent animate-pulse" : "bg-text-muted/30"}`} />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
@@ -192,67 +191,67 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
             </span>
             <span className="text-xs text-text-muted">pending</span>
           </div>
-        </div>
+        </button>
 
-        {/* Financial & Refunds */}
-        <div 
+        <button
+          type="button"
           onClick={() => setCategory("FINANCE")}
-          className={`card-base p-4 cursor-pointer transition-all hover:border-ink ${
-            category === "FINANCE" ? "ring-2 ring-accent border-accent" : ""
+          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
+            category === "FINANCE" ? "bg-paper/60" : ""
           }`}
         >
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Finance &amp; Refunds</span>
+            <span className="text-xs text-text-muted">Finance &amp; refunds</span>
             <DollarSign className="h-4 w-4 text-amber-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold text-ink">{financeCount}</span>
             <span className="text-xs text-text-muted">events</span>
           </div>
-        </div>
+        </button>
 
-        {/* Returns */}
-        <div 
+        <button
+          type="button"
           onClick={() => setCategory("RETURNS")}
-          className={`card-base p-4 cursor-pointer transition-all hover:border-ink ${
-            category === "RETURNS" ? "ring-2 ring-accent border-accent" : ""
+          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
+            category === "RETURNS" ? "bg-paper/60" : ""
           }`}
         >
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Returns Triage</span>
+            <span className="text-xs text-text-muted">Returns triage</span>
             <RotateCcw className="h-4 w-4 text-rose-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold text-ink">{returnsCount}</span>
             <span className="text-xs text-text-muted">requests</span>
           </div>
-        </div>
+        </button>
 
-        {/* Assignments */}
-        <div 
+        <button
+          type="button"
           onClick={() => setCategory("ASSIGNMENTS")}
-          className={`card-base p-4 cursor-pointer transition-all hover:border-ink ${
-            category === "ASSIGNMENTS" ? "ring-2 ring-accent border-accent" : ""
+          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
+            category === "ASSIGNMENTS" ? "bg-paper/60" : ""
           }`}
         >
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">My Assignments</span>
+            <span className="text-xs text-text-muted">My assignments</span>
             <UserCheck className="h-4 w-4 text-accent" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold text-ink">{assignmentsCount}</span>
             <span className="text-xs text-text-muted">assigned</span>
           </div>
-        </div>
+        </button>
       </section>
 
       {/* Filter & Search Toolbar */}
-      <div className="card-base p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Category Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="border border-line p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Category Tabs — plain underline, not filled pills */}
+        <nav className="flex flex-wrap items-center gap-5 px-1 text-xs font-semibold">
           {(
             [
-              { id: "ALL", label: "All Notices", count: notifications.length },
+              { id: "ALL", label: "All notices", count: notifications.length },
               { id: "UNREAD", label: "Unread", count: unreadCount },
               { id: "FINANCE", label: "Finance", count: financeCount },
               { id: "RETURNS", label: "Returns", count: returnsCount },
@@ -265,24 +264,15 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
                 key={t.id}
                 type="button"
                 onClick={() => setCategory(t.id)}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                  active
-                    ? "bg-ink text-paper shadow-xs"
-                    : "bg-surface text-text-muted hover:bg-paper hover:text-ink border border-line"
+                className={`border-b-2 pb-0.5 transition-colors ${
+                  active ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
                 }`}
               >
-                <span>{t.label}</span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold font-tabular ${
-                    active ? "bg-white/20 text-white" : "bg-line/50 text-text-muted"
-                  }`}
-                >
-                  {t.count}
-                </span>
+                {t.label} <span className="font-tabular font-normal">({t.count})</span>
               </button>
             );
           })}
-        </div>
+        </nav>
 
         {/* Right Tools: Search & Mark All */}
         <div className="flex items-center gap-2">
@@ -293,7 +283,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search notifications…"
-              className="w-full rounded-md border border-line bg-surface py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-text-muted/60 outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+              className="w-full border border-line bg-surface py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-text-muted/60 outline-none focus:border-ink focus:ring-1 focus:ring-ink"
             />
           </div>
 
@@ -302,7 +292,7 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
               type="button"
               disabled={isPending}
               onClick={handleMarkAllRead}
-              className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink transition-all hover:bg-paper active:scale-95 disabled:opacity-60 shrink-0"
+              className="inline-flex items-center gap-1.5 border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60 shrink-0"
               title="Mark all notifications as read"
             >
               {isPending ? (
@@ -318,10 +308,8 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
 
       {/* Main Notification Card Feed */}
       {filteredNotifications.length === 0 ? (
-        <div className="card-base p-16 text-center flex flex-col items-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-paper text-text-muted/50 mb-3">
-            <Inbox className="h-6 w-6" />
-          </div>
+        <div className="border border-line p-16 text-center flex flex-col items-center">
+          <Inbox className="h-6 w-6 text-text-muted/50 mb-3" />
           <h3 className="font-display text-base font-semibold text-ink">No notifications found</h3>
           <p className="mt-1 text-xs text-text-muted max-w-sm">
             {search || category !== "ALL"
@@ -351,24 +339,24 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
             return (
               <div
                 key={n.id}
-                className={`card-base relative overflow-hidden transition-all hover:shadow-md border-l-4 ${
+                className={`card-base relative overflow-hidden transition-colors border-l-4 ${
                   meta.borderClass
                 } ${isUnread ? "bg-white ring-1 ring-accent/15" : "bg-surface/80"}`}
               >
                 <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   {/* Left Content Area */}
                   <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-paper/60 shadow-xs">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-paper/60">
                       {meta.icon}
                     </div>
 
                     <div className="flex flex-col min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${meta.badgeClass}`}>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${meta.badgeClass}`}>
                           {meta.badge}
                         </span>
                         {isUnread && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-white shadow-xs">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-white">
                             <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                             New
                           </span>
@@ -415,14 +403,13 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
                     {n.href && (
                       <Link
                         href={n.href}
-                        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                        className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
                           isUnread
-                            ? "bg-ink text-paper hover:bg-ink/90 shadow-xs"
+                            ? "bg-ink text-paper hover:bg-ink/90"
                             : "bg-paper text-ink hover:bg-paper-2 border border-line"
                         }`}
                       >
-                        <span>{meta.actionText}</span>
-                        <ArrowUpRight className="h-3.5 w-3.5" />
+                        {meta.actionText}
                       </Link>
                     )}
                   </div>

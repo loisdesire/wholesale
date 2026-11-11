@@ -71,7 +71,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
       <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-paper/20 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink">Variant Attributes</span>
+            <span className="text-xs font-semibold text-ink">Variant Attributes</span>
             <p className="text-xs text-text-muted mt-0.5">
               Specific dimensions (e.g. Colour, Size, Material, Bundle packaging).
             </p>
@@ -170,7 +170,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
 
       {showImageUpload && (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="image" className="text-xs font-semibold uppercase tracking-wider text-ink">
+          <label htmlFor="image" className="text-xs font-semibold text-ink">
             Product Photo (optional)
           </label>
           <input
@@ -187,7 +187,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
       <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-paper/20 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink">Volume Price Breaks (Tiers)</span>
+            <span className="text-xs font-semibold text-ink">Volume Price Breaks (Tiers)</span>
             <p className="text-xs text-text-muted mt-0.5">
               Discounted pricing at quantity thresholds (e.g. 10+ units, 24+ units).
             </p>
@@ -295,7 +295,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="text-xs font-semibold uppercase tracking-wider text-ink">
+      <label htmlFor={name} className="text-xs font-semibold text-ink">
         {label} {required && <span className="text-accent">*</span>}
       </label>
       <input

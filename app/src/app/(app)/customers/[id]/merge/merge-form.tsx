@@ -33,7 +33,7 @@ export function MergeForm({
       className="card-base p-5 flex flex-col gap-4"
     >
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="note" className="text-xs font-semibold uppercase tracking-wider text-ink">
+        <label htmlFor="note" className="text-xs font-semibold text-ink">
           Merge Justification & Audit Note
         </label>
         <input
@@ -58,7 +58,7 @@ export function MergeForm({
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-all hover:bg-accent-2 disabled:opacity-60 shadow-sm"
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-all hover:bg-accent-2 disabled:opacity-60"
         >
           {pending ? (
             <Loader2 className="h-4 w-4 animate-spin" />

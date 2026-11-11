@@ -25,7 +25,7 @@ export function SlaSettingsForm({
       {groups.map((group) => (
         <fieldset key={group} className="card-base overflow-hidden">
           <div className="border-b border-line bg-paper/50 px-5 py-3">
-            <legend className="text-xs font-semibold uppercase tracking-wider text-ink">
+            <legend className="text-xs font-semibold text-ink">
               {group}
             </legend>
           </div>
@@ -80,7 +80,7 @@ export function SlaSettingsForm({
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-all hover:bg-accent-2 disabled:opacity-60 shadow-sm"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-all hover:bg-accent-2 disabled:opacity-60"
           >
             {pending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

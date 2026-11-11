@@ -45,7 +45,7 @@ export default async function MergePage({
     return (
       <div className="card-base mx-auto max-w-lg p-6 text-center flex flex-col items-center gap-3">
         <ShieldAlert className="h-8 w-8 text-status-attention-fg" />
-        <h2 className="font-display text-lg font-semibold text-ink">Owner Clearance Required</h2>
+        <h2 className="font-display text-lg font-semibold text-ink">Owner clearance required</h2>
         <p className="text-sm text-text-muted">
           Merging customer identities irreversibly modifies ledger records and financial history. Only an organization Owner can execute this action.
         </p>
@@ -147,7 +147,7 @@ export default async function MergePage({
             {/* Itemized Transfer Summary */}
             <section className="card-base overflow-hidden">
               <div className="border-b border-line bg-paper/50 px-4 py-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                <h2 className="text-xs font-semibold text-text-muted">
                   What moves to {label(target)}
                 </h2>
               </div>
@@ -225,7 +225,7 @@ export default async function MergePage({
               <section className="card-base border-status-attention-fg/30 bg-status-attention-bg/40 p-4">
                 <div className="flex items-center gap-2 text-status-attention-fg">
                   <AlertTriangle className="h-4 w-4" />
-                  <h3 className="text-xs font-semibold uppercase tracking-wider">Review Before Proceeding</h3>
+                  <h3 className="text-xs font-semibold">Review before proceeding</h3>
                 </div>
                 <ul className="mt-2 list-disc pl-5 text-xs text-ink/80 space-y-1">
                   {plan.warnings.map((w) => (

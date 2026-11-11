@@ -12,7 +12,7 @@ export function NewCustomerForm() {
     <form {...formProps} className="card-base p-6 flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="name" className="text-xs font-semibold uppercase tracking-wider text-ink">
+          <label htmlFor="name" className="text-xs font-semibold text-ink">
             Customer or Business Name
           </label>
           <input 
@@ -24,7 +24,7 @@ export function NewCustomerForm() {
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="phone" className="text-xs font-semibold uppercase tracking-wider text-ink">
+          <label htmlFor="phone" className="text-xs font-semibold text-ink">
             Phone Number (WhatsApp &amp; Telegram) <span className="text-accent">*</span>
           </label>
           <input 
@@ -39,7 +39,7 @@ export function NewCustomerForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-ink">
+        <label htmlFor="email" className="text-xs font-semibold text-ink">
           Email Address <span className="text-text-muted font-normal lowercase">(optional)</span>
         </label>
         <input 
@@ -52,7 +52,7 @@ export function NewCustomerForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="notes" className="text-xs font-semibold uppercase tracking-wider text-ink">
+        <label htmlFor="notes" className="text-xs font-semibold text-ink">
           Wholesale Profile &amp; Preferences <span className="text-text-muted font-normal lowercase">(optional)</span>
         </label>
         <textarea 

@@ -65,7 +65,7 @@ export function ImportFlow() {
     return (
       <form action={previewAction} className="card-base p-6 flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <label htmlFor="file" className="text-xs font-semibold uppercase tracking-wider text-ink">
+          <label htmlFor="file" className="text-xs font-semibold text-ink">
             Select CSV Spreadsheet
           </label>
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-paper/20 p-8 text-center hover:bg-paper/40 transition-colors">
@@ -96,7 +96,7 @@ export function ImportFlow() {
           <button
             type="submit"
             disabled={previewPending}
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-all hover:bg-accent-2 disabled:opacity-60 shadow-sm"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-all hover:bg-accent-2 disabled:opacity-60"
           >
             {previewPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -139,7 +139,7 @@ export function ImportFlow() {
       <div className="card-base overflow-hidden">
         <div className="max-h-[460px] overflow-y-auto">
           <table className="w-full border-collapse text-sm">
-            <thead className="sticky top-0 bg-paper/80 backdrop-blur-xs border-b border-line text-left text-xs font-semibold uppercase tracking-wider text-ink/80">
+            <thead className="sticky top-0 bg-paper/80 backdrop-blur-xs border-b border-line text-left text-xs text-text-muted">
               <tr>
                 <th className="px-4 py-3 w-16">Row</th>
                 <th className="px-4 py-3 w-36">SKU</th>
@@ -188,7 +188,7 @@ export function ImportFlow() {
           <button
             type="submit"
             disabled={commitPending || !canCommit}
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-all hover:bg-accent-2 disabled:opacity-60 shadow-sm"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-all hover:bg-accent-2 disabled:opacity-60"
           >
             {commitPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
