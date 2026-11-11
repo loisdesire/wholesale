@@ -40,10 +40,10 @@ function ActionButton({
         disabled={pending}
         className={
           variant === "primary"
-            ? "inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white shadow-xs shadow-accent/25 transition-all hover:bg-accent-2 hover:shadow-sm active:scale-95 disabled:opacity-60 cursor-pointer"
+            ? "inline-flex min-h-[40px] items-center justify-center gap-1.5 bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-2 disabled:opacity-60 cursor-pointer"
             : variant === "danger"
-              ? "inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 px-4 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 active:scale-95 disabled:opacity-60 cursor-pointer"
-              : "inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-paper active:scale-95 disabled:opacity-60 cursor-pointer"
+              ? "inline-flex min-h-[40px] items-center justify-center gap-1.5 border border-rose-200 bg-rose-50/60 px-4 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-60 cursor-pointer"
+              : "inline-flex min-h-[40px] items-center justify-center gap-1.5 border border-line bg-surface px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-paper disabled:opacity-60 cursor-pointer"
         }
       >
         {pending ? pendingLabel : label}

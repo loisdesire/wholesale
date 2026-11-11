@@ -83,7 +83,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-6 pb-16">
       {/* Top Header Card */}
-      <header className="card-base flex flex-col gap-4 rounded-2xl p-5 sm:p-6 shadow-xs">
+      <header className="card-base flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
@@ -97,21 +97,16 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
                 {customer.name ?? "Unnamed Customer"}
               </h1>
-              <p className="mt-0.5 font-tabular text-xs text-text-muted flex items-center gap-2">
-                <span>Phone: <strong className="font-medium text-ink">{customer.phone}</strong></span>
-                {customer.email && (
-                  <>
-                    <span>·</span>
-                    <span>Email: <strong className="font-medium text-ink">{customer.email}</strong></span>
-                  </>
-                )}
+              <p className="mt-0.5 font-tabular text-xs text-text-muted">
+                {customer.phone}
+                {customer.email && <span className="ml-3">{customer.email}</span>}
               </p>
             </div>
           </div>
 
           <Link
             href={`/orders/new?customerId=${customer.id}`}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white shadow-xs shadow-accent/25 transition-all hover:bg-accent-2 cursor-pointer"
+            className="inline-flex h-10 items-center gap-1.5 bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-2 cursor-pointer"
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
             <span>New Order</span>
@@ -120,8 +115,8 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
         {customer.notes && (
           <div className="border-t border-line/60 pt-3">
-            <p className="text-xs text-text-muted leading-relaxed bg-paper/50 rounded-xl p-3 border border-line/60">
-              <strong className="text-ink font-semibold">Account Notes:</strong> {customer.notes}
+            <p className="text-xs text-text-muted leading-relaxed">
+              <strong className="text-ink font-semibold">Account notes:</strong> {customer.notes}
             </p>
           </div>
         )}
@@ -129,7 +124,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       {/* Merged Notice Banner */}
       {mergedInto && (
-        <div className="rounded-2xl border border-line bg-paper/50 p-4 text-xs text-ink flex items-center justify-between">
+        <div className="border border-line bg-paper/50 p-4 text-xs text-ink flex items-center justify-between">
           <p>
             This buyer account was merged into{" "}
             <Link href={`/customers/${mergedInto.id}`} className="font-semibold text-accent underline">
@@ -149,10 +144,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       {/* Duplicates Alert */}
       {duplicates.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900 space-y-2">
+        <div className="border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900 space-y-2">
           <div className="flex items-center gap-2 font-bold">
             <AlertCircle className="h-4 w-4 text-amber-600" />
-            <span>Potential Duplicate Customer Profile Detected</span>
+            <span>Potential duplicate customer profile detected</span>
           </div>
           <ul className="space-y-1 pl-6 list-disc">
             {duplicates.map((d) => (
@@ -165,7 +160,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     href={`/customers/${customer.id}/merge?with=${d.customer.id}`}
                     className="font-semibold underline ml-2 text-amber-950"
                   >
-                    Review Merge →
+                    Review merge
                   </Link>
                 )}
               </li>
@@ -175,18 +170,16 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       )}
 
       {/* Financial Health / Balances Strip */}
-      <div className="card-base rounded-2xl p-5 shadow-xs">
-        <div className="border-b border-line/60 pb-3 mb-4">
-          <h2 className="font-display text-sm font-bold text-ink">Account Balance &amp; Settlement Ledger</h2>
+      <div>
+        <div className="pb-3 mb-0">
+          <h2 className="font-display text-sm font-bold text-ink">Account balance &amp; settlement ledger</h2>
           <p className="text-xs text-text-muted">Derived directly from immutable order payments and approved returns.</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-line/70 border border-line mt-3">
           {figures.map((f) => (
-            <div key={f.label} className="rounded-xl border border-line bg-paper/40 p-4">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">
-                {f.label}
-              </span>
+            <div key={f.label} className="p-4">
+              <span className="text-xs text-text-muted">{f.label}</span>
               <p
                 className={`mt-1 font-tabular text-xl sm:text-2xl font-bold ${
                   f.tone === "rose" && f.isAttention
@@ -209,10 +202,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         {/* Left Column (2 Cols): Orders, Agreed Prices, Returns */}
         <div className="lg:col-span-2 space-y-6">
           {/* Customer Orders Table Card */}
-          <div className="card-base overflow-hidden rounded-2xl shadow-xs">
-            <div className="flex items-center justify-between border-b border-line bg-paper/40 px-5 py-3.5">
+          <div className="card-base overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <h2 className="font-display text-sm font-bold text-ink">
-                Commercial Order History ({orders.length})
+                Commercial order history ({orders.length})
               </h2>
             </div>
 
@@ -222,11 +215,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-paper/20 text-xs font-semibold uppercase tracking-wider text-ink/80">
-                      <th className="py-3 pl-5 pr-4">Order Reference</th>
+                    <tr className="border-b border-line text-xs font-medium text-text-muted">
+                      <th className="py-3 pl-5 pr-4">Order reference</th>
                       <th className="py-3 pr-4">Status</th>
-                      <th className="py-3 pr-4">Date Placed</th>
-                      <th className="py-3 pr-5 text-right">Order Value</th>
+                      <th className="py-3 pr-4">Date placed</th>
+                      <th className="py-3 pr-5 text-right">Order value</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/60">
@@ -255,9 +248,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </div>
 
           {/* Agreed Custom Prices Card */}
-          <div className="card-base overflow-hidden rounded-2xl shadow-xs p-5 space-y-4">
+          <div className="card-base overflow-hidden p-5 space-y-4">
             <div className="border-b border-line/60 pb-3">
-              <h2 className="font-display text-sm font-bold text-ink">Agreed Wholesale Pricing Tiers</h2>
+              <h2 className="font-display text-sm font-bold text-ink">Agreed wholesale pricing tiers</h2>
               <p className="text-xs text-text-muted">Contracted unit rates locked exclusively for this account, overriding standard catalogue prices.</p>
             </div>
 
@@ -265,10 +258,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr className="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink/80">
-                      <th className="py-2.5 pr-4">Product Specification</th>
-                      <th className="py-2.5 pr-4 text-right">Standard Catalog</th>
-                      <th className="py-2.5 pr-4 text-right">Locked Rate</th>
+                    <tr className="border-b border-line text-xs font-medium text-text-muted">
+                      <th className="py-2.5 pr-4">Product</th>
+                      <th className="py-2.5 pr-4 text-right">Standard catalogue</th>
+                      <th className="py-2.5 pr-4 text-right">Locked rate</th>
                       {isOwner && <th className="py-2.5 w-8" />}
                     </tr>
                   </thead>
@@ -317,9 +310,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
           {/* Returns & Refunds History */}
           {returns.length > 0 && (
-            <div className="card-base overflow-hidden rounded-2xl shadow-xs p-5 space-y-4">
+            <div className="card-base overflow-hidden p-5 space-y-4">
               <div className="border-b border-line/60 pb-3">
-                <h2 className="font-display text-sm font-bold text-ink">Returns &amp; Restitution Records</h2>
+                <h2 className="font-display text-sm font-bold text-ink">Returns &amp; restitution records</h2>
                 <p className="text-xs text-text-muted">Historical returned goods authorizations and issued credits.</p>
               </div>
 
@@ -347,9 +340,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         {/* Right Column (1 Col): Edit Profile, Addresses, Activity */}
         <div className="space-y-6">
           {/* Edit Profile Form Card */}
-          <div className="card-base rounded-2xl p-5 shadow-xs space-y-3.5">
+          <div className="card-base p-5 space-y-3.5">
             <div className="border-b border-line/60 pb-2.5">
-              <h3 className="font-display text-sm font-bold text-ink">Account Profile Specifications</h3>
+              <h3 className="font-display text-sm font-bold text-ink">Account profile</h3>
             </div>
             <EditCustomerForm
               customerId={customer.id}
@@ -360,9 +353,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </div>
 
           {/* Saved Addresses Card */}
-          <div className="card-base rounded-2xl p-5 shadow-xs space-y-3.5">
+          <div className="card-base p-5 space-y-3.5">
             <div className="border-b border-line/60 pb-2.5">
-              <h3 className="font-display text-sm font-bold text-ink">Delivery Addresses</h3>
+              <h3 className="font-display text-sm font-bold text-ink">Delivery addresses</h3>
             </div>
 
             {addresses.length > 0 && (
@@ -406,9 +399,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
           {/* Activity Log */}
           {activity.length > 0 && (
-            <div className="card-base rounded-2xl p-5 shadow-xs">
+            <div className="card-base p-5">
               <div className="border-b border-line/60 pb-2.5 mb-3">
-                <h3 className="font-display text-sm font-bold text-ink">Account Timeline</h3>
+                <h3 className="font-display text-sm font-bold text-ink">Account timeline</h3>
               </div>
               <div className="divide-y divide-line/60 text-xs">
                 {activity.map((entry) => (

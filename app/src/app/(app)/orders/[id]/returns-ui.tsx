@@ -25,7 +25,7 @@ import {
 const inputClass =
   "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink";
 const primaryButton =
-  "inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-all hover:bg-accent-2 disabled:opacity-60 shadow-xs";
+  "inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-accent-2 disabled:opacity-60";
 const secondaryButton =
   "inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink transition-all hover:bg-paper disabled:opacity-60";
 const dangerButton =
@@ -50,18 +50,16 @@ export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: 
     <form {...formProps} className="card-base p-5 flex flex-col gap-5">
       <div className="flex items-center gap-2 border-b border-line pb-3">
         <RotateCcw className="h-4 w-4 text-ink" />
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">
-          Initiate Customer Return
-        </h3>
+        <h3 className="text-xs font-semibold text-ink">Initiate customer return</h3>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-line">
+      <div className="overflow-x-auto border border-line">
         <table className="w-full table-fixed border-collapse text-sm">
           <thead>
-            <tr className="border-b border-line bg-paper/60 text-left text-xs font-semibold uppercase tracking-wider text-ink/80">
-              <th className="py-2.5 px-3">Item Description</th>
+            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <th className="py-2.5 px-3">Item</th>
               <th className="py-2.5 px-3 text-right w-32">Returnable</th>
-              <th className="py-2.5 px-3 w-32">Qty to Return</th>
+              <th className="py-2.5 px-3 w-32">Qty to return</th>
               <th className="py-2.5 px-3 w-36">Condition</th>
             </tr>
           </thead>
@@ -106,8 +104,8 @@ export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: 
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="reason" className="text-xs font-semibold uppercase tracking-wider text-ink">
-          Reason for Return <span className="text-accent">*</span>
+        <label htmlFor="reason" className="text-xs font-semibold text-ink">
+          Reason for return <span className="text-accent">*</span>
         </label>
         <input
           id="reason"

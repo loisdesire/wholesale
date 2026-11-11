@@ -21,20 +21,18 @@ export function ShipForm({ orderId, lines }: { orderId: string; lines: ShipLine[
     <form {...formProps} className="card-base p-5 flex flex-col gap-4">
       <div className="flex items-center gap-2 border-b border-line pb-3">
         <Truck className="h-4 w-4 text-ink" />
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">
-          Dispatch Shipment Package
-        </h3>
+        <h3 className="text-xs font-semibold text-ink">Dispatch shipment package</h3>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-line">
+      <div className="overflow-x-auto border border-line">
         <table className="w-full table-fixed border-collapse text-sm">
           <thead>
-            <tr className="border-b border-line bg-paper/60 text-left text-xs font-semibold uppercase tracking-wider text-ink/80">
-              <th className="py-2.5 px-3">Item Description</th>
+            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <th className="py-2.5 px-3">Item</th>
               <th className="py-2.5 px-3 text-right w-24">Ordered</th>
               <th className="py-2.5 px-3 text-right w-24">Shipped</th>
               <th className="py-2.5 px-3 text-right w-24">Remaining</th>
-              <th className="py-2.5 px-3 w-32">Ship Now</th>
+              <th className="py-2.5 px-3 w-32">Ship now</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -106,10 +104,10 @@ export function ShipForm({ orderId, lines }: { orderId: string; lines: ShipLine[
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-all hover:bg-accent-2 disabled:opacity-60 shadow-xs"
+          className="inline-flex items-center gap-2 bg-accent px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
         >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
-          <span>{pending ? "Dispatching…" : "Confirm Shipment Dispatch"}</span>
+          <span>{pending ? "Dispatching…" : "Confirm shipment dispatch"}</span>
         </button>
       </div>
     </form>
@@ -128,8 +126,8 @@ export function CloseShortForm({ orderId, unshippedLabel }: { orderId: string; u
       <div className="flex items-start gap-2.5">
         <AlertTriangle className="h-4 w-4 text-status-attention-fg shrink-0 mt-0.5" />
         <div className="flex flex-col gap-1">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-status-attention-fg">
-            Short-Close Order ({unshippedLabel})
+          <h4 className="text-xs font-semibold text-status-attention-fg">
+            Short-close order ({unshippedLabel})
           </h4>
           <p className="text-xs text-text-muted leading-relaxed">
             Mark this order as fulfilled without shipping the remaining {unshippedLabel}. Reserved inventory will be released back to the catalogue immediately.
@@ -151,7 +149,7 @@ export function CloseShortForm({ orderId, unshippedLabel }: { orderId: string; u
           className="inline-flex items-center justify-center gap-1.5 rounded-md border border-status-attention-fg/30 bg-status-attention-bg px-4 py-2 text-xs font-semibold text-status-attention-fg transition-all hover:bg-status-attention-fg hover:text-white disabled:opacity-60 shrink-0"
         >
           {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          <span>{pending ? "Closing…" : "Close Remaining Short"}</span>
+          <span>{pending ? "Closing…" : "Close remaining short"}</span>
         </button>
       </div>
 

@@ -9,7 +9,6 @@ import { AssigneeControl } from "@/components/assignee-control";
 import {
   AlertCircle,
   SlidersHorizontal,
-  ArrowUpRight,
   CheckCircle2,
 } from "lucide-react";
 
@@ -41,12 +40,7 @@ export default async function OperationsPage({
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Operations Desk</h1>
-            <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
-              Live Monitor
-            </span>
-          </div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Operations Desk</h1>
           <p className="mt-1 text-sm text-text-muted">
             Overdue SLAs, bottlenecks, staff workload distribution, and turnaround metrics.
           </p>
@@ -56,31 +50,29 @@ export default async function OperationsPage({
           {isOwner && (
             <Link
               href="/operations/settings"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-ink shadow-2xs hover:bg-paper transition-colors"
+              className="inline-flex h-10 items-center gap-1.5 border border-line bg-surface px-3.5 text-xs font-semibold text-ink hover:bg-paper transition-colors"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-text-muted" />
-              <span>SLA Thresholds</span>
+              <span>SLA thresholds</span>
             </Link>
           )}
           <Link
             href="/reports"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white shadow-xs shadow-accent/25 transition-all hover:bg-accent-2"
+            className="inline-flex h-10 items-center gap-1.5 bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-2"
           >
-            <span>Financial Reports &amp; Exports →</span>
+            <span>Financial reports &amp; exports</span>
           </Link>
         </div>
       </header>
 
       {/* Out of Stock Alert Banner */}
       {outOfStock.length > 0 && (
-        <div className="card-base flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-amber-200 bg-amber-50/70 p-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-amber-200 bg-amber-50/70 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
-              <AlertCircle className="h-5 w-5" />
-            </div>
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-800" />
             <div>
               <p className="text-xs font-bold text-amber-950">
-                {outOfStock.length} Active Product{outOfStock.length === 1 ? " is" : "s are"} Depleted &amp; Out of Stock
+                {outOfStock.length} active product{outOfStock.length === 1 ? " is" : "s are"} depleted &amp; out of stock
               </p>
               <p className="mt-0.5 text-xs text-amber-900/80">
                 {outOfStock.slice(0, 5).map((p) => `${p.name} (${p.sku})`).join(", ")}
@@ -90,10 +82,9 @@ export default async function OperationsPage({
           </div>
           <Link
             href="/catalogue"
-            className="inline-flex items-center gap-1 self-start sm:self-auto rounded-xl border border-amber-300 bg-surface px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-100 transition-colors"
+            className="inline-flex items-center gap-1 self-start sm:self-auto border border-amber-300 bg-surface px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-100 transition-colors"
           >
-            <span>Review Stock Ledger</span>
-            <ArrowUpRight className="h-3 w-3" />
+            Review stock ledger
           </Link>
         </div>
       )}
@@ -107,23 +98,21 @@ export default async function OperationsPage({
         </div>
 
         {attentionTruncated && (
-          <p className="rounded-xl border border-amber-200 bg-amber-50/60 px-3.5 py-2 text-xs text-amber-900">
+          <p className="border border-amber-200 bg-amber-50/60 px-3.5 py-2 text-xs text-amber-900">
             High volume of overdue actions detected. Truncated to the highest priority tasks.
           </p>
         )}
 
         {attention.length === 0 ? (
-          <div className="card-base flex items-center gap-3.5 rounded-2xl p-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
+          <div className="border border-line flex items-center gap-3.5 p-6">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-700" />
             <div>
               <p className="font-semibold text-xs text-ink">Operations fully on schedule</p>
               <p className="text-xs text-text-muted">Zero orders, customer inquiries, or refunds are breaching SLA thresholds.</p>
             </div>
           </div>
         ) : (
-          <div className="card-base divide-y divide-line/60 overflow-hidden rounded-2xl">
+          <div className="card-base divide-y divide-line/60 overflow-hidden">
             {attention.map((item) => (
               <div key={item.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 text-sm hover:bg-paper/30 transition-colors">
                 <div className="min-w-0 flex-1 space-y-1">
@@ -167,9 +156,9 @@ export default async function OperationsPage({
 
       {/* Operational Performance & SLA Health */}
       <section className="space-y-4">
-        <div className="card-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line pb-4">
           <div>
-            <h2 className="font-display text-base font-bold text-ink">Turnaround Performance</h2>
+            <h2 className="font-display text-base font-bold text-ink">Turnaround performance</h2>
             <p className="mt-0.5 text-xs text-text-muted">
               Aggregated cycle times for: <strong className="text-ink">{formatRangeLabel(range)}</strong>
             </p>
@@ -188,7 +177,7 @@ export default async function OperationsPage({
                 <Link
                   key={p.label}
                   href={rangeLink({ from: dateInput(fromDate), to: dateInput(toDate) })}
-                  className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-text-muted hover:border-line hover:text-ink transition-colors"
+                  className="border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-text-muted hover:text-ink transition-colors"
                 >
                   {p.label}
                 </Link>
@@ -200,18 +189,18 @@ export default async function OperationsPage({
                 name="from"
                 type="date"
                 defaultValue={dateInput(range.from)}
-                className="rounded-xl border border-line bg-paper/40 px-2.5 py-1.5 text-base sm:text-xs text-ink outline-none"
+                className="border border-line bg-paper/40 px-2.5 py-1.5 text-base sm:text-xs text-ink outline-none"
               />
               <span className="text-xs text-text-muted">to</span>
               <input
                 name="to"
                 type="date"
                 defaultValue={dateInput(range.to)}
-                className="rounded-xl border border-line bg-paper/40 px-2.5 py-1.5 text-base sm:text-xs text-ink outline-none"
+                className="border border-line bg-paper/40 px-2.5 py-1.5 text-base sm:text-xs text-ink outline-none"
               />
               <button
                 type="submit"
-                className="rounded-xl bg-ink px-3 py-1.5 text-xs font-semibold text-paper hover:bg-ink-2 transition-colors cursor-pointer min-h-[36px]"
+                className="bg-ink px-3 py-1.5 text-xs font-semibold text-paper hover:bg-ink-2 transition-colors cursor-pointer min-h-[36px]"
               >
                 Go
               </button>
@@ -219,14 +208,12 @@ export default async function OperationsPage({
           </div>
         </div>
 
-        {/* Metrics Grid Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Metrics strip — one hairline-divided row instead of identical boxed cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-line border border-line">
           {metrics.map((m) => (
-            <div key={m.key} className="card-base flex flex-col justify-between rounded-2xl p-5 shadow-xs">
+            <div key={m.key} className="flex flex-col justify-between p-5">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">
-                  {m.label}
-                </span>
+                <span className="text-xs text-text-muted">{m.label}</span>
                 <p className="mt-2 font-tabular text-3xl font-bold text-ink">{m.value}</p>
                 <p className="mt-1 text-xs text-text-muted leading-relaxed">{m.detail}</p>
               </div>
@@ -235,8 +222,7 @@ export default async function OperationsPage({
                   href={m.href}
                   className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
                 >
-                  <span>Inspect records</span>
-                  <ArrowUpRight className="h-3 w-3" />
+                  Inspect records
                 </Link>
               )}
             </div>
@@ -246,20 +232,20 @@ export default async function OperationsPage({
 
       {/* Staff Workload Distribution */}
       <section className="space-y-3">
-        <h2 className="font-display text-base font-bold text-ink">Staff Workload Balance</h2>
+        <h2 className="font-display text-base font-bold text-ink">Staff workload balance</h2>
 
         {workload.length === 0 ? (
           <p className="text-xs text-text-muted">No team members registered under this organization yet.</p>
         ) : (
-          <div className="card-base overflow-hidden rounded-2xl">
+          <div className="card-base overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm table-fixed">
+              <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-paper/60 text-xs font-semibold uppercase tracking-wider text-ink/80">
-                    <th className="py-3.5 pl-5 pr-4 min-w-[200px]">Team Member</th>
-                    <th className="py-3.5 pr-4 text-center w-[140px]">Open Orders</th>
-                    <th className="py-3.5 pr-4 text-center w-[140px]">Pending Returns</th>
-                    <th className="py-3.5 pl-4 pr-5 text-center w-[160px]">Active Threads</th>
+                  <tr className="border-b border-line text-xs font-medium text-text-muted">
+                    <th className="py-3.5 pl-5 pr-4 min-w-[200px]">Team member</th>
+                    <th className="py-3.5 pr-4 text-center w-[140px]">Open orders</th>
+                    <th className="py-3.5 pr-4 text-center w-[140px]">Pending returns</th>
+                    <th className="py-3.5 pl-4 pr-5 text-center w-[160px]">Active threads</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/60">
@@ -268,7 +254,7 @@ export default async function OperationsPage({
                       <td className="py-3.5 pl-5 pr-4 align-middle">
                         <p className="font-semibold text-ink">{w.name}</p>
                         <p className="text-xs text-text-muted">
-                          {w.role === "OWNER" ? "Account Owner" : "Sales Staff"}
+                          {w.role === "OWNER" ? "Account owner" : "Sales staff"}
                         </p>
                       </td>
                       <td className="py-3.5 pr-4 text-center align-middle">

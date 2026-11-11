@@ -17,7 +17,7 @@ import { CloseShortForm, ShipForm } from "./fulfilment-ui";
 import { AmendOrderForm } from "./amend-ui";
 import { AddItemForm } from "./add-item-form";
 import { RequestReturnForm, ReturnActions } from "./returns-ui";
-import { ArrowLeft, MessageSquare, ExternalLink } from "lucide-react";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 
 const AUDIT_ACTION_LABEL: Record<string, string> = {
   ORDER_DRAFTED: "Order drafted",
@@ -135,7 +135,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-6 pb-16">
       {/* Top Order Command Header */}
-      <header className="card-base flex flex-col gap-5 rounded-2xl p-5 sm:p-6 shadow-xs">
+      <header className="card-base flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
@@ -161,7 +161,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {/* Value & Assignee Bar */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-baseline gap-1.5 rounded-xl border border-line bg-paper/40 px-3.5 py-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink/80">Total</span>
+              <span className="text-xs text-text-muted">Total</span>
               <span className="font-tabular text-lg font-bold text-ink">
                 {formatMoney(order.totalCents, order.currency)}
               </span>
@@ -198,10 +198,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         {/* Left Column (2 Cols): Line items, Shipments, Returns, History */}
         <div className="lg:col-span-2 space-y-6">
           {/* Order Items Table Card */}
-          <div className="card-base overflow-hidden rounded-2xl shadow-xs">
-            <div className="flex items-center justify-between border-b border-line bg-paper/40 px-5 py-3.5">
+          <div className="card-base overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <h2 className="font-display text-sm font-bold text-ink">
-                Line Items ({totalUnits} units)
+                Line items ({totalUnits} units)
               </h2>
               <span className="font-tabular text-sm font-bold text-ink">
                 {formatMoney(order.totalCents, order.currency)}
@@ -259,10 +259,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-paper/20 text-xs font-semibold uppercase tracking-wider text-ink/80">
-                    <th className="py-3 pl-5 pr-4">Product Specification</th>
+                  <tr className="border-b border-line text-xs font-medium text-text-muted">
+                    <th className="py-3 pl-5 pr-4">Product</th>
                     <th className="py-3 pr-4 text-right">Quantity</th>
-                    <th className="py-3 pr-4 text-right">Unit Price</th>
+                    <th className="py-3 pr-4 text-right">Unit price</th>
                     <th className="py-3 pr-5 text-right">Subtotal</th>
                     {order.status === "DRAFT" && <th className="py-3 pr-4 w-8" />}
                   </tr>
@@ -344,10 +344,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
           {/* Fulfilment & Shipments Section */}
           {(canShip || shipments.length > 0) && (
-            <div className="card-base rounded-2xl p-5 space-y-4 shadow-xs">
+            <div className="card-base p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-line/60 pb-3">
                 <div>
-                  <h2 className="font-display text-sm font-bold text-ink">Fulfillment &amp; Dispatch</h2>
+                  <h2 className="font-display text-sm font-bold text-ink">Fulfillment &amp; dispatch</h2>
                   <p className="text-xs text-text-muted">Waybills, carrier assignments, and shipping manifests.</p>
                 </div>
                 <span className="font-tabular text-xs font-semibold text-text-muted">
@@ -394,10 +394,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
           {/* Returns & Adjustments Section */}
           {(returns.length > 0 || canRequestReturn) && (
-            <div className="card-base rounded-2xl p-5 space-y-4 shadow-xs">
+            <div className="card-base p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-line/60 pb-3">
                 <div>
-                  <h2 className="font-display text-sm font-bold text-ink">Returns &amp; Restitution</h2>
+                  <h2 className="font-display text-sm font-bold text-ink">Returns &amp; restitution</h2>
                   <p className="text-xs text-text-muted">Inventory intake and customer refund tracking.</p>
                 </div>
               </div>
@@ -436,7 +436,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
               {canRequestReturn && (
                 <div className="border-t border-line/60 pt-3">
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Submit Return Request</h3>
+                  <h3 className="mb-2 text-xs font-semibold text-ink">Submit return request</h3>
                   <RequestReturnForm orderId={order.id} lines={returnableLines} />
                 </div>
               )}
@@ -444,9 +444,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           )}
 
           {/* Audit History Log */}
-          <div className="card-base rounded-2xl p-5 shadow-xs">
+          <div className="card-base p-5">
             <div className="border-b border-line/60 pb-3 mb-3">
-              <h2 className="font-display text-sm font-bold text-ink">Audit Trail</h2>
+              <h2 className="font-display text-sm font-bold text-ink">Audit trail</h2>
               <p className="text-xs text-text-muted">Immutable event record for compliance and accountability.</p>
             </div>
             {auditLog.length === 0 ? (
@@ -469,15 +469,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         {/* Right Column (1 Col): Customer, Delivery Details, Payments */}
         <div className="space-y-6">
           {/* Customer Profile Card */}
-          <div className="card-base rounded-2xl p-5 space-y-3.5 shadow-xs">
+          <div className="card-base p-5 space-y-3.5">
             <div className="flex items-center justify-between border-b border-line/60 pb-2">
-              <h3 className="font-display text-sm font-bold text-ink">Customer Account</h3>
+              <h3 className="font-display text-sm font-bold text-ink">Customer account</h3>
               <Link
                 href={`/customers/${order.customer.id}`}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                className="text-xs font-semibold text-accent hover:underline"
               >
-                <span>View Full Profile</span>
-                <ExternalLink className="h-3 w-3" />
+                View full profile
               </Link>
             </div>
             <div className="space-y-2.5 text-xs">
@@ -505,9 +504,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
 
           {/* Delivery Details Card */}
-          <div className="card-base rounded-2xl p-5 space-y-3 shadow-xs">
+          <div className="card-base p-5 space-y-3">
             <div className="border-b border-line/60 pb-2">
-              <h3 className="font-display text-sm font-bold text-ink">Delivery Logistics &amp; Instructions</h3>
+              <h3 className="font-display text-sm font-bold text-ink">Delivery logistics &amp; instructions</h3>
             </div>
             <OrderDetailsForm
               orderId={order.id}
@@ -521,9 +520,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
           {/* Payment Summary Card */}
           {order.status !== "DRAFT" && (
-            <div className="card-base rounded-2xl p-5 space-y-3 shadow-xs">
+            <div className="card-base p-5 space-y-3">
               <div className="flex items-center justify-between border-b border-line/60 pb-2">
-                <h3 className="font-display text-sm font-bold text-ink">Settlement Ledger</h3>
+                <h3 className="font-display text-sm font-bold text-ink">Settlement ledger</h3>
                 <span className="font-tabular text-xs font-bold text-ink">
                   {formatMoney(paidCents, order.currency)}
                 </span>

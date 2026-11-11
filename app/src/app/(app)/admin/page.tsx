@@ -20,11 +20,9 @@ export default async function PlatformAdminPage() {
   if (!session?.user?.isPlatformAdmin) {
     return (
       <div className="mx-auto my-12 max-w-lg card-base p-8 text-center flex flex-col items-center gap-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-status-attention-bg text-status-attention-fg">
-          <ShieldAlert className="h-7 w-7" />
-        </div>
+        <ShieldAlert className="h-7 w-7 text-status-attention-fg" />
         <div>
-          <h2 className="font-display text-xl font-semibold text-ink">Restricted Operator Surface</h2>
+          <h2 className="font-display text-xl font-semibold text-ink">Restricted operator surface</h2>
           <p className="mt-2 text-sm text-text-muted leading-relaxed">
             This workspace is reserved for platform administrators and system operators. Your account does not possess operator clearance.
           </p>
@@ -32,9 +30,9 @@ export default async function PlatformAdminPage() {
         <div className="mt-2 flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-all hover:bg-ink/90"
+            className="inline-flex h-10 items-center gap-2 bg-ink px-4 text-sm font-medium text-paper transition-colors hover:bg-ink-2"
           >
-            <ArrowLeft className="h-4 w-4" /> Return to Dashboard
+            <ArrowLeft className="h-4 w-4" /> Return to dashboard
           </Link>
         </div>
       </div>
@@ -57,28 +55,25 @@ export default async function PlatformAdminPage() {
     <div className="flex flex-col gap-8 pb-12">
       {/* Top Header */}
       <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-            <ShieldCheck className="h-3.5 w-3.5" /> Platform Operator Control Plane
-          </span>
-          <span className="text-xs text-text-muted">· Restricted Access</span>
+        <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          <span>Platform operator control plane — restricted access</span>
         </div>
         <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
           Platform Administration
         </h1>
         <p className="max-w-3xl text-sm text-text-muted leading-relaxed">
-          Cross-tenant oversight and emergency operational support. Tenant usage is queried strictly through standard 
-          isolated boundaries. Support actions (extending a trial or unsticking a past-due subscription) are directly 
+          Cross-tenant oversight and emergency operational support. Tenant usage is queried strictly through standard
+          isolated boundaries. Support actions (extending a trial or unsticking a past-due subscription) are directly
           committed to that tenant&apos;s immutable audit ledger.
         </p>
       </header>
 
-      {/* 4-KPI Platform Metrics Strip */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Tenants */}
-        <div className="card-base p-5 flex flex-col justify-between">
+      {/* Platform metrics — one hairline-divided row instead of four identical cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-line border border-line">
+        <div className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-medium uppercase tracking-wider">Total Tenants</span>
+            <span className="text-xs">Total tenants</span>
             <Building2 className="h-4 w-4 text-ink" />
           </div>
           <div className="mt-3">
@@ -97,10 +92,9 @@ export default async function PlatformAdminPage() {
           </div>
         </div>
 
-        {/* Platform Monthly Orders */}
-        <div className="card-base p-5 flex flex-col justify-between">
+        <div className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-medium uppercase tracking-wider">Orders (This Period)</span>
+            <span className="text-xs">Orders (this period)</span>
             <ShoppingBag className="h-4 w-4 text-accent" />
           </div>
           <div className="mt-3">
@@ -113,10 +107,9 @@ export default async function PlatformAdminPage() {
           </div>
         </div>
 
-        {/* Total Staff Seats */}
-        <div className="card-base p-5 flex flex-col justify-between">
+        <div className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-medium uppercase tracking-wider">Active Staff Seats</span>
+            <span className="text-xs">Active staff seats</span>
             <Users className="h-4 w-4 text-ink" />
           </div>
           <div className="mt-3">
@@ -127,10 +120,9 @@ export default async function PlatformAdminPage() {
           </div>
         </div>
 
-        {/* AI Inquiries Handled */}
-        <div className="card-base p-5 flex flex-col justify-between">
+        <div className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs font-medium uppercase tracking-wider">AI Automated Replies</span>
+            <span className="text-xs">AI automated replies</span>
             <Sparkles className="h-4 w-4 text-gold" />
           </div>
           <div className="mt-3">
@@ -146,26 +138,24 @@ export default async function PlatformAdminPage() {
 
       {/* Tenants Table Workspace */}
       <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-ink">Organizations & Subscriptions</h2>
+        <div className="flex items-baseline gap-2.5">
+          <h2 className="font-display text-lg font-semibold text-ink">Organizations &amp; subscriptions</h2>
           <span className="text-xs text-text-muted font-tabular">{totalTenants} total tenants</span>
         </div>
         <AdminTable overview={overview} />
       </section>
 
       {/* Operator Safety & Governance Callout */}
-      <section className="card-base border-line/80 bg-paper/40 p-5">
+      <section className="border border-line bg-paper/40 p-5">
         <div className="flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink text-paper">
-            <Lock className="h-5 w-5" />
-          </div>
+          <Lock className="h-5 w-5 shrink-0 text-ink" />
           <div className="flex flex-col gap-1 text-xs text-text-muted leading-relaxed">
-            <span className="font-medium text-ink text-sm">Tenant Isolation & Audit Trail Guarantees</span>
+            <span className="font-medium text-ink text-sm">Tenant isolation &amp; audit trail guarantees</span>
             <p>
-              Platform operators cannot view raw customer records, inventory ledgers, or messages from this screen. 
-              The platform overview executes through scoped <code className="text-xs text-ink font-semibold">getUsage()</code> calls 
-              per tenant. Any support intervention (extending trial runway or restoring past-due subscriptions) executes 
-              inside the target tenant&apos;s transaction and appends an immutable <code className="text-xs text-ink font-semibold">AuditLog</code> event 
+              Platform operators cannot view raw customer records, inventory ledgers, or messages from this screen.
+              The platform overview executes through scoped <code className="text-xs text-ink font-semibold">getUsage()</code> calls
+              per tenant. Any support intervention (extending trial runway or restoring past-due subscriptions) executes
+              inside the target tenant&apos;s transaction and appends an immutable <code className="text-xs text-ink font-semibold">AuditLog</code> event
               attributed to your operator identity.
             </p>
           </div>

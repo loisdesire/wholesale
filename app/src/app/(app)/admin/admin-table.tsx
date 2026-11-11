@@ -117,17 +117,17 @@ export function AdminTable({ overview }: Props) {
   return (
     <div className="card-base overflow-hidden">
       {/* Table Toolbar */}
-      <div className="flex flex-col gap-3 border-b border-line bg-paper/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Status Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Status Filter Tabs — plain underline, not filled pills */}
+        <nav className="flex flex-wrap items-center gap-5 text-xs font-semibold">
           {(["ALL", "ACTIVE", "TRIALING", "PAST_DUE"] as const).map((key) => {
             const count = counts[key];
             const isActive = statusFilter === key;
             const labels: Record<StatusFilter, string> = {
-              ALL: "All Tenants",
+              ALL: "All tenants",
               ACTIVE: "Active",
               TRIALING: "Trialing",
-              PAST_DUE: "Past Due",
+              PAST_DUE: "Past due",
               CANCELED: "Canceled",
             };
 
@@ -136,24 +136,15 @@ export function AdminTable({ overview }: Props) {
                 key={key}
                 type="button"
                 onClick={() => setStatusFilter(key)}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                  isActive
-                    ? "bg-ink text-paper shadow-sm"
-                    : "bg-surface text-text-muted hover:bg-paper hover:text-ink border border-line"
+                className={`border-b-2 pb-0.5 transition-colors ${
+                  isActive ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
                 }`}
               >
-                <span>{labels[key]}</span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold font-tabular ${
-                    isActive ? "bg-white/20 text-white" : "bg-line/40 text-text-muted"
-                  }`}
-                >
-                  {count}
-                </span>
+                {labels[key]} <span className="font-tabular font-normal">({count})</span>
               </button>
             );
           })}
-        </div>
+        </nav>
 
         {/* Search Input */}
         <div className="relative min-w-[220px]">
@@ -163,7 +154,7 @@ export function AdminTable({ overview }: Props) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter organizations…"
-            className="w-full rounded-md border border-line bg-surface py-2 sm:py-1.5 pl-8 pr-3 text-base sm:text-xs text-ink placeholder:text-text-muted/60 outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+            className="w-full border border-line bg-surface py-2 sm:py-1.5 pl-8 pr-3 text-base sm:text-xs text-ink placeholder:text-text-muted/60 outline-none focus:border-ink focus:ring-1 focus:ring-ink"
           />
         </div>
       </div>
@@ -181,11 +172,11 @@ export function AdminTable({ overview }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full table-fixed border-collapse text-sm">
             <thead>
-              <tr className="border-b border-line bg-paper/60 text-left text-xs font-semibold uppercase tracking-wider text-ink/80">
+              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
                 <th className="w-56 px-4 py-3">
                   <button
                     onClick={() => toggleSort("name")}
-                    className="inline-flex items-center gap-1 text-text-muted hover:text-ink transition-colors"
+                    className="inline-flex items-center gap-1 hover:text-ink transition-colors"
                   >
                     <span>Organization</span>
                     <ArrowUpDown className="h-3 w-3" />
@@ -193,7 +184,7 @@ export function AdminTable({ overview }: Props) {
                 </th>
                 <th className="w-28 px-4 py-3">Plan</th>
                 <th className="w-28 px-4 py-3">Status</th>
-                <th className="w-44 px-4 py-3">Runway / Cycle</th>
+                <th className="w-44 px-4 py-3">Runway / cycle</th>
                 <th className="w-28 px-4 py-3 text-right">
                   <span className="inline-flex items-center justify-end gap-1">
                     <Users className="h-3 w-3" /> Seats
@@ -202,20 +193,20 @@ export function AdminTable({ overview }: Props) {
                 <th className="w-32 px-4 py-3 text-right">
                   <button
                     onClick={() => toggleSort("orders")}
-                    className="inline-flex items-center justify-end gap-1 text-text-muted hover:text-ink transition-colors ml-auto"
+                    className="inline-flex items-center justify-end gap-1 hover:text-ink transition-colors ml-auto"
                   >
                     <ShoppingBag className="h-3 w-3" />
-                    <span>Orders (Mo)</span>
+                    <span>Orders (mo)</span>
                     <ArrowUpDown className="h-3 w-3" />
                   </button>
                 </th>
                 <th className="w-32 px-4 py-3 text-right">
                   <span className="inline-flex items-center justify-end gap-1">
-                    <Sparkles className="h-3 w-3" /> AI Usage
+                    <Sparkles className="h-3 w-3" /> AI usage
                   </span>
                 </th>
-                <th className="w-60 px-4 py-3 text-right sticky right-0 z-10 bg-paper/95 backdrop-blur-xs border-l border-line/60 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.06)]">
-                  Support Action
+                <th className="w-60 px-4 py-3 text-right sticky right-0 z-10 bg-surface border-l border-line/60">
+                  Support action
                 </th>
               </tr>
             </thead>
@@ -332,7 +323,7 @@ export function AdminTable({ overview }: Props) {
                     </td>
 
                     {/* Actions Column */}
-                    <td className="px-4 py-3.5 text-right align-middle sticky right-0 z-10 bg-surface/95 backdrop-blur-xs border-l border-line/60 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.06)]">
+                    <td className="px-4 py-3.5 text-right align-middle sticky right-0 z-10 bg-surface border-l border-line/60">
                       <div className="flex justify-end">
                         <AdminRowActions organizationId={org.id} status={org.subscriptionStatus} />
                       </div>

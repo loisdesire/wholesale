@@ -14,11 +14,9 @@ export default async function BillingPage() {
 
   if (session!.user.role !== "OWNER") {
     return (
-      <div className="card-base flex flex-col items-center justify-center rounded-2xl p-12 text-center shadow-xs">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper text-text-muted">
-          <Lock className="h-6 w-6" />
-        </div>
-        <h2 className="mt-3 font-display text-base font-bold text-ink">Owner Access Required</h2>
+      <div className="border border-line flex flex-col items-center justify-center p-12 text-center">
+        <Lock className="h-6 w-6 text-text-muted" />
+        <h2 className="mt-3 font-display text-base font-bold text-ink">Owner access required</h2>
         <p className="mt-1 text-xs text-text-muted max-w-sm">
           Subscription plans and billing ledgers affect the entire organization. Only team owners can manage subscription renewals.
         </p>
@@ -45,19 +43,17 @@ export default async function BillingPage() {
     <div className="flex flex-col gap-8 pb-16">
       {/* Header */}
       <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-baseline gap-2.5">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Billing &amp; Subscription</h1>
-          <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 font-tabular text-xs font-semibold text-text-muted">
-            {limits.label} Tier
-          </span>
+          <span className="text-sm text-text-muted">{limits.label} tier</span>
         </div>
         <p className="text-sm text-text-muted">
           Platform tier management, resource consumption quotas, and verified Paystack renewal records.
         </p>
       </header>
 
-      {/* Plan Hero Card - Tactile & Alive (Purged fake radial blur glow) */}
-      <div className="card-base rounded-2xl p-6 sm:p-7 shadow-xs border border-line">
+      {/* Plan summary */}
+      <div className="card-base p-6 sm:p-7">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/60 pb-6">
           <div>
             <div className="flex items-center gap-3">
@@ -102,9 +98,9 @@ export default async function BillingPage() {
       {/* 2-Column Responsive Layout: Usage Quotas & Payment History */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Resource Quotas & Usage */}
-        <div className="card-base overflow-hidden rounded-2xl shadow-xs">
-          <div className="border-b border-line bg-paper/40 px-5 py-3.5">
-            <h2 className="font-display text-sm font-bold text-ink">Monthly Quota Consumption</h2>
+        <div className="card-base overflow-hidden">
+          <div className="border-b border-line px-5 py-3.5">
+            <h2 className="font-display text-sm font-bold text-ink">Monthly quota consumption</h2>
             <p className="text-xs text-text-muted">Current period entitlement utilization.</p>
           </div>
 
@@ -138,9 +134,9 @@ export default async function BillingPage() {
         </div>
 
         {/* Subscription Payment Receipts */}
-        <div className="card-base overflow-hidden rounded-2xl shadow-xs">
-          <div className="border-b border-line bg-paper/40 px-5 py-3.5">
-            <h2 className="font-display text-sm font-bold text-ink">Paystack Subscription Receipts</h2>
+        <div className="card-base overflow-hidden">
+          <div className="border-b border-line px-5 py-3.5">
+            <h2 className="font-display text-sm font-bold text-ink">Paystack subscription receipts</h2>
             <p className="text-xs text-text-muted">Verified platform payment transactions.</p>
           </div>
 
