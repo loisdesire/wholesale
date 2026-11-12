@@ -6,7 +6,14 @@ import { OrderStatusBadge } from "@/components/status-badge";
 import { getOwnerAIBriefing } from "@/lib/owner-ai";
 import { OwnerAIBriefingCard } from "@/components/owner-ai-briefing";
 import { DashboardAttentionConsole } from "@/components/dashboard-attention-console";
+import { DebtReminderDrafts } from "@/components/debt-reminder-drafts";
 import { Plus } from "lucide-react";
+
+const URGENCY_LABEL: Record<string, string> = {
+  CRITICAL: "text-status-attention-fg",
+  WARNING: "text-status-progress-fg",
+  WATCH: "text-text-muted",
+};
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -142,6 +149,43 @@ export default async function DashboardPage() {
           })}
         </div>
       </section>
+
+      {/* Stock risk forecast — only shown when something's actually at risk */}
+      {ownerBriefing.stockoutRisks.length > 0 && (
+        <section className="border-b border-line py-5">
+          <div className="pb-1">
+            <h2 className="font-display text-base font-semibold text-ink">Stock risk forecast</h2>
+            <p className="text-xs text-text-muted">Based on confirmed sales over the last 7 days.</p>
+          </div>
+          <div className="divide-y divide-line/70">
+            {ownerBriefing.stockoutRisks.map((risk) => (
+              <Link
+                key={risk.productId}
+                href={`/catalogue/${risk.productId}`}
+                className="group flex items-center justify-between gap-4 py-3 hover:bg-surface -mx-1 px-1 transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-text-muted">{risk.sku}</span>
+                    <span className={`text-xs font-semibold ${URGENCY_LABEL[risk.urgency]}`}>
+                      {risk.urgency}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-ink truncate mt-0.5 group-hover:text-accent transition-colors">
+                    {risk.name}
+                  </p>
+                  <p className="text-xs text-text-muted mt-0.5">{risk.recommendation}</p>
+                </div>
+                <span className="shrink-0 font-tabular text-sm font-semibold text-ink">
+                  {risk.available} left
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <DebtReminderDrafts debtors={ownerBriefing.debtDrafts} />
 
       {/* Recent orders & inbound messages */}
       <section className="grid gap-x-10 lg:grid-cols-2">

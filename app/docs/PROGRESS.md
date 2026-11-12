@@ -1468,20 +1468,90 @@ genuinely open.
   real UI.
 - `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test` (391/391) all pass clean.
 
+## Done (2026-11-06 to 2026-11-09 — Telegram channel, landing page, dashboard move; undocumented until now)
+
+A substantial batch of work (8 commits, 74 files, ~9,400 lines) landed on this branch across these
+dates without a matching PROGRESS.md entry — this section closes that gap retroactively, after
+live-verifying the actual behaviour rather than just reading the diff.
+
+- **Telegram added as a second order-intake channel**, alongside WhatsApp: `src/lib/telegram.ts`
+  (webhook payload parsing, `sendTelegramMessage`/send-photo, `isTelegramConfigured()` — same
+  degrade-gracefully shape as `whatsapp.ts`), `src/lib/telegram-routing.ts` (routes an inbound
+  update to the right organization), `src/app/api/webhooks/telegram/route.ts`, and
+  `scripts/telegram-poll.ts` (a long-poll runner for local dev, where no public webhook URL
+  exists). The AI engine's auto-reply and draft-order path now runs identically over Telegram and
+  WhatsApp — same `runAIAssist`, same tools, same never-auto-confirm rule.
+- **Root route restructuring**: the dashboard moved from `/` to `/dashboard`; `/` is now a real
+  marketing landing page (`src/app/page.tsx` + `landing-components.tsx`, ~1,100 lines) with a
+  hero, an architecture-claims section, a 3-stage pipeline visual, pricing, and FAQ. Logged-in
+  visits to `/` and `/login` both redirect straight to `/dashboard`.
+- **Nav, orders list, reports, and search pages rewritten** (337/329/506/286 lines changed
+  respectively) continuing the ledger/docket visual language from the Impeccable-era redesign
+  commits below.
+- **Live verification, now actually done**: a real (previously undocumented) `TELEGRAM_BOT_TOKEN`
+  and `OPENAI_API_KEY` were found already configured in this machine's `.env`, both confirmed live
+  against the real Telegram and OpenAI APIs (`getMe` returned a real bot, "Vanova Relay"
+  `@vanovarelaybot`; `gpt-6-luna`, the configured model, is confirmed to exist on the real OpenAI
+  account). Real prior usage already existed in the dev database from genuine phone-to-bot chats
+  (not synthetic payloads): 2 real conversations, ~40 inbound messages each way across 3 days,
+  covering text, non-English text, emoji, and inbound/outbound photos. This proves the full real
+  pipeline end to end — ingestion, organization routing, the AI engine's real OpenAI calls, replies
+  actually delivered back through Telegram — not just a mocked-client test. No draft order appeared
+  in either real conversation; confirmed with the user this is correct (neither conversation was
+  ever actually concluded to a firm order), not a bug in `create_draft_order`.
+  **`.env.example` never documented `TELEGRAM_BOT_TOKEN`** — fixed.
+- Screenshotted the new landing page, dashboard, nav (including the mobile drawer), orders list,
+  reports, global search, and the new-order form at both 1360×1000 and 375×812 — all render
+  correctly against the current code, zero browser console/page errors across every page checked.
+- **Found and fixed: the "owner AI briefing" wasn't actually AI, and most of what it computed was
+  invisible.** `src/lib/owner-ai.ts`'s `getOwnerAIBriefing` — despite the name — makes no model
+  call at all; `executiveHeadline`, `summaryParagraph`, `stockoutRisks` (a real per-SKU velocity/
+  days-remaining calculation), and `debtDrafts` (three pre-written reminder-message tones per
+  top debtor: respectful/firm/pidgin) are all plain deterministic template logic. Worse,
+  `OwnerAIBriefingCard` only ever read `metrics` and `criticalAlerts` off the returned object —
+  `stockoutRisks` and `debtDrafts` were computed (with real extra DB queries) on every single
+  dashboard load and then silently discarded, never rendered anywhere, with zero test coverage.
+  Fixed by wiring both into the dashboard: a new "Stock risk forecast" section (SKU, urgency,
+  recommendation, units left, linking to the catalogue page), and a new
+  `src/components/debt-reminder-drafts.tsx` (tone-switch + copy-to-clipboard per debtor, following
+  the same copy-button pattern already established in `payment-link-button.tsx`) — both sections
+  only render when there's actually something to show. Verified live (stock-risk section renders
+  correctly for the one real at-risk SKU in seed data; debt-reminder section correctly stays hidden
+  since no seed customer currently owes anything). `npx tsc --noEmit`, `npm run lint`, `npm run
+  build`, and `npm run test` (391/391) all pass clean after the change.
+- **The Impeccable AI-design-tell audit (commit `90c2137`, 26 files) was also never documented
+  here** — a full pass against Paul Bakaus's slop catalog (gradients, pill badges, glow/halos,
+  glassmorphism, icon-tile-stacks, nested cards, fake numbered sequence labels, cream+italic-serif
+  defaults, etc.) plus contrast/spacing/type-size accessibility checks. Fixed across the landing
+  page, login screen, nav, and notifications view; darkened `rose-600`→`rose-700` and stripped
+  `text-muted` opacity modifiers app-wide to fix real WCAG contrast failures (verified by hand with
+  relative-luminance math, not just the detector's say-so). `PRODUCT.md` was added at the repo root
+  as part of this pass (product truth — users, positioning, operating context — explicitly not
+  design decisions), per the Impeccable skill's own init flow.
+- **Dev-database hygiene**: two rounds of test data created live-testing returns/merge/CSV-import
+  and the Telegram pipeline were fully reverted (order + return + shipment + stock-movement chain
+  deleted, SKU price/stock restored, two merged test customers un-merged with original notes
+  restored, one zero-message "Test Vision Buyer" Telegram conversation — pre-existing debris from
+  earlier Telegram dev work, not from this pass — deleted). Confirmed via direct DB queries, not
+  just screenshots, that the dev database is back to its pre-test-pass state.
+
 ## Known gaps / flagged decisions
 
 - **Postgres is verified locally only.** Developed and tested against a local Postgres 16, not a
   managed/production instance — deployment, backups and connection pooling are still undecided.
   Note `Order.orderSeq`/`returnSeq` counters serialize order creation per organization on one row
   lock; fine at this volume, revisit if that ever becomes a hotspot.
-- **No real WhatsApp, Resend or Paystack credentials in this environment** (the AI engine moved to
-  OpenAI — see the Done entry on that migration below — and a real, though expired, `OPENAI_API_KEY`
-  was found and used from this machine's own shell environment, not added by this work). Webhook
-  ingestion, reply sending, the email notification channel, and automated payment verification are
-  all built and tested against synthetic-but-realistic signed payloads / a mocked `fetch` —
-  correct by construction and by test, but not yet run against Meta's, Resend's or Paystack's
-  actual infrastructure for real. Nothing in the app pretends otherwise: every screen shows a clear
-  "not configured" state instead of failing silently or faking success.
+- **No real WhatsApp, Resend or Paystack credentials in this environment.** Webhook ingestion,
+  reply sending, the email notification channel, and automated payment verification are all built
+  and tested against synthetic-but-realistic signed payloads / a mocked `fetch` — correct by
+  construction and by test, but not yet run against Meta's, Resend's or Paystack's actual
+  infrastructure for real. Nothing in the app pretends otherwise: every screen shows a clear "not
+  configured" state instead of failing silently or faking success. **Telegram and OpenAI are the
+  exception, now confirmed live** — see the 2026-11-06/09 Done entry above: a real
+  `TELEGRAM_BOT_TOKEN` and `OPENAI_API_KEY` are set in this machine's `.env`, both verified against
+  the real APIs, with real multi-day phone-to-bot conversation history proving the full ingestion →
+  AI reply → delivery pipeline end to end (the earlier note about a found-but-expired
+  `OPENAI_API_KEY` is stale — the key now present is live).
 - Vitest is configured (`npm run test`, 324 tests / 24 files). VISION.md's remaining
   testing-discipline scenario — a duplicate payment webhook — is now covered
   (`tests/payments.test.ts`'s idempotency tests: a redelivered webhook event with the same
@@ -1512,16 +1582,14 @@ These are natural follow-ons, flagged here rather than started unprompted:
   ingestion and reply sending against actual traffic. (Customer matching on the normalized phone,
   and webhook routing by registered number, matter most here — they're the first things real
   multi-tenant traffic exercises.)
-- Get a real, *non-expired* `OPENAI_API_KEY` and confirm the AI engine end to end — the one found
-  in this machine's shell environment confirmed error handling works correctly (a live 401
-  surfaced cleanly), but expired before confirming the model id itself (`gpt-6-luna` as of
-  2026-10-25, changed from the flagship `gpt-6-astra` on cost — see the OpenAI-migration Done
-  entry) actually works. Once confirmed, also run `npm run ai:eval` for
-  real — the eval harness's own pipeline is smoke-tested against Anthropic (see the Phase 5
-  eval-harness entry, from before the OpenAI migration), but no accuracy run against the real
-  current model has happened; VISION.md's own rule is the model isn't "production-ready" until
-  that's been done against a defined threshold. Image-based eval cases (new, since vision was
-  added) are worth adding at the same time, not just text ones.
+- ~~Get a real, non-expired `OPENAI_API_KEY` and confirm the AI engine end to end~~ — done, see the
+  2026-11-06/09 Done entry above: a live key and real multi-day Telegram conversation history
+  confirm `gpt-6-luna` genuinely works in real conversations, not just that auth succeeds. Still
+  open: run `npm run ai:eval` for real against this live key — the eval harness's own pipeline is
+  smoke-tested against Anthropic (see the Phase 5 eval-harness entry, from before the OpenAI
+  migration), but no accuracy run against the real current model, scored against a defined
+  threshold, has happened yet (VISION.md's own bar for "production-ready"). Image-based eval cases
+  (added since vision was wired in) are worth including in that same run.
 - Decide on and set up deployment (hosting, managed Postgres, env vars, running `prisma migrate
   deploy` in CI/CD, and setting `wholesale_app`'s real password there — `docs/ISOLATION.md`).
 - Get a real `RESEND_API_KEY` and do a live smoke test of the email channel (it's only ever been
