@@ -5,9 +5,9 @@ import { useSubmitAction } from "@/lib/use-submit-action";
 import { addAddressAction, setPriceAction, updateCustomerAction, type FormState } from "../actions";
 
 const inputClass =
-  "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
+  "input";
 const buttonClass =
-  "rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60";
+  "btn btn-secondary";
 
 function Feedback({ error, done }: { error: string | null; done: boolean }) {
   if (error) {
@@ -35,7 +35,7 @@ export function EditCustomerForm({
     error: null,
   } as FormState);
   return (
-    <form {...formProps} className="flex max-w-xl flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex max-w-xl flex-col gap-4 card p-5">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="name" className="text-sm font-medium text-ink">Name</label>
@@ -65,7 +65,7 @@ export function AddAddressForm({ customerId }: { customerId: string }) {
     error: null,
   } as FormState, { resetOnSuccess: true });
   return (
-    <form {...formProps} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-3 card p-5">
       <div className="grid gap-3 md:grid-cols-[10rem_1fr]">
         <input name="label" placeholder="Label (e.g. Shop)" aria-label="Address label" className={inputClass} />
         <input name="text" required placeholder="Full address" aria-label="Address" className={inputClass} />
@@ -91,7 +91,7 @@ export function AgreedPriceForm({
     error: null,
   } as FormState, { resetOnSuccess: true });
   return (
-    <form {...formProps} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-3 card p-5">
       <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
         <select name="productId" aria-label="Product" className={inputClass} defaultValue="">
           <option value="" disabled>

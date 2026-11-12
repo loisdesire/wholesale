@@ -29,7 +29,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         unreadNotifications={unread}
         isPlatformAdmin={session?.user.isPlatformAdmin ?? false}
       />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 md:px-10 md:py-8">{children}</main>
+      <main className="min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-8 lg:px-10">
+        <div className="mx-auto w-full max-w-[1200px]">{children}</div>
+      </main>
     </div>
   );
 }

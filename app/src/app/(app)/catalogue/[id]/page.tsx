@@ -60,7 +60,7 @@ export default async function ProductDetailPage({
         </Link>
         <div className="mt-2 flex items-baseline justify-between">
           <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">{product.name}</h1>
+            <h1 className="page-title">{product.name}</h1>
             <p className="mt-1 font-tabular text-sm text-text-muted">
               {product.sku}
               {variant ? ` · ${Object.values(variant).join(" / ")}` : ""}
@@ -89,12 +89,12 @@ export default async function ProductDetailPage({
       </header>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Photos</h2>
+        <h2 className="section-title mb-3">Photos</h2>
         <ProductImages productId={product.id} images={product.images} />
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Product details</h2>
+        <h2 className="section-title mb-3">Product details</h2>
         <EditProductForm
           productId={product.id}
           defaultValues={{
@@ -115,21 +115,21 @@ export default async function ProductDetailPage({
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Record a stock movement</h2>
+        <h2 className="section-title mb-3">Record a stock movement</h2>
         <StockMovementForm productId={product.id} />
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Movement history</h2>
+        <h2 className="section-title mb-3">Movement history</h2>
         {movements.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             No movements recorded yet.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">When</th>
                   <th className="py-2 pr-4">Reason</th>
                   <th className="py-2 pr-4">Reference</th>
@@ -142,7 +142,7 @@ export default async function ProductDetailPage({
               </thead>
               <tbody>
                 {movements.map((m) => (
-                  <tr key={m.id} className="border-b border-line last:border-0">
+                  <tr key={m.id} className="trow">
                     <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(m.createdAt)}</td>
                     <td className="py-3 pr-4 text-ink">{REASON_LABEL[m.reason] ?? m.reason}</td>
                     <td className="py-3 pr-4 font-tabular text-text-muted">{m.reference ?? "—"}</td>

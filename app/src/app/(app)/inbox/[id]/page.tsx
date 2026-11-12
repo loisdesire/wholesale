@@ -56,7 +56,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
         </Link>
         <div className="mt-2 flex items-start justify-between">
           <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">
+            <h1 className="page-title">
               {conversation.customer.name ?? "Unnamed"}
             </h1>
             <p className="mt-1 font-tabular text-sm text-text-muted">{conversation.customer.phone}</p>
@@ -78,7 +78,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
               <form action={markResolvedAction.bind(null, conversation.id)}>
                 <button
                   type="submit"
-                  className="rounded-md border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-paper"
+                  className="btn btn-secondary btn-sm"
                 >
                   Mark resolved
                 </button>
@@ -118,7 +118,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
         </div>
 
         {conversation.messages.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             No messages yet.
           </p>
         ) : (
@@ -174,11 +174,11 @@ export default async function ConversationDetailPage({ params }: { params: Promi
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">AI assist</h2>
+        <h2 className="section-title mb-3">AI assist</h2>
         {aiReady ? (
           <AIAssistButton conversationId={conversation.id} />
         ) : (
-          <p className="rounded-md border border-dashed border-line px-4 py-4 text-sm text-text-muted">
+          <p className="empty">
             AI product-matching isn&apos;t configured in this environment (missing
             OPENAI_API_KEY).
           </p>
@@ -186,11 +186,11 @@ export default async function ConversationDetailPage({ params }: { params: Promi
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Reply</h2>
+        <h2 className="section-title mb-3">Reply</h2>
         {whatsappReady ? (
           <ReplyForm conversationId={conversation.id} />
         ) : (
-          <p className="rounded-md border border-dashed border-line px-4 py-4 text-sm text-text-muted">
+          <p className="empty">
             WhatsApp sending isn&apos;t configured in this environment (missing
             WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID) — replies can&apos;t be sent until
             it is.

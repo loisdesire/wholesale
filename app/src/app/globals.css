@@ -1,33 +1,47 @@
 @import "tailwindcss";
 
+/*
+ * Design system — "Dispatch" (redesigned 2026-11-12, see CLAUDE.md → Design system).
+ * A bright, cool canvas with white objects sitting on it, one saturated brand colour (cobalt),
+ * and a citron highlighter kept for dark surfaces and marketing visuals. Status colours are a
+ * separate family on purpose, so "needs attention" never looks like "the primary action".
+ */
 :root {
-  /* Deep aubergine, not navy and not flat black — reads as rich dye rather than corporate. */
-  --ink: #1d1030;
-  --ink-2: #2d1c48;
-  /* Warm, unbleached-cotton paper — the trade this app serves is textiles. */
-  --paper: #fbf3e9;
+  /* Near-black with a blue cast — the text colour and the dark-surface colour. */
+  --ink: #0b1020;
+  --ink-2: #1b2238;
+  /* Cool canvas (not cream): the page. White cards read as objects on top of it. */
+  --paper: #f3f4f7;
   --surface: #ffffff;
-  --line: #ecdfcb;
+  --line: #e3e6ec;
+  --line-strong: #cdd2dc;
 
-  /* Raspberry-magenta: the one bold color. Used for primary actions and selected state only. */
-  --accent: #cf1457;
-  --accent-2: #a60f44;
+  /* Cobalt: the one brand colour. Primary actions, links-as-actions and selected state. */
+  --accent: #2347f5;
+  --accent-2: #1a35c4;
   --accent-ink: #ffffff;
-  /* Marigold: the quieter second color — highlights and badges, never competing with accent. */
-  --gold: #e3920f;
-  --gold-ink: #3a2305;
+  --accent-soft: #ecefff;
+  /* Citron: the highlighter. Only on dark (ink) surfaces and in marketing visuals. */
+  --gold: #d8f44a;
+  --gold-ink: #1d2400;
+  /* WhatsApp's own green — used only where the WhatsApp channel itself is depicted. */
+  --wa: #1faa59;
+  --wa-soft: #e3f8ea;
 
-  --text: #1d1030;
-  --text-muted: #726a7d;
+  --text: #0b1020;
+  --text-muted: #5b6275;
 
-  --status-neutral-fg: #534c5e;
-  --status-neutral-bg: #efe9e2;
-  --status-progress-fg: #9a5b06;
-  --status-progress-bg: #fcf0db;
-  --status-success-fg: #0d7a57;
-  --status-success-bg: #e2f5ec;
-  --status-attention-fg: #b3261e;
-  --status-attention-bg: #fbe8e5;
+  --status-neutral-fg: #485064;
+  --status-neutral-bg: #eaecf1;
+  --status-progress-fg: #8f5200;
+  --status-progress-bg: #fff0d1;
+  --status-success-fg: #08774a;
+  --status-success-bg: #dcf6e7;
+  --status-attention-fg: #c2261d;
+  --status-attention-bg: #fde7e4;
+
+  --shadow-card: 0 1px 2px rgb(11 16 32 / 0.04), 0 1px 1px rgb(11 16 32 / 0.02);
+  --shadow-pop: 0 12px 32px -8px rgb(11 16 32 / 0.18), 0 2px 6px rgb(11 16 32 / 0.06);
 }
 
 @theme inline {
@@ -36,11 +50,15 @@
   --color-paper: var(--paper);
   --color-surface: var(--surface);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
   --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
   --color-gold: var(--gold);
   --color-gold-ink: var(--gold-ink);
+  --color-wa: var(--wa);
+  --color-wa-soft: var(--wa-soft);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-status-neutral-fg: var(--status-neutral-fg);
@@ -54,22 +72,299 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-display: var(--font-display);
+  /* Controls are 10px, cards 16px — one step friendlier than the default scale. */
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
 }
 
 body {
   background: var(--paper);
   color: var(--text);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
 }
 
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Money, quantities, times: the UI sans with tabular figures, so columns align without the
+   terminal look a monospace face gives every number. Mono (`font-mono`) is for SKUs and refs. */
 .font-tabular {
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* The one display typeface, reserved for page titles and headline figures — the signature
-   typographic move. Everything else stays in the plain sans so the display face keeps its
-   weight instead of being diluted across every label. */
+/* Display face (Bricolage Grotesque): page titles, headline figures, marketing headlines. */
 .font-display {
-  font-family: var(--font-display), ui-serif, serif;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+@layer components {
+  /* ── Buttons ─────────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.625rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 550;
+    white-space: nowrap;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.05s;
+    cursor: pointer;
+  }
+  .btn:active {
+    transform: translateY(0.5px);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 1px 2px rgb(35 71 245 / 0.35);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-2);
+  }
+  .btn-dark {
+    background: var(--ink);
+    color: #fff;
+  }
+  .btn-dark:hover:not(:disabled) {
+    background: var(--ink-2);
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-card);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--paper);
+    border-color: #b4bac8;
+  }
+  .btn-danger {
+    background: var(--surface);
+    color: var(--status-attention-fg);
+    border: 1px solid #f3c3be;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--status-attention-bg);
+  }
+  .btn-sm {
+    padding: 0.3125rem 0.625rem;
+    font-size: 0.8125rem;
+    border-radius: 0.5rem;
+  }
+  .btn-lg {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9375rem;
+    border-radius: 0.75rem;
+  }
+
+  /* ── Form controls ───────────────────────────────────────────────────── */
+  .input {
+    border-radius: 0.625rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input::placeholder {
+    color: #9097a6;
+  }
+  .input:hover {
+    border-color: #b4bac8;
+  }
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgb(35 71 245 / 0.16);
+  }
+  .input-sm {
+    padding: 0.3125rem 0.5rem;
+    border-radius: 0.5rem;
+  }
+  .field-label {
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: var(--ink);
+  }
+
+  /* ── Surfaces ────────────────────────────────────────────────────────── */
+  .card {
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .empty {
+    border-radius: 1rem;
+    border: 1px dashed var(--line-strong);
+    background: rgb(255 255 255 / 0.55);
+    padding: 1.75rem 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Type roles ──────────────────────────────────────────────────────── */
+  .page-title {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-size: 1.75rem;
+    line-height: 2.125rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) {
+    .page-title {
+      font-size: 2rem;
+      line-height: 2.375rem;
+    }
+  }
+  .section-title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.15s;
+  }
+  .back-link:hover {
+    color: var(--ink);
+  }
+  .link {
+    color: var(--accent);
+    font-weight: 500;
+    text-underline-offset: 3px;
+  }
+  .link:hover {
+    text-decoration: underline;
+  }
+
+  /* ── Tables ──────────────────────────────────────────────────────────── */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .thead-row {
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .thead-row th {
+    font-weight: inherit;
+  }
+  .trow {
+    border-bottom: 1px solid var(--line);
+    transition: background-color 0.12s;
+  }
+  .trow:last-child {
+    border-bottom: 0;
+  }
+  .trow:hover {
+    background: #f8f9fb;
+  }
+  /* A table wrapped in a card: first/last cells get the card's inner gutter. */
+  .card .table th:first-child,
+  .card .table td:first-child {
+    padding-left: 1.125rem;
+  }
+  .card .table th:last-child,
+  .card .table td:last-child {
+    padding-right: 1.125rem;
+  }
+  .card .table .thead-row {
+    background: #f8f9fb;
+  }
+  .card .table .thead-row th {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+  .card .table .thead-row th:first-child {
+    border-top-left-radius: 1rem;
+  }
+  .card .table .thead-row th:last-child {
+    border-top-right-radius: 1rem;
+  }
+}
+
+/* ── Marketing page motion (reduced-motion safe) ───────────────────────── */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-rise {
+  animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.anim-pop {
+  animation: pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-marquee {
+  animation: marquee 38s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise,
+  .anim-pop,
+  .anim-marquee {
+    animation: none;
+  }
 }

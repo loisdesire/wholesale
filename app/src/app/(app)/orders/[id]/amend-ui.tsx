@@ -5,7 +5,7 @@ import { useSubmitAction } from "@/lib/use-submit-action";
 import { amendOrderAction, type FormState } from "../actions";
 
 const inputClass =
-  "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
+  "input";
 
 export type AmendLine = { orderItemId: string; label: string; sku: string; quantity: number; moq: number };
 
@@ -21,15 +21,15 @@ export function AmendOrderForm({
 }) {
   const { state, pending, formProps } = useSubmitAction(amendOrderAction.bind(null, orderId), { error: null } as FormState, { resetOnSuccess: true });
   return (
-    <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-4 card p-5">
       <p className="text-sm text-text-muted">
         Lines you change are re-priced at today&apos;s prices and the stock reservation is adjusted; lines you leave alone
         keep their agreed price. Set a quantity to 0 to remove a line.
       </p>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="table">
           <thead>
-            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+            <tr className="thead-row">
               <th className="py-2 pr-4">Item</th>
               <th className="py-2 pr-4 text-right">Now</th>
               <th className="py-2">New quantity</th>
@@ -37,7 +37,7 @@ export function AmendOrderForm({
           </thead>
           <tbody>
             {lines.map((l) => (
-              <tr key={l.orderItemId} className="border-b border-line last:border-0">
+              <tr key={l.orderItemId} className="trow">
                 <td className="py-3 pr-4 text-ink">
                   {l.label}
                   <span className="ml-2 font-tabular text-xs text-text-muted">{l.sku}</span>
@@ -80,7 +80,7 @@ export function AmendOrderForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60"
+          className="btn btn-secondary"
         >
           {pending ? "Amending…" : "Amend order"}
         </button>

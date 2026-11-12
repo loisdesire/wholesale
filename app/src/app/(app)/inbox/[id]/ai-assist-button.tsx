@@ -13,7 +13,7 @@ export function AIAssistButton({ conversationId }: { conversationId: string }) {
   );
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
+    <div className="flex flex-col gap-3 card p-5">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-ink">AI product-matching assist</p>
@@ -26,7 +26,7 @@ export function AIAssistButton({ conversationId }: { conversationId: string }) {
           <button
             type="submit"
             disabled={pending}
-            className="rounded-md border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-line/40 disabled:opacity-60"
+            className="btn btn-secondary btn-sm"
           >
             {pending ? "Thinking…" : "Let AI respond"}
           </button>

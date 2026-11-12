@@ -14,18 +14,18 @@ export default async function NotificationsPage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Notifications</h1>
+          <h1 className="page-title">Notifications</h1>
           <p className="mt-1 text-sm text-text-muted">Return decisions, refunds due, and work assigned to you.</p>
         </div>
         {unreadIds.length > 0 && <MarkAllReadButton />}
       </header>
 
       {notifications.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           Nothing yet.
         </p>
       ) : (
-        <div className="divide-y divide-line rounded-md border border-line bg-surface">
+        <div className="card divide-y divide-line">
           {notifications.map((n) => (
             <Link
               key={n.id}

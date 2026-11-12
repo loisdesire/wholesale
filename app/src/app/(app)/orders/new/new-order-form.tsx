@@ -122,7 +122,7 @@ export function NewOrderForm({
             value={selectedCustomerId}
             onChange={(e) => setSelectedCustomerId(e.target.value)}
             required
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input"
           >
             <option value="">Select a customer…</option>
             {customers.map((c) => (
@@ -141,7 +141,7 @@ export function NewOrderForm({
                 id="customerName"
                 name="customerName"
                 type="text"
-                className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+                className="input"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -153,7 +153,7 @@ export function NewOrderForm({
                 name="customerPhone"
                 type="text"
                 required
-                className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+                className="input"
               />
             </div>
           </div>
@@ -172,7 +172,7 @@ export function NewOrderForm({
               id="product"
               value={selectedProductId}
               onChange={(e) => setSelectedProductId(e.target.value)}
-              className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+              className="input"
             >
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -197,13 +197,13 @@ export function NewOrderForm({
               step="1"
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value))}
-              className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+              className="input"
             />
           </div>
           <button
             type="button"
             onClick={addToCart}
-            className="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
+            className="btn btn-secondary"
           >
             Add
           </button>
@@ -211,15 +211,15 @@ export function NewOrderForm({
         {addError && <p className="text-sm text-status-attention-fg">{addError}</p>}
 
         {cart.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             No items added yet.
           </p>
         ) : (
-          <div className="rounded-md border border-line bg-surface">
+          <div className="card">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+              <table className="table">
                 <thead>
-                  <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                  <tr className="thead-row">
                     <th className="px-4 py-2">Product</th>
                     <th className="px-4 py-2 text-right">Qty</th>
                     <th className="px-4 py-2 text-right">Unit price</th>
@@ -234,7 +234,7 @@ export function NewOrderForm({
                     const unitPrice = unitPriceFor(product, line.quantity);
                     const isAgreed = agreedFor(product.id) != null;
                     return (
-                      <tr key={line.productId} className="border-b border-line last:border-0">
+                      <tr key={line.productId} className="trow">
                         <td className="px-4 py-3 text-ink">
                           {product.name}
                           {product.variantLabel ? ` (${product.variantLabel})` : ""}
@@ -284,7 +284,7 @@ export function NewOrderForm({
             name="deliveryAddress"
             rows={2}
             placeholder="Leave blank to use the customer's default address, if they have one"
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -295,7 +295,7 @@ export function NewOrderForm({
             id="notes"
             name="notes"
             rows={2}
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input"
           />
         </div>
       </section>
@@ -310,7 +310,7 @@ export function NewOrderForm({
         <button
           type="submit"
           disabled={pending || cart.length === 0}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Creating…" : "Create draft order"}
         </button>

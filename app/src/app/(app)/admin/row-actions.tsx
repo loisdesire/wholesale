@@ -37,7 +37,7 @@ function ExtendTrialForm({ organizationId }: { organizationId: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md border border-line px-2 py-1 text-xs font-medium text-ink hover:bg-paper disabled:opacity-60"
+          className="btn btn-secondary btn-sm"
         >
           {pending ? "Extending…" : "Extend trial"}
         </button>
@@ -59,7 +59,7 @@ function MarkActiveButton({ organizationId }: { organizationId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-line px-2 py-1 text-xs font-medium text-ink hover:bg-paper disabled:opacity-60"
+        className="btn btn-secondary btn-sm"
       >
         {pending ? "Updating…" : "Mark active"}
       </button>

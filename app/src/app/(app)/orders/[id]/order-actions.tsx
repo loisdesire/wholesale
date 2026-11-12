@@ -39,8 +39,8 @@ function ActionButton({
         disabled={pending}
         className={
           variant === "primary"
-            ? "rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
-            : "rounded-md border border-line px-4 py-2 text-sm font-medium text-status-attention-fg transition-colors hover:bg-status-attention-bg disabled:opacity-60"
+            ? "btn btn-primary"
+            : "btn btn-danger"
         }
       >
         {pending ? pendingLabel : label}
@@ -67,7 +67,7 @@ export function OrderActions({
     return (
       <div className="flex flex-col gap-4">
         {repeat && (
-          <p role="status" className="rounded-md border border-line bg-status-attention-bg px-4 py-3 text-sm text-status-attention-fg">
+          <p role="status" className="rounded-xl border border-status-attention-fg/20 bg-status-attention-bg px-4 py-3 text-sm text-status-attention-fg">
             Possible repeat order: {duplicateOf.join(", ")} has the same customer and the same items from the last
             day. Check before confirming so the customer isn&apos;t charged twice.
           </p>

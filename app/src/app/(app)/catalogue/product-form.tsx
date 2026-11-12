@@ -79,7 +79,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
                 setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, key: e.target.value } : a)))
               }
               onFocus={(e) => e.target.select()}
-              className="w-1/3 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+              className="w-1/3 input"
             />
             <input
               type="text"
@@ -89,7 +89,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
                 setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, value: e.target.value } : a)))
               }
               onFocus={(e) => e.target.select()}
-              className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+              className="flex-1 input"
             />
             <button
               type="button"
@@ -169,7 +169,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
               onChange={(e) =>
                 setTiers((prev) => prev.map((t, j) => (j === i ? { ...t, minQuantity: e.target.value } : t)))
               }
-              className="w-28 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+              className="w-28 input"
             />
             <input
               type="number"
@@ -180,7 +180,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
               onChange={(e) =>
                 setTiers((prev) => prev.map((t, j) => (j === i ? { ...t, priceNaira: e.target.value } : t)))
               }
-              className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+              className="flex-1 input"
             />
             <button
               type="button"
@@ -220,7 +220,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Saving…" : submitLabel}
         </button>
@@ -259,7 +259,7 @@ function Field({
         min={min}
         defaultValue={defaultValue}
         required={required}
-        className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+        className="input"
       />
     </div>
   );

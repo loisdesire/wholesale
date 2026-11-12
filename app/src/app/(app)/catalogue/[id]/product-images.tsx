@@ -36,7 +36,7 @@ export function ProductImages({ productId, images }: { productId: string; images
   return (
     <div className="flex flex-col gap-4">
       {images.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           No photos yet.
         </p>
       ) : (
@@ -65,7 +65,7 @@ export function ProductImages({ productId, images }: { productId: string; images
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60"
+          className="btn btn-secondary"
         >
           {pending ? "Uploading…" : "Add photo"}
         </button>

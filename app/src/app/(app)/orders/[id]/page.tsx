@@ -196,15 +196,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </p>
           </div>
           {order.payments.length === 0 ? (
-            <p className="rounded-md border border-dashed border-line px-4 py-4 text-center text-sm text-text-muted">
+            <p className="empty">
               No payments recorded yet.
             </p>
           ) : (
-            <div className="rounded-md border border-line bg-surface">
+            <div className="card">
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+                <table className="table">
                   <thead>
-                    <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                    <tr className="thead-row">
                       <th className="px-4 py-2">Method</th>
                       <th className="px-4 py-2 text-right">Amount</th>
                       <th className="px-4 py-2">When</th>
@@ -213,7 +213,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   </thead>
                   <tbody>
                     {order.payments.map((p) => (
-                      <tr key={p.id} className="border-b border-line last:border-0">
+                      <tr key={p.id} className="trow">
                         <td className="px-4 py-3 text-ink">{p.method === "PROVIDER" ? "Paystack" : "Manual"}</td>
                         <td className="px-4 py-3 text-right font-tabular text-ink">{formatMoney(p.amountCents, p.currency)}</td>
                         <td className="px-4 py-3 text-xs text-text-muted">{formatDateTime(p.createdAt)}</td>
@@ -229,12 +229,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Items</h2>
-        <div className="rounded-md border border-line bg-surface">
+        <h2 className="section-title mb-3">Items</h2>
+        <div className="card">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="px-4 py-2">Product</th>
                   <th className="px-4 py-2 text-right">Qty</th>
                   <th className="px-4 py-2 text-right">Unit price</th>
@@ -244,7 +244,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               </thead>
               <tbody>
                 {order.items.map((item) => (
-                  <tr key={item.id} className="border-b border-line last:border-0">
+                  <tr key={item.id} className="trow">
                     <td className="px-4 py-3 text-ink">
                       {item.product.name}
                       {item.variantLabel ? ` (${item.variantLabel})` : ""}
@@ -293,7 +293,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {order.status === "CONFIRMED" && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-ink">Amend this order</h2>
+          <h2 className="section-title mb-3">Amend this order</h2>
           <AmendOrderForm
             orderId={order.id}
             lines={order.items.map((item) => ({
@@ -328,7 +328,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             ))}
 
           {shipments.length > 0 && (
-            <div className="divide-y divide-line rounded-md border border-line bg-surface">
+            <div className="card divide-y divide-line">
               {shipments.map((sh) => (
                 <div key={sh.id} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
                   <div>
@@ -357,7 +357,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Delivery &amp; notes</h2>
+        <h2 className="section-title mb-3">Delivery &amp; notes</h2>
         <OrderDetailsForm
           orderId={order.id}
           notes={order.notes}
@@ -370,7 +370,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {order.status === "DRAFT" && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-ink">Add an item</h2>
+          <h2 className="section-title mb-3">Add an item</h2>
           <AddItemForm orderId={order.id} products={productOptions} />
         </section>
       )}
@@ -380,7 +380,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <h2 className="text-sm font-medium text-ink">Returns &amp; refunds</h2>
 
           {returns.map((ret) => (
-            <div key={ret.id} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+            <div key={ret.id} className="flex flex-col gap-4 card p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-tabular text-sm font-medium text-ink">{ret.reference}</p>
@@ -468,11 +468,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">History</h2>
+        <h2 className="section-title mb-3">History</h2>
         {auditLog.length === 0 ? (
           <p className="text-sm text-text-muted">No history yet.</p>
         ) : (
-          <div className="divide-y divide-line rounded-md border border-line bg-surface">
+          <div className="card divide-y divide-line">
             {auditLog.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between px-4 py-3 text-sm">
                 <span className="text-ink">{AUDIT_ACTION_LABEL[entry.action] ?? entry.action}</span>

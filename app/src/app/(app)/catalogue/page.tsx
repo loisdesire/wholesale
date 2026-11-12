@@ -55,7 +55,7 @@ export default async function CataloguePage({
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Catalogue</h1>
+          <h1 className="page-title">Catalogue</h1>
           <p className="mt-1 text-sm text-text-muted">
             Stock is a running ledger, not an editable number — this total is the
             sum of every movement recorded for the product.
@@ -64,19 +64,19 @@ export default async function CataloguePage({
         <div className="flex flex-wrap items-center gap-3">
           <a
             href="/api/catalogue/export"
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
+            className="btn btn-secondary"
           >
             Export CSV
           </a>
           <Link
             href="/catalogue/import"
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
+            className="btn btn-secondary"
           >
             Import CSV
           </Link>
           <Link
             href="/catalogue/new"
-            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2"
+            className="btn btn-primary"
           >
             New product
           </Link>
@@ -89,12 +89,12 @@ export default async function CataloguePage({
           name="q"
           defaultValue={query}
           placeholder="Search by name or SKU…"
-          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+          className="w-full input"
         />
       </form>
 
       {products.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           {query ? (
             `No products match "${query}".`
           ) : (
@@ -110,9 +110,9 @@ export default async function CataloguePage({
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4"></th>
                   <th className="py-2 pr-4">SKU</th>
                   <th className="py-2 pr-4">Product</th>
@@ -129,7 +129,7 @@ export default async function CataloguePage({
                   const variant = p.variantAttributes as Record<string, string> | null;
                   const thumbnail = p.images[0];
                   return (
-                    <tr key={p.id} className="border-b border-line last:border-0">
+                    <tr key={p.id} className="trow">
                       <td className="py-3 pr-4">
                         <Link href={`/catalogue/${p.id}`}>
                           {thumbnail ? (

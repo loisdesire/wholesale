@@ -5,7 +5,7 @@ import { useSubmitAction } from "@/lib/use-submit-action";
 import { updateItemQuantityAction, updateOrderDetailsAction, type FormState } from "../actions";
 
 const inputClass =
-  "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
+  "input";
 
 /** Inline "change quantity" on a draft order line. The server re-prices the line. */
 export function QuantityForm({
@@ -69,7 +69,7 @@ export function OrderDetailsForm({
 
   if (!editable) {
     return (
-      <dl className="grid gap-4 rounded-md border border-line bg-surface p-4 text-sm md:grid-cols-3">
+      <dl className="grid gap-4 card p-5 text-sm md:grid-cols-3">
         <div>
           <dt className="text-xs text-text-muted">Delivery address</dt>
           <dd className="mt-1 whitespace-pre-wrap text-ink">{deliveryAddress ?? "—"}</dd>
@@ -87,7 +87,7 @@ export function OrderDetailsForm({
   }
 
   return (
-    <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-4 card p-5">
       <div className="grid gap-4 md:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="deliveryAddress" className="text-sm font-medium text-ink">
@@ -136,7 +136,7 @@ export function OrderDetailsForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60"
+          className="btn btn-secondary"
         >
           {pending ? "Saving…" : "Save details"}
         </button>

@@ -9,7 +9,7 @@ const STEP_LABEL: Record<(typeof STEPS)[number], string> = {
 export function OrderStepper({ status }: { status: string }) {
   if (status === "CANCELLED") {
     return (
-      <div className="flex items-center gap-2 text-sm text-status-attention-fg">
+      <div className="inline-flex items-center gap-2 rounded-full bg-status-attention-bg px-3 py-1 text-sm font-semibold text-status-attention-fg">
         <span className="h-2 w-2 rounded-full bg-status-attention-fg" />
         Cancelled
       </div>
@@ -21,32 +21,29 @@ export function OrderStepper({ status }: { status: string }) {
   const currentIndex = STEPS.indexOf((partly ? "FULFILLED" : status) as (typeof STEPS)[number]);
 
   return (
-    // flex-wrap, not a fixed single row: on a narrow screen the 4th step was being clipped off
-    // the right edge entirely, with no way to see it — wrapping onto a second line keeps every
-    // step visible without needing horizontal scroll for something this short.
-    <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    // Four equal segments that always fit the width (a grid, not a wrapping row), so every step
+    // stays visible on a phone. Each segment is a bar + label: filled = done, cobalt = current.
+    <ol className="grid w-full max-w-xl grid-cols-4 gap-1.5">
       {STEPS.map((step, i) => {
         const done = i < currentIndex;
         const active = i === currentIndex;
         return (
-          <li key={step} className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium ${
-                  done
-                    ? "bg-status-success-fg text-paper"
-                    : active
-                      ? "bg-accent text-paper"
-                      : "border border-line text-text-muted"
-                }`}
-              >
-                {done ? "✓" : i + 1}
-              </span>
-              <span className={`text-sm ${active ? "font-medium text-ink" : "text-text-muted"}`}>
+          <li key={step} aria-current={active ? "step" : undefined} className="flex min-w-0 flex-col gap-1.5">
+            <span
+              className={`h-1.5 rounded-full ${
+                done ? "bg-status-success-fg" : active ? (partly ? "bg-status-progress-fg" : "bg-accent") : "bg-line"
+              }`}
+            />
+            <span className="flex items-center gap-1 text-xs">
+              {done && (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-status-success-fg" aria-hidden="true">
+                  <path d="M2.5 6.5 5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+              <span className={`truncate ${active ? "font-semibold text-ink" : done ? "font-medium text-ink" : "text-text-muted"}`}>
                 {partly && step === "FULFILLED" ? "Partly shipped" : STEP_LABEL[step]}
               </span>
-            </div>
-            {i < STEPS.length - 1 && <span className="h-px w-6 bg-line" />}
+            </span>
           </li>
         );
       })}

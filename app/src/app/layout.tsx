@@ -1,37 +1,26 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono, Fraunces } from "next/font/google";
+import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
+// UI/body face. Tabular figures (see .font-tabular) keep money columns aligned.
+const sans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
+// SKUs and order references only — where telling 0 from O matters.
+const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
-// Reserved for page titles and headline figures only — see globals.css's .font-display note.
-const fraunces = Fraunces({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  style: ["normal", "italic"],
-});
+// Display face: page titles, headline figures and marketing headlines (see globals.css).
+const display = Bricolage_Grotesque({ variable: "--font-display", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Adaeze Wholesale",
-  description: "Order operations for Adaeze Fashion Wholesale",
+  description: "Turn WhatsApp enquiries into tracked wholesale orders — inbox, orders, stock, payments and reports in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plexSans.variable} ${plexMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

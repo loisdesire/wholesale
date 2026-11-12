@@ -5,7 +5,7 @@ import { updateSlaSettingsAction, type FormState } from "./actions";
 import { SLA_FIELDS, type SlaKey, type SlaOverrides, type SlaThresholds } from "@/lib/ops-config";
 
 const inputClass =
-  "w-24 rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink font-tabular outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
+  "w-24 input input-sm font-tabular";
 
 export function SlaSettingsForm({
   overrides,
@@ -50,7 +50,7 @@ export function SlaSettingsForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper hover:bg-accent-2 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Saving…" : "Save thresholds"}
         </button>

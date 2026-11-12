@@ -22,7 +22,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
   const fixedDirection = REASON_OPTIONS.find((r) => r.value === reason)?.direction;
 
   return (
-    <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-4 card p-5">
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="reason" className="text-sm font-medium text-ink">
@@ -33,7 +33,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
             name="reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input"
           >
             {REASON_OPTIONS.map((r) => (
               <option key={r.value} value={r.value}>
@@ -51,7 +51,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
             <select
               id="direction"
               name="direction"
-              className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+              className="input"
             >
               <option value="in">Add to stock</option>
               <option value="out">Remove from stock</option>
@@ -74,7 +74,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
             min="1"
             step="1"
             required
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input"
           />
         </div>
       </div>
@@ -88,7 +88,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
           name="note"
           type="text"
           placeholder="e.g. supplier invoice #, reason for adjustment"
-          className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+          className="input"
         />
       </div>
 
@@ -102,7 +102,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Recording…" : "Record movement"}
         </button>

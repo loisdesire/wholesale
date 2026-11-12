@@ -34,7 +34,7 @@ export function ImportFlow() {
 
   if (commit.created !== undefined) {
     return (
-      <div className="rounded-md border border-line bg-surface p-6 text-sm">
+      <div className="card p-6 text-sm">
         <p className="text-ink">
           Import complete: {commit.created} product{commit.created === 1 ? "" : "s"} created,{" "}
           {commit.updated} updated.
@@ -77,7 +77,7 @@ export function ImportFlow() {
           <button
             type="submit"
             disabled={previewPending}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
+            className="btn btn-primary"
           >
             {previewPending ? "Reading…" : "Preview import"}
           </button>
@@ -101,9 +101,9 @@ export function ImportFlow() {
 
       <div className="max-h-[480px] overflow-y-auto rounded-md border border-line bg-surface">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="table">
             <thead className="sticky top-0 bg-surface">
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <tr className="thead-row">
                 <th className="px-4 py-2">Row</th>
                 <th className="px-4 py-2">SKU</th>
                 <th className="px-4 py-2">Action</th>
@@ -114,7 +114,7 @@ export function ImportFlow() {
             </thead>
             <tbody>
               {preview.rows.map((row) => (
-                <tr key={row.rowNumber} className="border-b border-line last:border-0">
+                <tr key={row.rowNumber} className="trow">
                   <td className="px-4 py-2 font-tabular text-text-muted">{row.rowNumber}</td>
                   <td className="px-4 py-2 font-tabular text-ink">{row.sku}</td>
                   <td className="px-4 py-2">
@@ -138,7 +138,7 @@ export function ImportFlow() {
         <button
           type="submit"
           disabled={commitPending || !canCommit}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {commitPending ? "Importing…" : `Commit import (${createCount + updateCount})`}
         </button>

@@ -14,13 +14,13 @@ import {
 } from "../returns-actions";
 
 const inputClass =
-  "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
+  "input";
 const primaryButton =
-  "rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2 disabled:opacity-60";
+  "btn btn-primary";
 const secondaryButton =
-  "rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60";
+  "btn btn-secondary";
 const dangerButton =
-  "rounded-md border border-line px-4 py-2 text-sm font-medium text-status-attention-fg transition-colors hover:bg-status-attention-bg disabled:opacity-60";
+  "btn btn-danger";
 
 export type ReturnableLine = {
   orderItemId: string;
@@ -36,11 +36,11 @@ export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: 
   } as FormState, { resetOnSuccess: true });
 
   return (
-    <form {...formProps} className="flex flex-col gap-4 rounded-md border border-line bg-surface p-4">
+    <form {...formProps} className="flex flex-col gap-4 card p-5">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="table">
           <thead>
-            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+            <tr className="thead-row">
               <th className="py-2 pr-4">Item</th>
               <th className="py-2 pr-4 text-right">Can still return</th>
               <th className="py-2 pr-4">Quantity</th>
@@ -49,7 +49,7 @@ export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: 
           </thead>
           <tbody>
             {lines.map((line) => (
-              <tr key={line.orderItemId} className="border-b border-line last:border-0">
+              <tr key={line.orderItemId} className="trow">
                 <td className="py-3 pr-4 text-ink">
                   {line.label}
                   <span className="ml-2 font-tabular text-xs text-text-muted">{line.sku}</span>

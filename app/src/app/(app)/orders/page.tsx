@@ -74,14 +74,14 @@ export default async function OrdersPage({
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Orders</h1>
+          <h1 className="page-title">Orders</h1>
           <p className="mt-1 text-sm text-text-muted">
             Draft, confirmed, paid, and fulfilled — every order in one place.
           </p>
         </div>
         <Link
           href="/orders/new"
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2"
+          className="btn btn-primary"
         >
           New order
         </Link>
@@ -96,7 +96,7 @@ export default async function OrdersPage({
             defaultValue={filters.q}
             placeholder="Reference, customer, phone, product…"
             aria-label="Search orders"
-            className="w-72 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="w-72 input"
           />
           <label className="flex flex-col gap-1 text-xs text-text-muted">
             From
@@ -104,7 +104,7 @@ export default async function OrdersPage({
               name="from"
               type="date"
               defaultValue={filters.from}
-              className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
+              className="input input-sm"
             />
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-muted">
@@ -113,10 +113,10 @@ export default async function OrdersPage({
               name="to"
               type="date"
               defaultValue={filters.to}
-              className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
+              className="input input-sm"
             />
           </label>
-          <button type="submit" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+          <button type="submit" className="btn btn-secondary">
             Apply
           </button>
           {filtered && (
@@ -168,11 +168,11 @@ export default async function OrdersPage({
       </div>
 
       {orders.length === 0 && filtered ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           No orders match these filters.
         </p>
       ) : orders.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           No orders yet.{" "}
           <Link href="/orders/new" className="text-ink underline underline-offset-2">
             Create the first one

@@ -92,13 +92,13 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         <Link href="/customers" className="text-sm text-text-muted hover:text-ink">
           ← Customers
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">{customer.name ?? "Unnamed"}</h1>
+        <h1 className="mt-2 page-title">{customer.name ?? "Unnamed"}</h1>
         <p className="mt-1 font-tabular text-sm text-text-muted">{customer.phone}</p>
         {customer.notes && <p className="mt-2 max-w-xl text-sm text-text-muted">{customer.notes}</p>}
       </header>
 
       {mergedInto && (
-        <section className="rounded-md border border-line bg-status-neutral-bg px-4 py-3 text-sm">
+        <section className="rounded-xl border border-line bg-status-neutral-bg px-4 py-3 text-sm">
           <p className="text-ink">
             This record was merged into{" "}
             <Link href={`/customers/${mergedInto.id}`} className="underline underline-offset-2">
@@ -118,7 +118,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       )}
 
       {duplicates.length > 0 && (
-        <section className="rounded-md border border-line bg-status-attention-bg px-4 py-3 text-sm">
+        <section className="rounded-xl border border-status-attention-fg/20 bg-status-attention-bg px-4 py-3 text-sm">
           <h2 className="font-medium text-status-attention-fg">Possible duplicate customers</h2>
           <p className="mt-1 text-text-muted">
             These records might be the same person. Nothing is merged automatically — check before treating them as one.
@@ -145,7 +145,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Balance</h2>
+        <h2 className="section-title mb-3">Balance</h2>
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line md:grid-cols-4">
           {figures.map((f) => (
             <div key={f.label} className="bg-surface p-4">
@@ -170,14 +170,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Details</h2>
+        <h2 className="section-title mb-3">Details</h2>
         <EditCustomerForm customerId={customer.id} name={customer.name} email={customer.email} notes={customer.notes} />
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Delivery addresses</h2>
+        <h2 className="section-title mb-3">Delivery addresses</h2>
         {addresses.length > 0 && (
-          <ul className="mb-3 divide-y divide-line rounded-md border border-line bg-surface">
+          <ul className="mb-3 card divide-y divide-line">
             {addresses.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
                 <div>
@@ -222,9 +222,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         </p>
         {agreedPrices.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="mb-3 w-full border-collapse text-sm">
+            <table className="mb-3 table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">Product</th>
                   <th className="py-2 pr-4 text-right">List price</th>
                   <th className="py-2 pr-4 text-right">Agreed price</th>
@@ -233,7 +233,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               </thead>
               <tbody>
                 {agreedPrices.map((p) => (
-                  <tr key={p.id} className="border-b border-line last:border-0">
+                  <tr key={p.id} className="trow">
                     <td className="py-3 pr-4 text-ink">
                       {p.product.name}
                       <span className="ml-2 font-tabular text-xs text-text-muted">{p.product.sku}</span>
@@ -272,16 +272,16 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Orders</h2>
+        <h2 className="section-title mb-3">Orders</h2>
         {orders.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             No orders yet.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">Order</th>
                   <th className="py-2 pr-4">Status</th>
                   <th className="py-2 pr-4">Placed</th>
@@ -290,7 +290,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               </thead>
               <tbody>
                 {orders.map((o) => (
-                  <tr key={o.id} className="border-b border-line last:border-0">
+                  <tr key={o.id} className="trow">
                     <td className="py-3 pr-4 font-tabular text-ink">
                       <Link href={`/orders/${o.id}`} className="underline-offset-2 hover:underline">
                         {o.reference}
@@ -311,8 +311,8 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       {merges.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-ink">Merge history</h2>
-          <div className="divide-y divide-line rounded-md border border-line bg-surface">
+          <h2 className="section-title mb-3">Merge history</h2>
+          <div className="card divide-y divide-line">
             {merges.map((m) => (
               <div key={m.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
                 <div>
@@ -340,8 +340,8 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       {activity.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-ink">Activity</h2>
-          <div className="divide-y divide-line rounded-md border border-line bg-surface">
+          <h2 className="section-title mb-3">Activity</h2>
+          <div className="card divide-y divide-line">
             {activity.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between px-4 py-3 text-sm">
                 <span className="text-ink">{ACTIVITY_LABEL[entry.action] ?? entry.action}</span>
@@ -356,11 +356,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       {returns.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-ink">Returns &amp; refunds</h2>
+          <h2 className="section-title mb-3">Returns &amp; refunds</h2>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">Return</th>
                   <th className="py-2 pr-4">Order</th>
                   <th className="py-2 pr-4">Status</th>
@@ -370,7 +370,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               </thead>
               <tbody>
                 {returns.map((r) => (
-                  <tr key={r.id} className="border-b border-line last:border-0">
+                  <tr key={r.id} className="trow">
                     <td className="py-3 pr-4 font-tabular text-ink">{r.reference}</td>
                     <td className="py-3 pr-4 font-tabular">
                       <Link href={`/orders/${r.orderId}`} className="text-ink underline-offset-2 hover:underline">

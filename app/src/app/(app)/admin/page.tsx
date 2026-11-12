@@ -21,7 +21,7 @@ export default async function PlatformAdminPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Platform admin</h1>
+        <h1 className="page-title">Platform admin</h1>
         <p className="mt-1 text-sm text-text-muted">
           Every organization on the platform. Nothing here edits an organization&apos;s plan, seats or usage limits —
           only the two narrow support actions below (extending a trial, unsticking a past-due subscription), each
@@ -31,15 +31,15 @@ export default async function PlatformAdminPage() {
       </header>
 
       {overview.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           No organizations yet.
         </p>
       ) : (
-        <div className="rounded-md border border-line bg-surface">
+        <div className="card">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="px-4 py-2">Organization</th>
                   <th className="px-4 py-2">Plan</th>
                   <th className="px-4 py-2">Status</th>
@@ -53,7 +53,7 @@ export default async function PlatformAdminPage() {
               </thead>
               <tbody>
                 {overview.map((org) => (
-                  <tr key={org.id} className="border-b border-line last:border-0">
+                  <tr key={org.id} className="trow">
                     <td className="px-4 py-3 text-ink">{org.name}</td>
                     <td className="px-4 py-3 text-text-muted">{PLAN_LIMITS[org.plan].label}</td>
                     <td className="px-4 py-3">

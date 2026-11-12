@@ -60,7 +60,7 @@ export default async function MergePage({
     <div className="flex max-w-3xl flex-col gap-8">
       <header>
         {back}
-        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">Merge customers</h1>
+        <h1 className="mt-2 page-title">Merge customers</h1>
         <p className="mt-1 text-sm text-text-muted">
           Review what will move. Nothing is deleted — the merged record is archived and the merge can be undone.
         </p>
@@ -74,12 +74,12 @@ export default async function MergePage({
         plan && (
           <>
             <section className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-md border border-line bg-surface p-4">
+              <div className="card p-5">
                 <p className="text-xs font-medium text-status-success-fg">Kept</p>
                 <p className="mt-1 text-ink">{label(target)}</p>
                 <p className="font-tabular text-sm text-text-muted">{target.phone}</p>
               </div>
-              <div className="rounded-md border border-line bg-surface p-4">
+              <div className="card p-5">
                 <p className="text-xs font-medium text-status-attention-fg">Merged in and archived</p>
                 <p className="mt-1 text-ink">{label(source)}</p>
                 <p className="font-tabular text-sm text-text-muted">{source.phone}</p>
@@ -93,7 +93,7 @@ export default async function MergePage({
 
             <section>
               <h2 className="mb-2 text-sm font-medium text-ink">What moves to {label(target)}</h2>
-              <ul className="divide-y divide-line rounded-md border border-line bg-surface text-sm">
+              <ul className="card divide-y divide-line text-sm">
                 <li className="flex justify-between px-4 py-3">
                   <span className="text-ink">Orders</span>
                   <span className="font-tabular text-text-muted">
@@ -149,7 +149,7 @@ export default async function MergePage({
             </section>
 
             {plan.warnings.length > 0 && (
-              <section className="rounded-md border border-line bg-status-attention-bg px-4 py-3 text-sm">
+              <section className="rounded-xl border border-status-attention-fg/20 bg-status-attention-bg px-4 py-3 text-sm">
                 <h2 className="font-medium text-status-attention-fg">Check before merging</h2>
                 <ul className="mt-1 list-disc pl-5 text-text-muted">
                   {plan.warnings.map((w) => (

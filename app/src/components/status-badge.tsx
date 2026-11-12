@@ -57,8 +57,9 @@ export function SeverityBadge({ severity }: { severity: string }) {
 function Badge({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_CLASSES[tone]}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${TONE_CLASSES[tone]}`}
     >
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
       {label}
     </span>
   );

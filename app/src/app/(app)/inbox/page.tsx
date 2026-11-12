@@ -23,21 +23,21 @@ export default async function InboxPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Inbox</h1>
+        <h1 className="page-title">Inbox</h1>
         <p className="mt-1 text-sm text-text-muted">
           Every WhatsApp conversation, regardless of who or what is handling it.
         </p>
       </header>
 
       {conversations.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           No conversations yet.
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="table">
             <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <tr className="thead-row">
                 <th className="py-2 pr-4">Customer</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Last message</th>
@@ -48,7 +48,7 @@ export default async function InboxPage() {
             </thead>
             <tbody>
               {conversations.map((c) => (
-                <tr key={c.id} className="border-b border-line last:border-0">
+                <tr key={c.id} className="trow">
                   <td className="py-3 pr-4">
                     <Link href={`/inbox/${c.id}`} className="block hover:underline">
                       <p className="font-medium text-ink">{c.customer.name ?? "Unnamed"}</p>

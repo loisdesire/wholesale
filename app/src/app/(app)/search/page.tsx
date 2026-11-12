@@ -16,7 +16,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Search</h1>
+        <h1 className="page-title">Search</h1>
         <p className="mt-1 text-sm text-text-muted">
           Orders, customers, products and returns. Phone numbers match in any format.
         </p>
@@ -28,9 +28,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             autoFocus
             placeholder="Order ref, name, phone, SKU…"
             aria-label="Search"
-            className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="flex-1 input"
           />
-          <button type="submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper hover:bg-accent-2">
+          <button type="submit" className="btn btn-primary">
             Search
           </button>
         </form>
@@ -40,7 +40,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <p className="text-sm text-text-muted">Type at least two characters.</p>
       )}
       {query.length >= 2 && total === 0 && (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           Nothing matches &ldquo;{query}&rdquo;.
         </p>
       )}
@@ -113,7 +113,7 @@ function Group({ title, seeAll, children }: { title: string; seeAll?: string; ch
           </Link>
         )}
       </div>
-      <div className="divide-y divide-line rounded-md border border-line bg-surface">{children}</div>
+      <div className="card divide-y divide-line">{children}</div>
     </section>
   );
 }

@@ -36,13 +36,13 @@ export default async function ReportsPage({
     <div className="flex flex-col gap-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Reports</h1>
+          <h1 className="page-title">Reports</h1>
           <p className="mt-1 text-sm text-text-muted">
             Everything below is computed from real records for {formatRangeLabel(range)}. Revenue, cash, receivables and
             refunds are kept separate — none of this is labelled profit unless a cost is on record.
           </p>
         </div>
-        <Link href="/operations" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+        <Link href="/operations" className="btn btn-secondary">
           ← Operations
         </Link>
       </header>
@@ -50,13 +50,13 @@ export default async function ReportsPage({
       <form action="/reports" className="flex items-end gap-2">
         <label className="flex flex-col gap-1 text-xs text-text-muted">
           From
-          <input name="from" type="date" defaultValue={dateInput(range.from)} className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink" />
+          <input name="from" type="date" defaultValue={dateInput(range.from)} className="input input-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs text-text-muted">
           To
-          <input name="to" type="date" defaultValue={dateInput(range.to)} className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink" />
+          <input name="to" type="date" defaultValue={dateInput(range.to)} className="input input-sm" />
         </label>
-        <button type="submit" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+        <button type="submit" className="btn btn-secondary">
           Apply
         </button>
       </form>
@@ -104,14 +104,14 @@ export default async function ReportsPage({
           </a>
         </div>
         {demand.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             No confirmed orders in this period.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">Product</th>
                   <th className="py-2 pr-4 text-right">Units sold</th>
                   <th className="py-2 pr-4 text-right">Revenue</th>
@@ -120,7 +120,7 @@ export default async function ReportsPage({
               </thead>
               <tbody>
                 {demand.map((d) => (
-                  <tr key={d.productId} className="border-b border-line last:border-0">
+                  <tr key={d.productId} className="trow">
                     <td className="py-3 pr-4 text-ink">
                       <Link href={`/catalogue/${d.productId}`} className="underline-offset-2 hover:underline">
                         {d.name}
@@ -146,14 +146,14 @@ export default async function ReportsPage({
           </a>
         </div>
         {stockMovements.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             No stock movements in this period.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">Reason</th>
                   <th className="py-2 pr-4 text-right">Movements</th>
                   <th className="py-2 pr-4 text-right">Physical change</th>
@@ -163,7 +163,7 @@ export default async function ReportsPage({
               </thead>
               <tbody>
                 {stockMovements.map((r) => (
-                  <tr key={r.reason} className="border-b border-line last:border-0">
+                  <tr key={r.reason} className="trow">
                     <td className="py-3 pr-4 text-ink">{r.reason}</td>
                     <td className="py-3 pr-4 text-right font-tabular text-text-muted">{r.movements}</td>
                     <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.physical)}</td>
@@ -185,14 +185,14 @@ export default async function ReportsPage({
           </a>
         </div>
         {outstanding.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             Everyone is settled — nobody owes, and nothing is owed.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">Customer</th>
                   <th className="py-2 pr-4 text-right">Owes us</th>
                   <th className="py-2 pr-4 text-right">We owe</th>
@@ -201,7 +201,7 @@ export default async function ReportsPage({
               </thead>
               <tbody>
                 {outstanding.map((r) => (
-                  <tr key={r.customerId} className="border-b border-line last:border-0">
+                  <tr key={r.customerId} className="trow">
                     <td className="py-3 pr-4 text-ink">
                       <Link href={`/customers/${r.customerId}`} className="underline-offset-2 hover:underline">
                         {r.name}

@@ -34,25 +34,25 @@ export default async function OperationsPage({
     <div className="flex flex-col gap-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Operations</h1>
+          <h1 className="page-title">Operations</h1>
           <p className="mt-1 text-sm text-text-muted">
             What needs attention right now, how the business is running, and who&apos;s carrying what.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {isOwner && (
-            <Link href="/operations/settings" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+            <Link href="/operations/settings" className="btn btn-secondary">
               Thresholds
             </Link>
           )}
-          <Link href="/reports" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+          <Link href="/reports" className="btn btn-secondary">
             Reports &amp; exports →
           </Link>
         </div>
       </header>
 
       {outOfStock.length > 0 && (
-        <section className="rounded-md border border-line bg-status-attention-bg px-4 py-3 text-sm">
+        <section className="rounded-xl border border-status-attention-fg/20 bg-status-attention-bg px-4 py-3 text-sm">
           <p className="font-medium text-status-attention-fg">
             {outOfStock.length} active product{outOfStock.length === 1 ? " is" : "s are"} out of stock
           </p>
@@ -77,17 +77,17 @@ export default async function OperationsPage({
           </h2>
         </div>
         {attentionTruncated && (
-          <p className="mb-3 rounded-md border border-line bg-status-attention-bg px-3 py-2 text-xs text-status-attention-fg">
+          <p className="mb-3 rounded-xl border border-status-attention-fg/20 bg-status-attention-bg px-3 py-2 text-xs text-status-attention-fg">
             At least one category below has more overdue items than fit here — some aren&apos;t shown. Clear the ones
             you see and check back, rather than assuming this is everything.
           </p>
         )}
         {attention.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+          <p className="empty">
             Nothing is overdue right now.
           </p>
         ) : (
-          <div className="divide-y divide-line rounded-md border border-line bg-surface">
+          <div className="card divide-y divide-line">
             {attention.map((item) => (
               <div key={item.key} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
                 <div className="min-w-0 flex-1">
@@ -131,13 +131,13 @@ export default async function OperationsPage({
           <form action="/operations" className="flex items-end gap-2">
             <label className="flex flex-col gap-1 text-xs text-text-muted">
               From
-              <input name="from" type="date" defaultValue={dateInput(range.from)} className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink" />
+              <input name="from" type="date" defaultValue={dateInput(range.from)} className="input input-sm" />
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-muted">
               To
-              <input name="to" type="date" defaultValue={dateInput(range.to)} className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink" />
+              <input name="to" type="date" defaultValue={dateInput(range.to)} className="input input-sm" />
             </label>
-            <button type="submit" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+            <button type="submit" className="btn btn-secondary">
               Apply
             </button>
           </form>
@@ -179,14 +179,14 @@ export default async function OperationsPage({
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-ink">Workload</h2>
+        <h2 className="section-title mb-3">Workload</h2>
         {workload.length === 0 ? (
           <p className="text-sm text-text-muted">No team members yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="table">
               <thead>
-                <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+                <tr className="thead-row">
                   <th className="py-2 pr-4">Person</th>
                   <th className="py-2 pr-4 text-right">Open orders</th>
                   <th className="py-2 pr-4 text-right">Open returns</th>
@@ -195,7 +195,7 @@ export default async function OperationsPage({
               </thead>
               <tbody>
                 {workload.map((w) => (
-                  <tr key={w.userId} className="border-b border-line last:border-0">
+                  <tr key={w.userId} className="trow">
                     <td className="py-3 pr-4 text-ink">
                       {w.name} <span className="text-xs text-text-muted">{w.role === "OWNER" ? "Owner" : "Staff"}</span>
                     </td>

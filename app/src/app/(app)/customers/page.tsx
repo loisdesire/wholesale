@@ -64,7 +64,7 @@ export default async function CustomersPage({
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Customers</h1>
+          <h1 className="page-title">Customers</h1>
           <p className="mt-1 text-sm text-text-muted">
             Identified by phone number, with their order and conversation history. Balances are summed from orders
             and refunds, never typed in.
@@ -72,7 +72,7 @@ export default async function CustomersPage({
         </div>
         <Link
           href="/customers/new"
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent-2"
+          className="btn btn-primary"
         >
           New customer
         </Link>
@@ -87,9 +87,9 @@ export default async function CustomersPage({
             defaultValue={q}
             placeholder="Name, phone (any format), email, notes…"
             aria-label="Search customers"
-            className="w-80 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="w-80 input"
           />
-          <button type="submit" className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-paper">
+          <button type="submit" className="btn btn-secondary">
             Search
           </button>
           {(q || filter) && (
@@ -118,14 +118,14 @@ export default async function CustomersPage({
       </div>
 
       {customers.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-text-muted">
+        <p className="empty">
           {q || filter ? "No customers match." : "No customers yet."}
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="table">
             <thead>
-              <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+              <tr className="thead-row">
                 <th className="py-2 pr-4">Name</th>
                 <th className="py-2 pr-4">Phone</th>
                 <th className="py-2 pr-4">Notes</th>
@@ -137,7 +137,7 @@ export default async function CustomersPage({
             </thead>
             <tbody>
               {customers.map((c) => (
-                <tr key={c.id} className="border-b border-line last:border-0">
+                <tr key={c.id} className="trow">
                   <td className="py-3 pr-4 text-ink">
                     <Link href={`/customers/${c.id}`} className="underline-offset-2 hover:underline">
                       {c.name ?? "Unnamed"}

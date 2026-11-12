@@ -66,7 +66,7 @@ export function OrdersTable({
   return (
     <div className="flex flex-col gap-3">
       {canBulkAssign && selected.size > 0 && (
-        <div className="flex flex-col gap-3 rounded-md border border-line bg-surface p-3">
+        <div className="flex flex-col gap-3 card p-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-ink">{selected.size} selected</span>
             <select
@@ -76,7 +76,7 @@ export function OrdersTable({
                 setAssigneeId(e.target.value);
                 setPreview(null);
               }}
-              className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
+              className="input input-sm"
             >
               <option value="">Unassign</option>
               {members.map((m) => (
@@ -89,7 +89,7 @@ export function OrdersTable({
               type="button"
               onClick={runPreview}
               disabled={pending}
-              className="rounded-md border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-paper disabled:opacity-60"
+              className="btn btn-secondary btn-sm"
             >
               Preview
             </button>
@@ -98,7 +98,7 @@ export function OrdersTable({
                 type="button"
                 onClick={apply}
                 disabled={pending}
-                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-paper hover:bg-accent-2 disabled:opacity-60"
+                className="btn btn-primary btn-sm"
               >
                 {pending ? "Applying…" : `Apply to ${okCount} order${okCount === 1 ? "" : "s"}`}
               </button>
@@ -124,9 +124,9 @@ export function OrdersTable({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="table">
           <thead>
-            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
+            <tr className="thead-row">
               {canBulkAssign && (
                 <th className="w-8 py-2">
                   <input type="checkbox" checked={selected.size === orders.length && orders.length > 0} onChange={toggleAll} aria-label="Select all" />
@@ -143,7 +143,7 @@ export function OrdersTable({
           </thead>
           <tbody>
             {orders.map((o) => (
-              <tr key={o.id} className="border-b border-line last:border-0">
+              <tr key={o.id} className="trow">
                 {canBulkAssign && (
                   <td className="py-3">
                     <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} aria-label={`Select ${o.reference}`} />
