@@ -21,13 +21,13 @@ export function SlaSettingsForm({
   const groups = [...new Set(SLA_FIELDS.map((f) => f.group))];
 
   return (
-    <form {...formProps} className="flex flex-col gap-8">
+    <form {...formProps} className="flex max-w-3xl flex-col gap-5">
       {groups.map((group) => (
-        <fieldset key={group} className="flex flex-col gap-3">
-          <legend className="text-sm font-medium text-ink">{group}</legend>
-          <div className="flex flex-col gap-2">
+        <fieldset key={group} className="card min-w-0 p-5">
+          <legend className="section-title float-left mb-3 w-full">{group}</legend>
+          <div className="clear-both flex flex-col divide-y divide-line">
             {SLA_FIELDS.filter((f) => f.group === group).map((f) => (
-              <label key={f.key} className="flex items-center justify-between gap-4 text-sm text-text-muted">
+              <label key={f.key} className="flex flex-col gap-2 py-2.5 text-sm text-ink sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <span>{f.label}</span>
                 <span className="flex items-center gap-2">
                   <input

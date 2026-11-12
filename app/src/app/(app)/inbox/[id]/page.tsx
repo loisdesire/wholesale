@@ -126,7 +126,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
           {conversation.messages.length === 0 ? (
             <p className="empty">No messages yet.</p>
           ) : (
-            <div className="mx-auto flex max-w-3xl flex-col gap-2.5">
+            <div className="flex flex-col gap-2.5">
               {conversation.messages.map((m) => {
                 const isInbound = m.direction === "INBOUND";
                 const failed = !isInbound && m.deliveryStatus === "FAILED";

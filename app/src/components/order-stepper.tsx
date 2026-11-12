@@ -25,8 +25,11 @@ export function OrderStepper({ status }: { status: string }) {
     // stays visible on a phone. Each segment is a bar + label: filled = done, cobalt = current.
     <ol className="grid w-full max-w-xl grid-cols-4 gap-1.5">
       {STEPS.map((step, i) => {
-        const done = i < currentIndex;
-        const active = i === currentIndex;
+        // A fully fulfilled order has nothing left "in progress": every step, including the
+        // last, is done.
+        const complete = status === "FULFILLED";
+        const done = i < currentIndex || complete;
+        const active = i === currentIndex && !complete;
         return (
           <li key={step} aria-current={active ? "step" : undefined} className="flex min-w-0 flex-col gap-1.5">
             <span

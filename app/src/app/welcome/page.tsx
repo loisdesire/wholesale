@@ -78,7 +78,7 @@ function Hero() {
       <div className="anim-rise max-w-4xl">
         <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-text-muted shadow-card">
           <span className="h-2 w-2 rounded-full bg-wa" />
-          Order operations for wholesalers who sell on WhatsApp
+          Order operations for WhatsApp wholesalers
         </p>
         <h1 className="mt-6 font-display text-[44px] font-extrabold leading-[0.98] tracking-[-0.035em] sm:text-7xl lg:text-[88px]">
           Chats come in.

@@ -1591,3 +1591,45 @@ These are natural follow-ons, flagged here rather than started unprompted:
   conversations with target businesses — concretely, what they currently lose to disorganized
   order-taking and what they'd pay relative to that, not a survey question asked cold. See this
   session's conversation for the full reasoning; update `PLAN_LIMITS` once real data exists.
+
+## Done (2026-11-12 — full UI redesign + public landing page)
+
+User request: replace the existing look entirely ("horrible"; no templated-AI look, no
+editorial/newspaper styling), keep it clean but not boring, clear, with engaging visuals; cover every
+page; add an impressive public landing page. Visual-only apart from the landing route.
+
+**Research.** Every route was screenshotted before and after at 1440px and 390px. The sandbox's
+network policy blocks browsing outside sites directly, so inspiration came from web search
+summaries plus prior knowledge of the products, not fresh screenshots of them. What was taken, and
+from where (deliberately not limited to this industry):
+- *Monzo / Wise (consumer fintech):* one vivid colour against a neutral interface, heavy display
+  type, colour-blocked panels instead of gradients → cobalt + citron blocks, Bricolage Grotesque.
+- *Linear (dev tools):* landing visuals made only of real product UI, no stock illustration → the
+  hero, "how it works" and bento tiles are all built from the app's own chat/order/stock components.
+- *Ramp / Shopify admin (finance & commerce ops):* a work queue first, charts second; the order
+  pipeline as the core dashboard pattern → "N things need you today" leads, then the pipeline.
+- *Stripe dashboard:* dense but calm tables — uppercase micro-headers, tabular figures, hairlines.
+- *Messaging apps (WhatsApp, iMessage):* the conversation page is one chat window with the reply
+  tools at the bottom, because that shape needs no explanation.
+- *Airline / parcel tracking:* a segmented progress track for the order's journey.
+- Status shown with more than colour (dot + label), per accessibility guidance.
+
+**What changed.** New tokens, fonts and shared component classes (`globals.css`, see CLAUDE.md →
+Design system); icon sidebar + mobile bottom tab bar; dashboard (attention queue, pipeline
+proportion bar with per-stage value); orders (filter card, ticket-style detail header with stepper,
+payment progress, history timeline, stepped new-order form); catalogue (thumbnail rows, low/out
+stock flags, stock split bar on the product page); customers (avatars, profile header, balance
+tiles); inbox (conversation list, chat-window thread); operations (metric cards, severity bars,
+workload bars); reports (headline tile, demand bars); billing (plan card, usage meters);
+notifications, search, admin, settings, import, merge restyled on the same system; login; and the
+landing page (`src/app/welcome/page.tsx`).
+
+**Behaviour changes (the only ones).** `src/proxy.ts` rewrites `/` to the landing page for
+signed-out visitors (previously a redirect to `/login`); signed-in behaviour and every other
+route's protection are unchanged. The dashboard's pipeline query also sums `totalCents` per status
+(display only). A FULFILLED order's stepper now shows the last step as done rather than "current".
+
+**Verified.** `tsc`, `eslint`, the full Vitest suite (391 tests) and `next build` pass; every page
+loads 200 at both widths with no page-level horizontal overflow. **Not verified:** real photos in
+product thumbnails/chat attachments (seed data has none), the AI-assist and WhatsApp-reply states
+with real credentials, and other browsers than Chromium.

@@ -185,6 +185,10 @@ input[type="radio"] {
 
   /* ── Form controls ───────────────────────────────────────────────────── */
   .input {
+    /* Grid/flex children default to min-width:auto, which lets a long <select> option push
+       the control past its card on a phone. */
+    min-width: 0;
+    max-width: 100%;
     border-radius: 0.625rem;
     border: 1px solid var(--line-strong);
     background: var(--surface);

@@ -79,7 +79,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
                 setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, key: e.target.value } : a)))
               }
               onFocus={(e) => e.target.select()}
-              className="w-1/3 input"
+              className="input w-1/3 min-w-[5.5rem]"
             />
             <input
               type="text"
@@ -169,7 +169,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
               onChange={(e) =>
                 setTiers((prev) => prev.map((t, j) => (j === i ? { ...t, minQuantity: e.target.value } : t)))
               }
-              className="w-28 input"
+              className="input w-24"
             />
             <input
               type="number"

@@ -129,7 +129,7 @@ export function OrdersTable({
           <thead>
             <tr className="thead-row">
               {canBulkAssign && (
-                <th className="w-10 py-2">
+                <th className="w-10 py-2 pr-3">
                   <input type="checkbox" checked={selected.size === orders.length && orders.length > 0} onChange={toggleAll} aria-label="Select all" />
                 </th>
               )}
@@ -146,7 +146,7 @@ export function OrdersTable({
             {orders.map((o) => (
               <tr key={o.id} className="trow">
                 {canBulkAssign && (
-                  <td className="py-3">
+                  <td className="py-3 pr-3">
                     <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} aria-label={`Select ${o.reference}`} />
                   </td>
                 )}
@@ -159,18 +159,18 @@ export function OrdersTable({
                   <div className="flex items-center gap-2.5">
                     <Avatar name={o.customerName ?? o.customerPhone} size="sm" />
                     <div>
-                      <p className="font-medium text-ink">{o.customerName ?? "Unnamed"}</p>
+                      <p className="whitespace-nowrap font-medium text-ink">{o.customerName ?? "Unnamed"}</p>
                       <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
                     </div>
                   </div>
                 </td>
-                <td className="py-3 pr-4 text-text-muted">{o.units} units</td>
+                <td className="whitespace-nowrap py-3 pr-4 text-text-muted">{o.units} units</td>
                 <td className="py-3 pr-4">
                   <OrderStatusBadge status={o.status} />
                 </td>
-                <td className="py-3 pr-4 text-text-muted">{o.assignedToName ?? "—"}</td>
-                <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
-                <td className="py-3 pr-4 text-right font-tabular font-semibold text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+                <td className="whitespace-nowrap py-3 pr-4 text-text-muted">{o.assignedToName ?? "—"}</td>
+                <td className="whitespace-nowrap py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
+                <td className="whitespace-nowrap py-3 pr-4 text-right font-tabular font-semibold text-ink">{formatMoney(o.totalCents, o.currency)}</td>
               </tr>
             ))}
           </tbody>

@@ -298,27 +298,45 @@ the foundation should grow toward. Keep [docs/PROGRESS.md](docs/PROGRESS.md) cur
 
 ## Design system
 
-Redesigned 2026-10-26 using the `frontend-design` and `ui-ux-pro-max` skills (user request: "bold &
-energetic", not generic SaaS) — see the Done entry in `docs/PROGRESS.md` for the full rationale.
-Current tokens (`src/app/globals.css`): deep aubergine ink `#1d1030` (not navy, not flat black) +
-warm cotton paper `#fbf3e9` background + raspberry-magenta accent `#cf1457`, used **only** for
-primary actions and selected/active state — it's the one bold color in the system, so it stays
-reserved rather than spreading onto every element. A quieter marigold `#e3920f` (`--gold`) exists
-as a second color but isn't wired into any component yet — available for a future need, not a
-signal to start using it everywhere. IBM Plex Sans is the UI/body face; Fraunces (`.font-display`,
-`var(--font-display)`) is reserved for page `<h1>` titles, headline numbers, and the login
-pull-quote only — don't apply it to body text or small labels, that's what dilutes a display face.
-IBM Plex Mono (`.font-tabular` / `font-mono`) stays reserved for numeric/reference table columns
-(money, SKUs, phone numbers, order refs) where digit alignment is functional, not decorative —
-never combine `.font-tabular` with `.font-display` on the same element (conflicting font-family).
-Four semantic status tones only: neutral/progress/success/attention
-(`src/components/status-badge.tsx`) — these are separate from the brand accent on purpose, so
-"this needs attention" and "this is the primary action" never look like the same thing. No
-shadows, minimal consistent radius, flat hairline-divided sections instead of card soup. The
-primary-button class signature (`rounded-md bg-accent ... text-paper ... hover:bg-accent-2`) is
-intentionally identical across ~19 files — keep new primary actions consistent with it rather than
-inventing a new button style. Re-load the `frontend-design` skill before adding any new screen type,
-not just the first one.
+Redesigned 2026-11-12 ("Dispatch") at the user's request: the previous cream-paper + serif look read
+as editorial/newspaper, which they explicitly do not want — nor the templated "AI" look (purple
+gradients, glassy blobs, emoji, generic card grids). The brief: clean but not boring, communicates
+clearly, engaging visuals. See the Done entry in `docs/PROGRESS.md` for the research and rationale.
+
+Tokens (`src/app/globals.css`): cool canvas `--paper #f3f4f7` with white `--surface` objects on it;
+near-black `--ink #0b1020` for text **and** dark surfaces; one brand colour, cobalt `--accent
+#2347f5`, for primary actions, action links and selected state; a citron highlighter `--gold
+#d8f44a` used **only on ink surfaces and in marketing visuals** (never on white — it has no
+contrast there); `--wa` (WhatsApp green) only where the WhatsApp channel itself is depicted. Four
+semantic status tones (neutral/progress/success/attention, `src/components/status-badge.tsx`) stay
+a separate family from the brand colour on purpose, so "needs attention" and "primary action" never
+look alike — cobalt was chosen partly because it collides with none of them.
+
+Type: Bricolage Grotesque (`.font-display`, `.page-title`) for page titles, headline figures and
+marketing headlines; Geist for everything else; Geist Mono (`font-mono`) only for SKUs and
+order/return references. `.font-tabular` is the UI sans with tabular figures (money, quantities,
+times) — it is no longer a monospace face. Never combine `.font-tabular` with `.font-display`.
+
+Shared classes (in `@layer components`, so utilities still override): `btn` + `btn-primary` /
+`btn-secondary` / `btn-danger` / `btn-dark` (+ `btn-sm`, `btn-lg`), `input` (+ `input-sm`),
+`field-label`, `card`, `empty`, `chip` (+ `chip-active`), `page-title`, `section-title`, `eyebrow`,
+`back-link`, `link`, `table` / `thead-row` / `trow`. Use these rather than re-spelling utilities; a
+table goes inside a `card overflow-x-auto` wrapper (the CSS gives first/last cells the card gutter).
+`src/components/avatar.tsx` gives a name a stable colour (same person, same colour everywhere);
+`src/components/logo.tsx` is the mark + wordmark.
+
+Layout: light sidebar with icons (`src/components/nav.tsx`), grouped Daily / Insight / Workspace;
+on phones a top bar plus a bottom tab bar (Home, Inbox, Orders, Catalogue, More → drawer), so
+`<main>` carries bottom padding below `md`. Data is drawn where a picture is faster than a number:
+the dashboard pipeline proportion bar, the product stock split bar, payment progress, workload
+bars, billing usage meters, product-demand bars. Keep that rule for new screens — but only where
+the visual encodes real data.
+
+The public landing page is `src/app/welcome/page.tsx`, served at `/` to signed-out visitors by a
+rewrite in `src/proxy.ts` (signed-in users still get the dashboard at `/`; every other route stays
+protected). Its visuals are built from the product's own UI vocabulary, and it shows **no
+testimonials, customer logos, statistics or prices because none are real yet** — don't add invented
+ones. Re-load the `frontend-design` skill before adding any new screen type.
 
 Any text input pre-filled with a real, non-placeholder default value a user is likely to just
 overtype (e.g. the "colour"/"size" starting rows in `product-form.tsx`'s attribute editor) needs
