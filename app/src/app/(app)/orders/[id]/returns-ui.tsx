@@ -89,7 +89,7 @@ export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: 
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="reason" className="text-sm font-medium text-ink">
+        <label htmlFor="reason" className="field-label">
           Reason for the return
         </label>
         <input

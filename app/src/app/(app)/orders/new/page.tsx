@@ -45,7 +45,7 @@ export default async function NewOrderPage({
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <Link href="/orders" className="text-sm text-text-muted hover:text-ink">
+        <Link href="/orders" className="back-link">
           ← Orders
         </Link>
         <h1 className="mt-2 page-title">New order</h1>

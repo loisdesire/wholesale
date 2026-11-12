@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { formatRelativeTime } from "@/lib/format";
@@ -34,47 +35,55 @@ export default async function InboxPage() {
           No conversations yet.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="table">
-            <thead>
-              <tr className="thead-row">
-                <th className="py-2 pr-4">Customer</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">Last message</th>
-                <th className="py-2 pr-4">Orders</th>
-                <th className="py-2 pr-4">Assigned</th>
-                <th className="py-2 pr-4 text-right">Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {conversations.map((c) => (
-                <tr key={c.id} className="trow">
-                  <td className="py-3 pr-4">
-                    <Link href={`/inbox/${c.id}`} className="block hover:underline">
-                      <p className="font-medium text-ink">{c.customer.name ?? "Unnamed"}</p>
-                      <p className="font-tabular text-xs text-text-muted">{c.customer.phone}</p>
-                    </Link>
-                  </td>
-                  <td className="py-3 pr-4">
-                    <ConversationStatusBadge status={c.status} />
-                  </td>
-                  <td className="py-3 pr-4 max-w-xs truncate text-text-muted">
-                    {c.messages[0]?.body ?? "—"}
-                  </td>
-                  <td className="py-3 pr-4 text-text-muted">
-                    {c.orders.length > 0 ? c.orders.map((o) => o.reference).join(", ") : "—"}
-                  </td>
-                  <td className="py-3 pr-4 text-text-muted">
-                    {c.assignedTo?.name ?? "Unassigned"}
-                  </td>
-                  <td className="py-3 pr-4 text-right font-tabular text-xs text-text-muted">
-                    {formatRelativeTime(c.lastMessageAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        // A conversation list, not a spreadsheet: who, what they last said, and whether it's
+        // waiting on us. Rows that need a person carry a cobalt marker on the left edge.
+        <ul className="card divide-y divide-line overflow-hidden">
+          {conversations.map((c) => {
+            const waiting = c.status === "AWAITING_STAFF" || c.status === "NEW";
+            const name = c.customer.name ?? "Unnamed";
+            return (
+              <li key={c.id} className="relative">
+                {waiting && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-accent" />}
+                <Link
+                  href={`/inbox/${c.id}`}
+                  className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-paper/70 sm:items-center sm:px-5"
+                >
+                  <Avatar name={c.customer.name ?? c.customer.phone} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className={`text-sm text-ink ${waiting ? "font-semibold" : "font-medium"}`}>{name}</span>
+                      <ConversationStatusBadge status={c.status} />
+                      {c.orders.map((o) => (
+                        <span key={o.reference} className="rounded-md bg-paper px-1.5 py-0.5 font-mono text-[11px] text-text-muted">
+                          {o.reference}
+                        </span>
+                      ))}
+                    </div>
+                    <p className={`mt-0.5 truncate text-sm ${waiting ? "text-ink" : "text-text-muted"}`}>
+                      {c.messages[0]?.body ?? "No messages yet"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-text-muted sm:hidden">
+                      {c.assignedTo?.name ?? "Unassigned"} · {formatRelativeTime(c.lastMessageAt)}
+                    </p>
+                  </div>
+                  <div className="hidden shrink-0 flex-col items-end gap-1 text-xs text-text-muted sm:flex">
+                    <span className="font-tabular">{formatRelativeTime(c.lastMessageAt)}</span>
+                    <span className="flex items-center gap-1.5">
+                      {c.assignedTo?.name ? (
+                        <>
+                          <Avatar name={c.assignedTo.name} size="xs" />
+                          {c.assignedTo.name}
+                        </>
+                      ) : (
+                        "Unassigned"
+                      )}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

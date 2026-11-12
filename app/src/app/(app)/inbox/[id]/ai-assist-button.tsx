@@ -13,10 +13,10 @@ export function AIAssistButton({ conversationId }: { conversationId: string }) {
   );
 
   return (
-    <div className="flex flex-col gap-3 card p-5">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-3 rounded-xl border border-accent/20 bg-accent-soft p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-ink">AI product-matching assist</p>
+          <p className="text-sm font-semibold text-ink">AI product-matching assist</p>
           <p className="text-xs text-text-muted">
             Searches the catalogue and proposes a reply — drafts an order if confident, never
             confirms one.
@@ -36,7 +36,7 @@ export function AIAssistButton({ conversationId }: { conversationId: string }) {
       {state.error && <p className="text-sm text-status-attention-fg">{state.error}</p>}
 
       {state.replyText && (
-        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+        <div className="rounded-xl border border-line bg-surface p-3.5 text-sm">
           <p className="mb-1 text-xs font-medium text-text-muted">
             {state.sent ? "Sent to customer" : "Proposed reply — not sent"}
           </p>

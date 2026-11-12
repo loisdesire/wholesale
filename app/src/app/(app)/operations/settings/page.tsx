@@ -8,7 +8,7 @@ export default async function OperationsSettingsPage() {
   const organizationId = session!.user.organizationId;
 
   const back = (
-    <Link href="/operations" className="text-sm text-text-muted hover:text-ink">
+    <Link href="/operations" className="back-link">
       ← Back to Operations
     </Link>
   );

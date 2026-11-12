@@ -25,7 +25,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
     <form {...formProps} className="flex flex-col gap-4 card p-5">
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="reason" className="text-sm font-medium text-ink">
+          <label htmlFor="reason" className="field-label">
             Reason
           </label>
           <select
@@ -44,7 +44,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="direction" className="text-sm font-medium text-ink">
+          <label htmlFor="direction" className="field-label">
             Direction
           </label>
           {fixedDirection === "either" ? (
@@ -64,7 +64,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="quantity" className="text-sm font-medium text-ink">
+          <label htmlFor="quantity" className="field-label">
             Quantity
           </label>
           <input
@@ -80,7 +80,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="note" className="text-sm font-medium text-ink">
+        <label htmlFor="note" className="field-label">
           Note (optional)
         </label>
         <input

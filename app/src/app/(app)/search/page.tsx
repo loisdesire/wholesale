@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { searchEverything } from "@/lib/search";
 import { formatMoney } from "@/lib/format";
@@ -20,7 +21,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <p className="mt-1 text-sm text-text-muted">
           Orders, customers, products and returns. Phone numbers match in any format.
         </p>
-        <form action="/search" className="mt-4 flex max-w-xl gap-2">
+        <form action="/search" className="card mt-4 flex max-w-2xl gap-2 p-2">
           <input
             name="q"
             type="search"
@@ -28,7 +29,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             autoFocus
             placeholder="Order ref, name, phone, SKU…"
             aria-label="Search"
-            className="flex-1 input"
+            className="input flex-1 border-transparent py-2.5 text-base shadow-none hover:border-transparent"
           />
           <button type="submit" className="btn btn-primary">
             Search
@@ -49,8 +50,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <Group title="Orders" seeAll={`/orders?q=${encodeURIComponent(query)}`}>
           {results.orders.map((o) => (
             <Row key={o.id} href={`/orders/${o.id}`}>
-              <span className="flex items-center gap-3">
-                <span className="font-tabular text-ink">{o.reference}</span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-mono text-[13px] font-medium text-ink">{o.reference}</span>
                 <OrderStatusBadge status={o.status} />
                 <span className="text-text-muted">{o.customer.name ?? o.customer.phone}</span>
               </span>
@@ -64,7 +65,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <Group title="Customers" seeAll={`/customers?q=${encodeURIComponent(query)}`}>
           {results.customers.map((c) => (
             <Row key={c.id} href={`/customers/${c.id}`}>
-              <span className="text-ink">{c.name ?? "Unnamed"}</span>
+              <span className="flex items-center gap-2.5 font-medium text-ink">
+                <Avatar name={c.name ?? c.phone} size="sm" />
+                {c.name ?? "Unnamed"}
+              </span>
               <span className="font-tabular text-text-muted">{c.phone}</span>
             </Row>
           ))}
@@ -75,8 +79,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <Group title="Products" seeAll={`/catalogue?q=${encodeURIComponent(query)}`}>
           {results.products.map((p) => (
             <Row key={p.id} href={`/catalogue/${p.id}`}>
-              <span className="text-ink">{p.name}</span>
-              <span className="font-tabular text-text-muted">{p.sku}</span>
+              <span className="font-medium text-ink">{p.name}</span>
+              <span className="font-mono text-xs text-text-muted">{p.sku}</span>
             </Row>
           ))}
         </Group>
@@ -86,8 +90,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <Group title="Returns & refunds">
           {results.returns.map((r) => (
             <Row key={r.id} href={`/orders/${r.orderId}`}>
-              <span className="flex items-center gap-3">
-                <span className="font-tabular text-ink">{r.reference}</span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-mono text-[13px] font-medium text-ink">{r.reference}</span>
                 <ReturnStatusBadge status={r.status} />
                 <span className="text-text-muted">
                   {r.customer.name ?? r.customer.phone} · {r.order.reference}
@@ -106,21 +110,21 @@ function Group({ title, seeAll, children }: { title: string; seeAll?: string; ch
   return (
     <section>
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-ink">{title}</h2>
+        <h2 className="section-title">{title}</h2>
         {seeAll && (
-          <Link href={seeAll} className="text-xs text-text-muted underline-offset-2 hover:text-ink hover:underline">
+          <Link href={seeAll} className="link text-xs">
             See all
           </Link>
         )}
       </div>
-      <div className="card divide-y divide-line">{children}</div>
+      <div className="card divide-y divide-line overflow-hidden">{children}</div>
     </section>
   );
 }
 
 function Row({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-paper">
+    <Link href={href} className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-paper/70 sm:px-5">
       {children}
     </Link>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Download } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import {
@@ -33,7 +34,7 @@ export default async function ReportsPage({
   ]);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="page-title">Reports</h1>
@@ -47,7 +48,7 @@ export default async function ReportsPage({
         </Link>
       </header>
 
-      <form action="/reports" className="flex items-end gap-2">
+      <form action="/reports" className="card flex flex-wrap items-end gap-2 p-4">
         <label className="flex flex-col gap-1 text-xs text-text-muted">
           From
           <input name="from" type="date" defaultValue={dateInput(range.from)} className="input input-sm" />
@@ -65,12 +66,13 @@ export default async function ReportsPage({
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-ink">Sales summary</h2>
-          <a href={`/api/reports?report=sales&${qs}`} className="text-xs text-ink underline underline-offset-2">
-            Download CSV
+          <h2 className="section-title">Sales summary</h2>
+          <a href={`/api/reports?report=sales&${qs}`} className="btn btn-secondary btn-sm">
+            <Download size={13} />
+            CSV
           </a>
         </div>
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line md:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             { label: "Order value", value: formatMoney(sales.orderValueCents), hint: `${sales.orderCount} order${sales.orderCount === 1 ? "" : "s"} confirmed` },
             { label: "Average order value", value: sales.averageOrderValueCents === null ? "—" : formatMoney(sales.averageOrderValueCents), hint: "Per confirmed order" },
@@ -86,11 +88,18 @@ export default async function ReportsPage({
                 ? `Covers ${sales.margin.coveragePercent.toFixed(0)}% of period revenue (${sales.margin.linesWithCost} of ${sales.margin.lines} line${sales.margin.lines === 1 ? "" : "s"} have a cost on record)`
                 : "No product sold in this period has a cost recorded",
             },
-          ].map((f) => (
-            <div key={f.label} className="bg-surface p-4">
-              <dt className="text-xs text-text-muted">{f.label}</dt>
-              <dd className={`mt-1 font-tabular text-lg font-medium ${f.attention ? "text-status-attention-fg" : "text-ink"}`}>{f.value}</dd>
-              <p className="mt-1 text-xs text-text-muted">{f.hint}</p>
+          ].map((f, i) => (
+            // The first figure (order value) is the headline, so it alone gets the dark tile.
+            <div key={f.label} className={i === 0 ? "rounded-2xl bg-ink p-4 text-white shadow-card sm:p-5" : "card p-4 sm:p-5"}>
+              <dt className={`eyebrow ${i === 0 ? "!text-white/60" : ""}`}>{f.label}</dt>
+              <dd
+                className={`mt-2 break-words font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl ${
+                  i === 0 ? "text-gold" : f.attention ? "text-status-attention-fg" : "text-ink"
+                }`}
+              >
+                {f.value}
+              </dd>
+              <p className={`mt-1.5 text-xs leading-relaxed ${i === 0 ? "text-white/60" : "text-text-muted"}`}>{f.hint}</p>
             </div>
           ))}
         </dl>
@@ -98,9 +107,10 @@ export default async function ReportsPage({
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-ink">Product demand</h2>
-          <a href={`/api/reports?report=demand&${qs}`} className="text-xs text-ink underline underline-offset-2">
-            Download CSV
+          <h2 className="section-title">Product demand</h2>
+          <a href={`/api/reports?report=demand&${qs}`} className="btn btn-secondary btn-sm">
+            <Download size={13} />
+            CSV
           </a>
         </div>
         {demand.length === 0 ? (
@@ -108,7 +118,7 @@ export default async function ReportsPage({
             No confirmed orders in this period.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr className="thead-row">
@@ -125,10 +135,21 @@ export default async function ReportsPage({
                       <Link href={`/catalogue/${d.productId}`} className="underline-offset-2 hover:underline">
                         {d.name}
                       </Link>
-                      <span className="ml-2 font-tabular text-xs text-text-muted">{d.sku}</span>
+                      <span className="ml-2 font-mono text-xs text-text-muted">{d.sku}</span>
                     </td>
                     <td className="py-3 pr-4 text-right font-tabular text-ink">{d.units}</td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(d.revenueCents)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular font-semibold text-ink">
+                      <div className="flex items-center justify-end gap-3">
+                        {/* Share of the best seller's revenue, so the ranking reads at a glance. */}
+                        <span className="hidden h-2 w-28 overflow-hidden rounded-full bg-paper sm:block" aria-hidden="true">
+                          <span
+                            className="block h-full rounded-full bg-accent"
+                            style={{ width: `${Math.max(3, (d.revenueCents / Math.max(1, ...demand.map((x) => x.revenueCents))) * 100)}%` }}
+                          />
+                        </span>
+                        <span className="w-24">{formatMoney(d.revenueCents)}</span>
+                      </div>
+                    </td>
                     <td className="py-3 pr-4 text-right font-tabular text-text-muted">{d.orders}</td>
                   </tr>
                 ))}
@@ -140,9 +161,10 @@ export default async function ReportsPage({
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-ink">Stock movement</h2>
-          <a href={`/api/reports?report=stock&${qs}`} className="text-xs text-ink underline underline-offset-2">
-            Download CSV
+          <h2 className="section-title">Stock movement</h2>
+          <a href={`/api/reports?report=stock&${qs}`} className="btn btn-secondary btn-sm">
+            <Download size={13} />
+            CSV
           </a>
         </div>
         {stockMovements.length === 0 ? (
@@ -150,7 +172,7 @@ export default async function ReportsPage({
             No stock movements in this period.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr className="thead-row">
@@ -164,7 +186,7 @@ export default async function ReportsPage({
               <tbody>
                 {stockMovements.map((r) => (
                   <tr key={r.reason} className="trow">
-                    <td className="py-3 pr-4 text-ink">{r.reason}</td>
+                    <td className="py-3 pr-4 font-medium text-ink">{r.reason}</td>
                     <td className="py-3 pr-4 text-right font-tabular text-text-muted">{r.movements}</td>
                     <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.physical)}</td>
                     <td className="py-3 pr-4 text-right font-tabular text-ink">{signed(r.reserved)}</td>
@@ -179,9 +201,10 @@ export default async function ReportsPage({
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-ink">Outstanding balances (now)</h2>
-          <a href={`/api/reports?report=outstanding`} className="text-xs text-ink underline underline-offset-2">
-            Download CSV
+          <h2 className="section-title">Outstanding balances (now)</h2>
+          <a href={`/api/reports?report=outstanding`} className="btn btn-secondary btn-sm">
+            <Download size={13} />
+            CSV
           </a>
         </div>
         {outstanding.length === 0 ? (
@@ -189,7 +212,7 @@ export default async function ReportsPage({
             Everyone is settled — nobody owes, and nothing is owed.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr className="thead-row">
@@ -212,7 +235,7 @@ export default async function ReportsPage({
                     <td className={`py-3 pr-4 text-right font-tabular ${r.weOweCents > 0 ? "text-status-attention-fg" : "text-ink"}`}>
                       {formatMoney(r.weOweCents)}
                     </td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.netCents)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular font-semibold text-ink">{formatMoney(r.netCents)}</td>
                   </tr>
                 ))}
               </tbody>

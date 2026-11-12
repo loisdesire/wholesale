@@ -29,7 +29,7 @@ export function MergeForm({
       }}
       className="flex flex-col gap-3 card p-5"
     >
-      <label htmlFor="note" className="text-sm font-medium text-ink">
+      <label htmlFor="note" className="field-label">
         Why these are the same person (kept in the history)
       </label>
       <input

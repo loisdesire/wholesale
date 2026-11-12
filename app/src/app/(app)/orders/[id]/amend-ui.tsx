@@ -26,7 +26,7 @@ export function AmendOrderForm({
         Lines you change are re-priced at today&apos;s prices and the stock reservation is adjusted; lines you leave alone
         keep their agreed price. Set a quantity to 0 to remove a line.
       </p>
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto">
         <table className="table">
           <thead>
             <tr className="thead-row">

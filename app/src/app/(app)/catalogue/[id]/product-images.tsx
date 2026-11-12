@@ -60,7 +60,7 @@ export function ProductImages({ productId, images }: { productId: string; images
           name="file"
           accept="image/*"
           required
-          className="text-sm text-text-muted file:mr-3 file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink"
+          className="text-sm text-text-muted file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-solid file:border-line-strong file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink"
         />
         <button
           type="submit"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { buildOrderWhere, parseOrderStatus } from "@/lib/search";
@@ -83,11 +84,12 @@ export default async function OrdersPage({
           href="/orders/new"
           className="btn btn-primary"
         >
+          <Plus size={16} strokeWidth={2.4} />
           New order
         </Link>
       </header>
 
-      <div className="flex flex-col gap-3">
+      <div className="card flex flex-col gap-3 p-4">
         <form action="/orders" className="flex flex-wrap items-end gap-2">
           {filters.status && <input type="hidden" name="status" value={filters.status} />}
           <input
@@ -133,9 +135,7 @@ export default async function OrdersPage({
                 key={f.label}
                 href={link({ status: f.value, page: undefined })}
                 aria-current={active ? "true" : undefined}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  active ? "bg-accent text-paper" : "border border-line text-text-muted hover:text-ink"
-                }`}
+                className={`chip ${active ? "chip-active" : ""}`}
               >
                 {f.label}
               </Link>
@@ -143,7 +143,7 @@ export default async function OrdersPage({
           })}
         </nav>
         <nav aria-label="Filter by assignee" className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-text-muted">Assigned:</span>
+          <span className="eyebrow mr-1">Assigned</span>
           {[{ value: undefined, label: "Anyone" }, { value: "none", label: "Unassigned" }, ...members.map((m) => ({ value: m.id, label: m.name }))].map((f) => {
             const active = filters.assignee === f.value;
             return (
@@ -151,9 +151,7 @@ export default async function OrdersPage({
                 key={f.label}
                 href={link({ assignee: f.value, page: undefined })}
                 aria-current={active ? "true" : undefined}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  active ? "bg-accent text-paper" : "border border-line text-text-muted hover:text-ink"
-                }`}
+                className={`chip ${active ? "chip-active" : ""}`}
               >
                 {f.label}
               </Link>
@@ -174,7 +172,7 @@ export default async function OrdersPage({
       ) : orders.length === 0 ? (
         <p className="empty">
           No orders yet.{" "}
-          <Link href="/orders/new" className="text-ink underline underline-offset-2">
+          <Link href="/orders/new" className="link">
             Create the first one
           </Link>
           .

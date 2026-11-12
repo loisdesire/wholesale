@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/status-badge";
+import { Avatar } from "@/components/avatar";
 import { applyBulkAssignAction, previewBulkAssignAction, type BulkAssignOutcome } from "../operations/actions";
 
 export type OrderRow = {
@@ -66,7 +67,7 @@ export function OrdersTable({
   return (
     <div className="flex flex-col gap-3">
       {canBulkAssign && selected.size > 0 && (
-        <div className="flex flex-col gap-3 card p-3">
+        <div className="card flex flex-col gap-3 border-accent/40 bg-accent-soft p-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-ink">{selected.size} selected</span>
             <select
@@ -123,12 +124,12 @@ export function OrdersTable({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto">
         <table className="table">
           <thead>
             <tr className="thead-row">
               {canBulkAssign && (
-                <th className="w-8 py-2">
+                <th className="w-10 py-2">
                   <input type="checkbox" checked={selected.size === orders.length && orders.length > 0} onChange={toggleAll} aria-label="Select all" />
                 </th>
               )}
@@ -149,14 +150,19 @@ export function OrdersTable({
                     <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} aria-label={`Select ${o.reference}`} />
                   </td>
                 )}
-                <td className="py-3 pr-4 font-tabular">
-                  <Link href={`/orders/${o.id}`} className="text-ink hover:underline">
+                <td className="py-3 pr-4 font-mono text-[13px] font-medium">
+                  <Link href={`/orders/${o.id}`} className="text-ink underline-offset-4 hover:text-accent hover:underline">
                     {o.reference}
                   </Link>
                 </td>
                 <td className="py-3 pr-4">
-                  <p className="text-ink">{o.customerName ?? "Unnamed"}</p>
-                  <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={o.customerName ?? o.customerPhone} size="sm" />
+                    <div>
+                      <p className="font-medium text-ink">{o.customerName ?? "Unnamed"}</p>
+                      <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
+                    </div>
+                  </div>
                 </td>
                 <td className="py-3 pr-4 text-text-muted">{o.units} units</td>
                 <td className="py-3 pr-4">
@@ -164,7 +170,7 @@ export function OrdersTable({
                 </td>
                 <td className="py-3 pr-4 text-text-muted">{o.assignedToName ?? "—"}</td>
                 <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
-                <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+                <td className="py-3 pr-4 text-right font-tabular font-semibold text-ink">{formatMoney(o.totalCents, o.currency)}</td>
               </tr>
             ))}
           </tbody>

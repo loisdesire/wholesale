@@ -55,7 +55,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
   );
 
   return (
-    <form action={formAction} className="flex max-w-lg flex-col gap-6">
+    <form action={formAction} className="card flex max-w-2xl flex-col gap-6 p-5 sm:p-6">
       <input type="hidden" name="attributesJson" value={attributesJson} />
       <input type="hidden" name="priceTiersJson" value={priceTiersJson} />
 
@@ -65,7 +65,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink">Variant attributes</span>
+        <span className="field-label">Variant attributes</span>
         <p className="text-xs text-text-muted">
           Colour, size, or anything else specific to this business (material, model, packaging…).
         </p>
@@ -103,7 +103,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
         <button
           type="button"
           onClick={() => setAttributes((prev) => [...prev, { key: "", value: "" }])}
-          className="self-start text-xs text-ink underline underline-offset-2"
+          className="btn btn-secondary btn-sm self-start"
         >
           Add attribute
         </button>
@@ -153,7 +153,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
       )}
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink">Wholesale price tiers (optional)</span>
+        <span className="field-label">Wholesale price tiers (optional)</span>
         <p className="text-xs text-text-muted">
           Quantity breaks — e.g. 10+ units at a lower price. The base price above always applies
           below the lowest tier.
@@ -194,7 +194,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
         <button
           type="button"
           onClick={() => setTiers((prev) => [...prev, { minQuantity: "", priceNaira: "" }])}
-          className="self-start text-xs text-ink underline underline-offset-2"
+          className="btn btn-secondary btn-sm self-start"
         >
           Add price tier
         </button>
@@ -248,7 +248,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="text-sm font-medium text-ink">
+      <label htmlFor={name} className="field-label">
         {label}
       </label>
       <input

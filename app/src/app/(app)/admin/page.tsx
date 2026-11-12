@@ -1,3 +1,4 @@
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { getPlatformOverview } from "@/lib/platform-admin";
 import { PLAN_LIMITS } from "@/lib/billing";
@@ -22,7 +23,7 @@ export default async function PlatformAdminPage() {
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="page-title">Platform admin</h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <p className="mt-1 max-w-3xl text-sm text-text-muted">
           Every organization on the platform. Nothing here edits an organization&apos;s plan, seats or usage limits —
           only the two narrow support actions below (extending a trial, unsticking a past-due subscription), each
           recorded in that organization&apos;s own audit log. See an organization&apos;s own data by signing in as a
@@ -54,7 +55,12 @@ export default async function PlatformAdminPage() {
               <tbody>
                 {overview.map((org) => (
                   <tr key={org.id} className="trow">
-                    <td className="px-4 py-3 text-ink">{org.name}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">
+                      <span className="flex items-center gap-2.5">
+                        <Avatar name={org.name} shape="square" size="sm" />
+                        {org.name}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-text-muted">{PLAN_LIMITS[org.plan].label}</td>
                     <td className="px-4 py-3">
                       <SubscriptionStatusBadge status={org.subscriptionStatus} />

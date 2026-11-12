@@ -35,8 +35,8 @@ export function ReconciliationPanel() {
               No discrepancies — everything Paystack says it charged matches what&apos;s recorded here.
             </p>
           ) : (
-            <div className="rounded-md border border-status-attention-fg/30 bg-surface">
-              <div className="overflow-x-auto">
+            <div className="rounded-2xl ring-2 ring-status-attention-fg/25">
+              <div className="card overflow-x-auto">
                 <table className="table">
                   <thead>
                     <tr className="thead-row">

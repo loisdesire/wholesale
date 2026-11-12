@@ -38,16 +38,16 @@ export function EditCustomerForm({
     <form {...formProps} className="flex max-w-xl flex-col gap-4 card p-5">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="name" className="text-sm font-medium text-ink">Name</label>
+          <label htmlFor="name" className="field-label">Name</label>
           <input id="name" name="name" defaultValue={name ?? ""} className={inputClass} />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-ink">Email</label>
+          <label htmlFor="email" className="field-label">Email</label>
           <input id="email" name="email" type="email" defaultValue={email ?? ""} className={inputClass} />
         </div>
       </div>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="notes" className="text-sm font-medium text-ink">Notes</label>
+        <label htmlFor="notes" className="field-label">Notes</label>
         <textarea id="notes" name="notes" rows={3} defaultValue={notes ?? ""} className={inputClass} />
       </div>
       <div className="flex items-center gap-4">

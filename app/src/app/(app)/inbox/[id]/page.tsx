@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Check, Plus, Send, Sparkles } from "lucide-react";
+import { Avatar } from "@/components/avatar";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
@@ -49,19 +51,34 @@ export default async function ConversationDetailPage({ params }: { params: Promi
   const isOwner = session!.user.role === "OWNER";
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <Link href="/inbox" className="text-sm text-text-muted hover:text-ink">
-          ← Inbox
-        </Link>
-        <div className="mt-2 flex items-start justify-between">
-          <div>
-            <h1 className="page-title">
-              {conversation.customer.name ?? "Unnamed"}
-            </h1>
-            <p className="mt-1 font-tabular text-sm text-text-muted">{conversation.customer.phone}</p>
+    <div className="flex flex-col gap-4">
+      <Link href="/inbox" className="back-link self-start">
+        ← Inbox
+      </Link>
+
+      {/* One chat window: who you're talking to on top, the thread in the middle, the reply
+          tools at the bottom — the shape every messaging app has taught people to expect. */}
+      <div className="card overflow-hidden">
+        <header className="flex flex-col gap-3 border-b border-line p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar name={conversation.customer.name ?? conversation.customer.phone} size="lg" />
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-2xl font-bold tracking-tight text-ink">
+                {conversation.customer.name ?? "Unnamed"}
+              </h1>
+              <p className="flex flex-wrap items-center gap-x-2 text-sm text-text-muted">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-wa" />
+                  WhatsApp
+                </span>
+                <Link href={`/customers/${conversation.customerId}`} className="font-tabular underline-offset-4 hover:text-ink hover:underline">
+                  {conversation.customer.phone}
+                </Link>
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <ConversationStatusBadge status={conversation.status} />
             <div className="flex items-center gap-2 text-xs text-text-muted">
               Assigned to
               <AssigneeControl
@@ -73,130 +90,113 @@ export default async function ConversationDetailPage({ params }: { params: Promi
                 currentUserId={session!.user.id}
               />
             </div>
-            <ConversationStatusBadge status={conversation.status} />
             {conversation.status !== "RESOLVED" && (
               <form action={markResolvedAction.bind(null, conversation.id)}>
-                <button
-                  type="submit"
-                  className="btn btn-secondary btn-sm"
-                >
+                <button type="submit" className="btn btn-secondary btn-sm">
+                  <Check size={14} strokeWidth={2.4} />
                   Mark resolved
                 </button>
               </form>
             )}
           </div>
-        </div>
-      </header>
+        </header>
 
-      {conversation.orders.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-medium text-ink">Linked orders</h2>
-          <div className="flex flex-wrap gap-2">
-            {conversation.orders.map((o) => (
-              <Link
-                key={o.id}
-                href={`/orders/${o.id}`}
-                className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper"
-              >
-                <span className="font-tabular text-ink">{o.reference}</span>
-                <OrderStatusBadge status={o.status} />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-ink">Conversation</h2>
+        <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface px-4 py-2.5 sm:px-5">
+          <span className="eyebrow mr-1">Orders</span>
+          {conversation.orders.map((o) => (
+            <Link
+              key={o.id}
+              href={`/orders/${o.id}`}
+              className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-2.5 pr-1 text-sm transition-colors hover:border-line-strong hover:bg-paper"
+            >
+              <span className="font-mono text-xs text-ink">{o.reference}</span>
+              <OrderStatusBadge status={o.status} />
+            </Link>
+          ))}
           <Link
             href={`/orders/new?customerId=${conversation.customerId}&conversationId=${conversation.id}`}
-            className="text-sm text-ink underline underline-offset-2 hover:text-ink-2"
+            className="btn btn-primary btn-sm ml-auto"
           >
-            Create order for this customer
+            <Plus size={14} strokeWidth={2.4} />
+            Create order
           </Link>
         </div>
 
-        {conversation.messages.length === 0 ? (
-          <p className="empty">
-            No messages yet.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {conversation.messages.map((m) => {
-              const isInbound = m.direction === "INBOUND";
-              return (
-                <div key={m.id} className={`flex ${isInbound ? "justify-start" : "justify-end"}`}>
-                  <div
-                    className={`max-w-lg rounded-md border px-4 py-2.5 text-sm ${
-                      isInbound
-                        ? "border-line bg-surface text-ink"
-                        : "border-accent-2/30 bg-accent text-paper"
-                    }`}
-                  >
+        <div className="bg-paper/70 px-3 py-5 sm:px-6">
+          {conversation.messages.length === 0 ? (
+            <p className="empty">No messages yet.</p>
+          ) : (
+            <div className="mx-auto flex max-w-3xl flex-col gap-2.5">
+              {conversation.messages.map((m) => {
+                const isInbound = m.direction === "INBOUND";
+                const failed = !isInbound && m.deliveryStatus === "FAILED";
+                return (
+                  <div key={m.id} className={`flex flex-col ${isInbound ? "items-start" : "items-end"}`}>
                     <div
-                      className={`mb-1 flex items-center gap-2 text-xs ${
-                        isInbound ? "text-text-muted" : "text-white/60"
+                      className={`max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed shadow-card sm:max-w-lg ${
+                        isInbound
+                          ? "rounded-2xl rounded-bl-md bg-surface text-ink"
+                          : failed
+                            ? "rounded-2xl rounded-br-md bg-status-attention-fg text-white"
+                            : "rounded-2xl rounded-br-md bg-ink text-white"
                       }`}
                     >
-                      {SENDER_LABEL[m.sender] && <span>{SENDER_LABEL[m.sender]}</span>}
+                      {!isInbound && SENDER_LABEL[m.sender] && (
+                        <p className="mb-0.5 text-[11px] font-semibold text-gold">{SENDER_LABEL[m.sender]}</p>
+                      )}
+                      {m.attachments.length > 0 && (
+                        <div className="mb-2 flex flex-col gap-2">
+                          {m.attachments.map((a) => (
+                            <ZoomableImage
+                              key={a.id}
+                              src={`/api/attachments/${a.id}`}
+                              alt="Image sent by the customer"
+                              className="max-h-80 max-w-full rounded-xl border border-line/50 object-contain"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {!(m.attachments.length > 0 && m.body === "[image]") && (
+                        <p className="whitespace-pre-wrap">{m.body}</p>
+                      )}
+                      {failed && m.deliveryError && <p className="mt-1 text-xs text-white/85">{m.deliveryError}</p>}
+                    </div>
+                    <p className="mt-1 flex items-center gap-1.5 px-1 text-[11px] text-text-muted">
+                      {isInbound && SENDER_LABEL[m.sender] && <span>{SENDER_LABEL[m.sender]} ·</span>}
                       <span className="font-tabular">{formatDateTime(m.createdAt)}</span>
                       {!isInbound && m.deliveryStatus && (
-                        <span className={m.deliveryStatus === "FAILED" ? "font-medium text-white" : ""}>
+                        <span className={failed ? "font-semibold text-status-attention-fg" : m.deliveryStatus === "READ" ? "font-medium text-accent" : ""}>
                           · {DELIVERY_LABEL[m.deliveryStatus]}
                         </span>
                       )}
-                    </div>
-                    {m.attachments.length > 0 && (
-                      <div className="mb-2 flex flex-col gap-2">
-                        {m.attachments.map((a) => (
-                          <ZoomableImage
-                            key={a.id}
-                            src={`/api/attachments/${a.id}`}
-                            alt="Image sent by the customer"
-                            className="max-h-80 max-w-full rounded-md border border-line/50 object-contain"
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {!(m.attachments.length > 0 && m.body === "[image]") && (
-                      <p className="whitespace-pre-wrap">{m.body}</p>
-                    )}
-                    {!isInbound && m.deliveryStatus === "FAILED" && m.deliveryError && (
-                      <p className="mt-1 text-xs text-white/80">{m.deliveryError}</p>
-                    )}
+                    </p>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-      <section>
-        <h2 className="section-title mb-3">AI assist</h2>
-        {aiReady ? (
-          <AIAssistButton conversationId={conversation.id} />
-        ) : (
-          <p className="empty">
-            AI product-matching isn&apos;t configured in this environment (missing
-            OPENAI_API_KEY).
-          </p>
-        )}
-      </section>
-
-      <section>
-        <h2 className="section-title mb-3">Reply</h2>
-        {whatsappReady ? (
-          <ReplyForm conversationId={conversation.id} />
-        ) : (
-          <p className="empty">
-            WhatsApp sending isn&apos;t configured in this environment (missing
-            WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID) — replies can&apos;t be sent until
-            it is.
-          </p>
-        )}
-      </section>
+        <div className="flex flex-col gap-4 border-t border-line p-4 sm:p-5">
+          {aiReady ? (
+            <AIAssistButton conversationId={conversation.id} />
+          ) : (
+            <p className="flex items-start gap-2.5 rounded-xl bg-paper px-3.5 py-3 text-sm text-text-muted">
+              <Sparkles size={16} className="mt-0.5 shrink-0" />
+              AI product-matching isn&apos;t configured in this environment (missing OPENAI_API_KEY).
+            </p>
+          )}
+          {whatsappReady ? (
+            <ReplyForm conversationId={conversation.id} />
+          ) : (
+            <p className="flex items-start gap-2.5 rounded-xl bg-paper px-3.5 py-3 text-sm text-text-muted">
+              <Send size={16} className="mt-0.5 shrink-0" />
+              WhatsApp sending isn&apos;t configured in this environment (missing WHATSAPP_ACCESS_TOKEN /
+              WHATSAPP_PHONE_NUMBER_ID) — replies can&apos;t be sent until it is.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

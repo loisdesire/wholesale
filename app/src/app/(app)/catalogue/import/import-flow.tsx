@@ -48,9 +48,9 @@ export function ImportFlow() {
 
   if (!preview.rows) {
     return (
-      <form action={previewAction} className="flex flex-col gap-4">
+      <form action={previewAction} className="card flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="file" className="text-sm font-medium text-ink">
+          <label htmlFor="file" className="field-label">
             CSV file
           </label>
           <input
@@ -100,7 +100,7 @@ export function ImportFlow() {
       </div>
 
       <div className="max-h-[480px] overflow-y-auto rounded-md border border-line bg-surface">
-        <div className="overflow-x-auto">
+        <div className="card overflow-x-auto">
           <table className="table">
             <thead className="sticky top-0 bg-surface">
               <tr className="thead-row">

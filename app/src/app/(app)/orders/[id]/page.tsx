@@ -10,6 +10,7 @@ import { getReturnableQuantities } from "@/lib/returns";
 import { findDuplicateOrders } from "@/lib/orders";
 import { listOrganizationMembers } from "@/lib/membership";
 import { AssigneeControl } from "@/components/assignee-control";
+import { Avatar } from "@/components/avatar";
 import { removeOrderItemAction } from "../actions";
 import { OrderActions } from "./order-actions";
 import { OrderDetailsForm, QuantityForm } from "./order-edit-forms";
@@ -130,63 +131,78 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   });
 
   return (
-    <div className="flex flex-col gap-10">
-      <header>
-        <Link href="/orders" className="text-sm text-text-muted hover:text-ink">
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-4">
+        <Link href="/orders" className="back-link self-start">
           ← Orders
         </Link>
-        <div className="mt-2 flex items-start justify-between">
-          <div>
-            <h1 className="font-tabular text-2xl font-semibold tracking-tight text-ink">{order.reference}</h1>
-            <p className="mt-1 text-sm text-text-muted">
-              <Link href={`/customers/${order.customer.id}`} className="underline-offset-2 hover:underline">
-                {order.customer.name ?? "Unnamed"}
-              </Link>{" "}
-              · {order.customer.phone}
-              {order.conversation && (
-                <>
-                  {" · from "}
-                  <Link href="/inbox" className="underline underline-offset-2 hover:text-ink">
-                    conversation
-                  </Link>
-                </>
-              )}
-            </p>
+        {/* The order "ticket": who, how much, where it is in its journey, and what can be done
+            next — the four things someone opening an order needs before anything else. */}
+        <div className="card overflow-hidden">
+          <div className="flex flex-col gap-5 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3.5">
+                <Avatar name={order.customer.name ?? order.customer.phone} size="lg" />
+                <div className="min-w-0">
+                  <h1 className="font-mono text-sm font-medium text-text-muted">{order.reference}</h1>
+                  <p className="truncate font-display text-2xl font-bold tracking-tight text-ink">
+                    <Link href={`/customers/${order.customer.id}`} className="underline-offset-4 hover:underline">
+                      {order.customer.name ?? "Unnamed"}
+                    </Link>
+                  </p>
+                  <p className="mt-0.5 text-sm text-text-muted">
+                    <span className="font-tabular">{order.customer.phone}</span>
+                    {order.conversation && (
+                      <>
+                        {" · from "}
+                        <Link href="/inbox" className="link">
+                          conversation
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="sm:text-right">
+                <p className="eyebrow">Order total</p>
+                <p className="font-display text-4xl font-bold leading-tight tracking-tight text-ink">
+                  {formatMoney(order.totalCents, order.currency)}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <OrderStepper status={order.status} />
+              <div className="flex shrink-0 items-center gap-2 text-sm text-text-muted">
+                Assigned to
+                <AssigneeControl
+                  kind="order"
+                  id={order.id}
+                  currentAssigneeId={order.assignedToId}
+                  members={members}
+                  isOwner={isOwner}
+                  currentUserId={session!.user.id}
+                />
+              </div>
+            </div>
           </div>
-          <p className="font-tabular text-2xl font-medium text-ink">
-            {formatMoney(order.totalCents, order.currency)}
-          </p>
-        </div>
-        <div className="mt-4 flex items-center justify-between">
-          <OrderStepper status={order.status} />
-          <div className="flex items-center gap-2 text-sm text-text-muted">
-            Assigned to
-            <AssigneeControl
-              kind="order"
-              id={order.id}
-              currentAssigneeId={order.assignedToId}
-              members={members}
-              isOwner={isOwner}
-              currentUserId={session!.user.id}
-            />
-          </div>
+          {["DRAFT", "CONFIRMED", "PAID", "PARTIALLY_FULFILLED"].includes(order.status) && (
+            <div className="border-t border-line bg-paper/60 px-5 py-4 sm:px-6">
+              <OrderActions
+                orderId={order.id}
+                status={order.status}
+                isOwner={isOwner}
+                duplicateOf={duplicates.map((d) => d.reference)}
+              />
+            </div>
+          )}
         </div>
       </header>
-
-      <section>
-        <OrderActions
-          orderId={order.id}
-          status={order.status}
-          isOwner={isOwner}
-          duplicateOf={duplicates.map((d) => d.reference)}
-        />
-      </section>
 
       {order.status !== "DRAFT" && (
         <section>
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-ink">Payments</h2>
-            <p className="font-tabular text-sm text-ink">
+            <h2 className="section-title">Payments</h2>
+            <p className="font-tabular text-sm font-medium text-ink">
               {formatMoney(paidCents, order.currency)} of {formatMoney(order.totalCents, order.currency)}
               {paidCents > order.totalCents && (
                 <span className="ml-2 rounded-full bg-status-attention-bg px-2 py-0.5 text-xs font-medium text-status-attention-fg">
@@ -194,6 +210,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 </span>
               )}
             </p>
+          </div>
+          <div className="mb-3 h-2 overflow-hidden rounded-full bg-line" aria-hidden="true">
+            <div
+              className={`h-full rounded-full ${paidCents >= order.totalCents ? "bg-status-success-fg" : "bg-accent"}`}
+              style={{ width: `${order.totalCents > 0 ? Math.min(100, Math.round((paidCents / order.totalCents) * 100)) : 0}%` }}
+            />
           </div>
           {order.payments.length === 0 ? (
             <p className="empty">
@@ -248,7 +270,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     <td className="px-4 py-3 text-ink">
                       {item.product.name}
                       {item.variantLabel ? ` (${item.variantLabel})` : ""}
-                      <span className="ml-2 font-tabular text-xs text-text-muted">{item.product.sku}</span>
+                      <span className="ml-2 font-mono text-xs text-text-muted">{item.product.sku}</span>
                     </td>
                     <td className="px-4 py-3 text-right font-tabular text-ink">
                       {order.status === "DRAFT" ? (
@@ -282,9 +304,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between border-t border-line px-4 py-3">
-            <span className="text-sm font-medium text-ink">Total</span>
-            <span className="font-tabular text-sm font-medium text-ink">
+          <div className="flex items-center justify-between border-t border-line bg-paper/60 px-[1.125rem] py-3.5">
+            <span className="text-sm font-semibold text-ink">Total</span>
+            <span className="font-tabular text-base font-bold text-ink">
               {formatMoney(order.totalCents, order.currency)}
             </span>
           </div>
@@ -313,7 +335,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {(canShip || shipments.length > 0) && (
         <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-ink">Shipping</h2>
+          <h2 className="section-title">Shipping</h2>
 
           {canShip && <ShipForm orderId={order.id} lines={shipLines} />}
 
@@ -377,7 +399,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {(returns.length > 0 || canRequestReturn) && (
         <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-ink">Returns &amp; refunds</h2>
+          <h2 className="section-title">Returns &amp; refunds</h2>
 
           {returns.map((ret) => (
             <div key={ret.id} className="flex flex-col gap-4 card p-5">
@@ -472,16 +494,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         {auditLog.length === 0 ? (
           <p className="text-sm text-text-muted">No history yet.</p>
         ) : (
-          <div className="card divide-y divide-line">
-            {auditLog.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                <span className="text-ink">{AUDIT_ACTION_LABEL[entry.action] ?? entry.action}</span>
-                <span className="text-xs text-text-muted">
-                  {entry.actor?.name ?? "System"} · {formatDateTime(entry.createdAt)}
-                </span>
-              </div>
+          <ol className="card relative flex flex-col gap-0 px-5 py-4">
+            {auditLog.map((entry, i) => (
+              <li key={entry.id} className="relative flex gap-3.5 pb-4 text-sm last:pb-0">
+                {i < auditLog.length - 1 && <span aria-hidden="true" className="absolute left-[5px] top-4 h-full w-px bg-line" />}
+                <span aria-hidden="true" className={`relative mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full border-2 ${i === 0 ? "border-accent bg-accent" : "border-line-strong bg-surface"}`} />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                  <span className="font-medium text-ink">{AUDIT_ACTION_LABEL[entry.action] ?? entry.action}</span>
+                  <span className="shrink-0 text-xs text-text-muted">
+                    {entry.actor?.name ?? "System"} · {formatDateTime(entry.createdAt)}
+                  </span>
+                </div>
+              </li>
             ))}
-          </div>
+          </ol>
         )}
       </section>
     </div>

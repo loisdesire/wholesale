@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { getCustomerBalances } from "@/lib/balances";
@@ -74,12 +76,13 @@ export default async function CustomersPage({
           href="/customers/new"
           className="btn btn-primary"
         >
+          <Plus size={16} strokeWidth={2.4} />
           New customer
         </Link>
       </header>
 
-      <div className="flex flex-col gap-3">
-        <form action="/customers" className="flex gap-2">
+      <div className="card flex flex-col gap-3 p-4">
+        <form action="/customers" className="flex flex-wrap gap-2">
           {filter && <input type="hidden" name="filter" value={filter} />}
           <input
             name="q"
@@ -87,7 +90,7 @@ export default async function CustomersPage({
             defaultValue={q}
             placeholder="Name, phone (any format), email, notes…"
             aria-label="Search customers"
-            className="w-80 input"
+            className="input w-full sm:w-80"
           />
           <button type="submit" className="btn btn-secondary">
             Search
@@ -98,7 +101,7 @@ export default async function CustomersPage({
             </Link>
           )}
         </form>
-        <nav aria-label="Filter by balance" className="flex gap-1.5">
+        <nav aria-label="Filter by balance" className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => {
             const active = filter === f.value;
             return (
@@ -106,9 +109,7 @@ export default async function CustomersPage({
                 key={f.label}
                 href={link({ filter: f.value, page: undefined })}
                 aria-current={active ? "true" : undefined}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  active ? "bg-accent text-paper" : "border border-line text-text-muted hover:text-ink"
-                }`}
+                className={`chip ${active ? "chip-active" : ""}`}
               >
                 {f.label}
               </Link>
@@ -122,43 +123,52 @@ export default async function CustomersPage({
           {q || filter ? "No customers match." : "No customers yet."}
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="card overflow-x-auto">
           <table className="table">
             <thead>
               <tr className="thead-row">
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Phone</th>
+                <th className="py-2 pr-4">Customer</th>
                 <th className="py-2 pr-4">Notes</th>
-                <th className="py-2 pr-4 text-right">Conversations</th>
+                <th className="py-2 pr-4 text-right">Chats</th>
                 <th className="py-2 pr-4 text-right">Orders</th>
                 <th className="py-2 pr-4 text-right">Owes us</th>
                 <th className="py-2 pr-4 text-right">We owe</th>
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => (
-                <tr key={c.id} className="trow">
-                  <td className="py-3 pr-4 text-ink">
-                    <Link href={`/customers/${c.id}`} className="underline-offset-2 hover:underline">
-                      {c.name ?? "Unnamed"}
-                    </Link>
-                  </td>
-                  <td className="py-3 pr-4 font-tabular text-text-muted">{c.phone}</td>
-                  <td className="py-3 pr-4 max-w-sm truncate text-text-muted">{c.notes ?? "—"}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{c._count.conversations}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">{c._count.orders}</td>
-                  <td className="py-3 pr-4 text-right font-tabular text-ink">
-                    {formatMoney(balances.get(c.id)?.outstandingCents ?? 0)}
-                  </td>
-                  <td
-                    className={`py-3 pr-4 text-right font-tabular ${
-                      (balances.get(c.id)?.refundDueCents ?? 0) > 0 ? "text-status-attention-fg" : "text-ink"
-                    }`}
-                  >
-                    {formatMoney(balances.get(c.id)?.refundDueCents ?? 0)}
-                  </td>
-                </tr>
-              ))}
+              {customers.map((c) => {
+                const owes = balances.get(c.id)?.outstandingCents ?? 0;
+                const weOwe = balances.get(c.id)?.refundDueCents ?? 0;
+                return (
+                  <tr key={c.id} className="trow">
+                    <td className="py-2.5 pr-4">
+                      <Link href={`/customers/${c.id}`} className="group flex items-center gap-3">
+                        <Avatar name={c.name ?? c.phone} />
+                        <span className="min-w-0">
+                          <span className="block whitespace-nowrap font-medium text-ink underline-offset-4 group-hover:text-accent group-hover:underline">
+                            {c.name ?? "Unnamed"}
+                          </span>
+                          <span className="block whitespace-nowrap font-tabular text-xs text-text-muted">{c.phone}</span>
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="max-w-xs truncate py-2.5 pr-4 text-text-muted">{c.notes ?? "—"}</td>
+                    <td className="py-2.5 pr-4 text-right font-tabular text-text-muted">{c._count.conversations}</td>
+                    <td className="py-2.5 pr-4 text-right font-tabular text-text-muted">{c._count.orders}</td>
+                    {/* A zero balance is the normal case, so it recedes; only real money gets weight. */}
+                    <td className={`whitespace-nowrap py-2.5 pr-4 text-right font-tabular ${owes > 0 ? "font-semibold text-ink" : "text-text-muted/60"}`}>
+                      {owes > 0 ? formatMoney(owes) : "—"}
+                    </td>
+                    <td
+                      className={`whitespace-nowrap py-2.5 pr-4 text-right font-tabular ${
+                        weOwe > 0 ? "font-semibold text-status-attention-fg" : "text-text-muted/60"
+                      }`}
+                    >
+                      {weOwe > 0 ? formatMoney(weOwe) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

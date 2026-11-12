@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
@@ -87,21 +88,36 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         : "Net: settled";
 
   return (
-    <div className="flex flex-col gap-10">
-      <header>
-        <Link href="/customers" className="text-sm text-text-muted hover:text-ink">
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-4">
+        <Link href="/customers" className="back-link self-start">
           ← Customers
         </Link>
-        <h1 className="mt-2 page-title">{customer.name ?? "Unnamed"}</h1>
-        <p className="mt-1 font-tabular text-sm text-text-muted">{customer.phone}</p>
-        {customer.notes && <p className="mt-2 max-w-xl text-sm text-text-muted">{customer.notes}</p>}
+        <div className="flex items-start gap-4">
+          <Avatar name={customer.name ?? customer.phone} size="xl" />
+          <div className="min-w-0">
+            <h1 className="page-title">{customer.name ?? "Unnamed"}</h1>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-text-muted">
+              <span className="font-tabular">{customer.phone}</span>
+              <span>
+                {orders.length} order{orders.length === 1 ? "" : "s"}
+              </span>
+              {agreedPrices.length > 0 && (
+                <span>
+                  {agreedPrices.length} agreed price{agreedPrices.length === 1 ? "" : "s"}
+                </span>
+              )}
+            </p>
+            {customer.notes && <p className="mt-2 max-w-xl text-sm text-ink/80">{customer.notes}</p>}
+          </div>
+        </div>
       </header>
 
       {mergedInto && (
         <section className="rounded-xl border border-line bg-status-neutral-bg px-4 py-3 text-sm">
           <p className="text-ink">
             This record was merged into{" "}
-            <Link href={`/customers/${mergedInto.id}`} className="underline underline-offset-2">
+            <Link href={`/customers/${mergedInto.id}`} className="link">
               {mergedInto.name ?? mergedInto.phone}
             </Link>{" "}
             on {formatDateTime(customer.mergedAt!)}. Its orders, conversations and messages from {customer.phone} now sit
@@ -109,7 +125,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </p>
           {isOwner && archivedBy && (
             <form action={undoMergeAction.bind(null, archivedBy.id, customer.id)} className="mt-2">
-              <button type="submit" className="text-ink underline underline-offset-2">
+              <button type="submit" className="link">
                 Undo this merge
               </button>
             </form>
@@ -126,14 +142,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <ul className="mt-2 flex flex-col gap-1">
             {duplicates.map((d) => (
               <li key={d.customer.id}>
-                <Link href={`/customers/${d.customer.id}`} className="text-ink underline underline-offset-2">
+                <Link href={`/customers/${d.customer.id}`} className="link">
                   {d.customer.name ?? "Unnamed"} · {d.customer.phone}
                 </Link>
                 <span className="text-text-muted"> — {d.reasons.join("; ")}</span>
                 {isOwner && !mergedInto && (
                   <Link
                     href={`/customers/${customer.id}/merge?with=${d.customer.id}`}
-                    className="ml-2 text-ink underline underline-offset-2"
+                    className="link ml-2"
                   >
                     Review merge →
                   </Link>
@@ -146,12 +162,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       <section>
         <h2 className="section-title mb-3">Balance</h2>
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line md:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line shadow-card md:grid-cols-4">
           {figures.map((f) => (
             <div key={f.label} className="bg-surface p-4">
-              <dt className="text-xs text-text-muted">{f.label}</dt>
+              <dt className="eyebrow">{f.label}</dt>
               <dd
-                className={`mt-1 font-tabular text-lg font-medium ${
+                className={`mt-1.5 font-display text-2xl font-bold tracking-tight ${
                   f.attention && f.value > 0 ? "text-status-attention-fg" : "text-ink"
                 }`}
               >
@@ -161,7 +177,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             </div>
           ))}
         </dl>
-        <p className="mt-3 text-sm text-ink">{netLabel}</p>
+        <p className="mt-3 inline-flex rounded-full bg-ink px-3 py-1 text-sm font-medium text-white">{netLabel}</p>
         {balance.refundRequestedCents > 0 && (
           <p className="mt-1 text-sm text-text-muted">
             A further {formatMoney(balance.refundRequestedCents)} is on returns still awaiting the owner&apos;s decision.
@@ -215,14 +231,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       </section>
 
       <section>
-        <h2 className="mb-1 text-sm font-medium text-ink">Agreed prices</h2>
+        <h2 className="section-title mb-1">Agreed prices</h2>
         <p className="mb-3 text-sm text-text-muted">
           A price agreed with this customer beats the list price and quantity breaks on new orders. Orders already
           placed keep the price they were made at.
         </p>
         {agreedPrices.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="mb-3 table">
+          <div className="card mb-3 overflow-x-auto">
+            <table className="table">
               <thead>
                 <tr className="thead-row">
                   <th className="py-2 pr-4">Product</th>
@@ -236,10 +252,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                   <tr key={p.id} className="trow">
                     <td className="py-3 pr-4 text-ink">
                       {p.product.name}
-                      <span className="ml-2 font-tabular text-xs text-text-muted">{p.product.sku}</span>
+                      <span className="ml-2 font-mono text-xs text-text-muted">{p.product.sku}</span>
                     </td>
                     <td className="py-3 pr-4 text-right font-tabular text-text-muted">{formatMoney(p.product.priceCents)}</td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(p.priceCents)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular font-semibold text-accent">{formatMoney(p.priceCents)}</td>
                     {isOwner && (
                       <td className="py-3 text-right">
                         <form action={removePriceAction.bind(null, customer.id, p.productId)}>
@@ -278,7 +294,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             No orders yet.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr className="thead-row">
@@ -291,8 +307,8 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <tbody>
                 {orders.map((o) => (
                   <tr key={o.id} className="trow">
-                    <td className="py-3 pr-4 font-tabular text-ink">
-                      <Link href={`/orders/${o.id}`} className="underline-offset-2 hover:underline">
+                    <td className="py-3 pr-4 font-mono text-[13px] font-medium text-ink">
+                      <Link href={`/orders/${o.id}`} className="underline-offset-4 hover:text-accent hover:underline">
                         {o.reference}
                       </Link>
                     </td>
@@ -326,7 +342,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                   <span>{formatDateTime(m.undoneAt ?? m.performedAt)}</span>
                   {isOwner && !m.undoneAt && (
                     <form action={undoMergeAction.bind(null, m.id, customer.id)}>
-                      <button type="submit" className="text-ink underline underline-offset-2">
+                      <button type="submit" className="link">
                         Undo
                       </button>
                     </form>
@@ -357,7 +373,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       {returns.length > 0 && (
         <section>
           <h2 className="section-title mb-3">Returns &amp; refunds</h2>
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr className="thead-row">

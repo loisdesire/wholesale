@@ -23,7 +23,7 @@ export function AddItemForm({ orderId, products }: { orderId: string; products: 
     <form {...formProps} className="flex flex-col gap-3 card p-5">
       <div className="flex items-end gap-3">
         <div className="flex flex-1 flex-col gap-1.5">
-          <label htmlFor="productId" className="text-sm font-medium text-ink">
+          <label htmlFor="productId" className="field-label">
             Product
           </label>
           <select
@@ -41,7 +41,7 @@ export function AddItemForm({ orderId, products }: { orderId: string; products: 
           </select>
         </div>
         <div className="flex w-24 flex-col gap-1.5">
-          <label htmlFor="quantity" className="text-sm font-medium text-ink">
+          <label htmlFor="quantity" className="field-label">
             Qty
           </label>
           <input

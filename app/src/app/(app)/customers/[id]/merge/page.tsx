@@ -20,7 +20,7 @@ export default async function MergePage({
   const db = tenantDb(organizationId);
 
   const back = (
-    <Link href={`/customers/${id}`} className="text-sm text-text-muted hover:text-ink">
+    <Link href={`/customers/${id}`} className="back-link">
       ← Back to customer
     </Link>
   );
@@ -86,13 +86,13 @@ export default async function MergePage({
               </div>
             </section>
             <p className="text-sm">
-              <Link href={swapHref} className="text-ink underline underline-offset-2">
+              <Link href={swapHref} className="link">
                 Keep {label(source)} instead
               </Link>
             </p>
 
             <section>
-              <h2 className="mb-2 text-sm font-medium text-ink">What moves to {label(target)}</h2>
+              <h2 className="section-title mb-2">What moves to {label(target)}</h2>
               <ul className="card divide-y divide-line text-sm">
                 <li className="flex justify-between px-4 py-3">
                   <span className="text-ink">Orders</span>

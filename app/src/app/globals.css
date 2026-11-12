@@ -86,6 +86,13 @@ body {
   font-feature-settings: "ss01", "cv11";
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
+}
+
 ::selection {
   background: var(--accent);
   color: #fff;
@@ -206,6 +213,31 @@ body {
     font-size: 0.8125rem;
     font-weight: 550;
     color: var(--ink);
+  }
+
+  /* ── Filter chips ────────────────────────────────────────────────────── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    padding: 0.3125rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  }
+  .chip:hover {
+    color: var(--ink);
+    border-color: #b4bac8;
+  }
+  .chip-active,
+  .chip-active:hover {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
   }
 
   /* ── Surfaces ────────────────────────────────────────────────────────── */

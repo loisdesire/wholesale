@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { getStockBreakdown } from "@/lib/stock";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatMoney } from "@/lib/format";
 import { EditProductForm } from "./edit-product-form";
 import { StockMovementForm } from "./stock-movement-form";
 import { ProductImages } from "./product-images";
@@ -53,38 +53,56 @@ export default async function ProductDetailPage({
   const variant = product.variantAttributes as Record<string, string> | null;
 
   return (
-    <div className="flex flex-col gap-10">
-      <header>
-        <Link href="/catalogue" className="text-sm text-text-muted hover:text-ink">
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-4">
+        <Link href="/catalogue" className="back-link self-start">
           ← Catalogue
         </Link>
-        <div className="mt-2 flex items-baseline justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="page-title">{product.name}</h1>
+          <p className="text-sm text-text-muted">
+            <span className="font-mono text-xs">{product.sku}</span>
+            {variant ? ` · ${Object.values(variant).join(" / ")}` : ""}
+            {" · "}
+            <span className="font-tabular">{formatMoney(product.priceCents, product.currency)}</span> per {product.unit}
+          </p>
+        </div>
+
+        {/* Stock at a glance. "Available" is the only figure a customer can be promised, so it
+            leads; the bar shows how the units on hand split into available / reserved / damaged. */}
+        <div className="grid gap-4 rounded-2xl bg-ink p-5 text-white sm:grid-cols-[auto_1fr] sm:items-center sm:gap-8 sm:p-6">
           <div>
-            <h1 className="page-title">{product.name}</h1>
-            <p className="mt-1 font-tabular text-sm text-text-muted">
-              {product.sku}
-              {variant ? ` · ${Object.values(variant).join(" / ")}` : ""}
+            <p className="text-xs font-medium text-white/55">
+              Available {product.unit}
+              {figures.available === 1 ? "" : "s"}
+            </p>
+            <p className={`font-display text-6xl font-bold leading-none ${figures.available <= 0 ? "text-[#ff8a80]" : "text-gold"}`}>
+              {figures.available}
             </p>
           </div>
-          <dl className="flex gap-6 text-right">
-            {[
-              { label: "On hand", value: figures.physical, emphasis: false },
-              { label: "Reserved", value: figures.reserved, emphasis: false },
-              { label: "Damaged", value: figures.damaged, emphasis: false },
-              { label: `Available ${product.unit}${figures.available === 1 ? "" : "s"}`, value: figures.available, emphasis: true },
-            ].map((f) => (
-              <div key={f.label}>
-                <dd
-                  className={`font-tabular ${f.emphasis ? "text-2xl font-medium" : "text-lg text-text-muted"} ${
-                    f.emphasis && f.value === 0 ? "text-status-attention-fg" : f.emphasis ? "text-ink" : ""
-                  }`}
-                >
-                  {f.value}
-                </dd>
-                <dt className="text-xs text-text-muted">{f.label}</dt>
-              </div>
-            ))}
-          </dl>
+          <div className="min-w-0">
+            <div className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+              {figures.available > 0 && <span className="bg-gold" style={{ flexGrow: figures.available, flexBasis: 0 }} />}
+              {figures.reserved > 0 && <span className="bg-[#7c8cf8]" style={{ flexGrow: figures.reserved, flexBasis: 0 }} />}
+              {figures.damaged > 0 && <span className="bg-[#f2766b]" style={{ flexGrow: figures.damaged, flexBasis: 0 }} />}
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+              {[
+                { label: "On hand", value: figures.physical, dot: "bg-white/40" },
+                { label: "Available", value: figures.available, dot: "bg-gold" },
+                { label: "Reserved", value: figures.reserved, dot: "bg-[#7c8cf8]" },
+                { label: "Damaged", value: figures.damaged, dot: "bg-[#f2766b]" },
+              ].map((f) => (
+                <div key={f.label}>
+                  <dt className="flex items-center gap-1.5 text-xs text-white/55">
+                    <span className={`h-2 w-2 rounded-full ${f.dot}`} />
+                    {f.label}
+                  </dt>
+                  <dd className="mt-0.5 font-tabular text-xl font-semibold">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </div>
       </header>
 
@@ -126,7 +144,7 @@ export default async function ProductDetailPage({
             No movements recorded yet.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr className="thead-row">
@@ -144,12 +162,17 @@ export default async function ProductDetailPage({
                 {movements.map((m) => (
                   <tr key={m.id} className="trow">
                     <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(m.createdAt)}</td>
-                    <td className="py-3 pr-4 text-ink">{REASON_LABEL[m.reason] ?? m.reason}</td>
+                    <td className="whitespace-nowrap py-3 pr-4 font-medium text-ink">{REASON_LABEL[m.reason] ?? m.reason}</td>
                     <td className="py-3 pr-4 font-tabular text-text-muted">{m.reference ?? "—"}</td>
                     <td className="py-3 pr-4 max-w-xs truncate text-text-muted">{m.note ?? "—"}</td>
                     <td className="py-3 pr-4 text-text-muted">{m.createdBy?.name ?? "—"}</td>
                     {[m.physicalDelta, m.reservedDelta, m.damagedDelta].map((delta, i) => (
-                      <td key={i} className="py-3 pr-4 text-right font-tabular text-text-muted">
+                      <td
+                        key={i}
+                        className={`py-3 pr-4 text-right font-tabular ${
+                          delta === 0 ? "text-text-muted/50" : delta > 0 ? "font-medium text-status-success-fg" : "font-medium text-status-attention-fg"
+                        }`}
+                      >
                         {delta === 0 ? "—" : `${delta > 0 ? "+" : ""}${delta}`}
                       </td>
                     ))}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { getAttentionItems, getOperationalMetrics, getOutOfStockProducts } from "@/lib/operations";
 import { dateInput, formatRangeLabel, parseRange } from "@/lib/reports";
@@ -31,7 +32,7 @@ export default async function OperationsPage({
   };
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="page-title">Operations</h1>
@@ -62,7 +63,7 @@ export default async function OperationsPage({
               .map((p) => `${p.name} (${p.sku})`)
               .join(", ")}
             {outOfStock.length > 8 ? `, and ${outOfStock.length - 8} more` : ""} —{" "}
-            <Link href="/catalogue" className="underline underline-offset-2">
+            <Link href="/catalogue" className="font-medium text-ink underline underline-offset-2">
               review the catalogue
             </Link>
             .
@@ -72,7 +73,7 @@ export default async function OperationsPage({
 
       <section id="attention">
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-medium text-ink">
+          <h2 className="section-title">
             Needs attention {attention.length > 0 && <span className="text-text-muted">({attention.length})</span>}
           </h2>
         </div>
@@ -87,26 +88,32 @@ export default async function OperationsPage({
             Nothing is overdue right now.
           </p>
         ) : (
-          <div className="card divide-y divide-line">
+          <div className="card divide-y divide-line overflow-hidden">
             {attention.map((item) => (
-              <div key={item.key} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+              <div key={item.key} className="relative flex flex-col gap-3 px-5 py-3.5 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-y-0 left-0 w-[3px] ${
+                    item.severity === "critical" ? "bg-status-attention-fg" : item.severity === "warning" ? "bg-[#f0a41c]" : "bg-line-strong"
+                  }`}
+                />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <SeverityBadge severity={item.severity} />
-                    <Link href={item.href} className="font-tabular text-ink underline-offset-2 hover:underline">
+                    <Link href={item.href} className="font-semibold text-ink underline-offset-4 hover:text-accent hover:underline">
                       {item.reference}
                     </Link>
                     {item.customer && <span className="text-text-muted">{item.customer}</span>}
                   </div>
-                  <ul className="mt-1 flex flex-col gap-0.5 text-xs text-text-muted">
+                  <ul className="mt-1.5 flex flex-col gap-0.5 text-[13px] text-text-muted">
                     {item.reasons.map((r) => (
                       <li key={r}>{r}</li>
                     ))}
                   </ul>
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
                   {item.amountCents !== null && (
-                    <span className="font-tabular text-ink">{formatMoney(item.amountCents)}</span>
+                    <span className="font-tabular font-semibold text-ink">{formatMoney(item.amountCents)}</span>
                   )}
                   <AssigneeControl
                     kind={item.kind}
@@ -125,7 +132,7 @@ export default async function OperationsPage({
 
       <section>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-sm font-medium text-ink">
+          <h2 className="section-title">
             Performance — {formatRangeLabel(range)}
           </h2>
           <form action="/operations" className="flex items-end gap-2">
@@ -154,7 +161,7 @@ export default async function OperationsPage({
               <Link
                 key={p.label}
                 href={rangeLink({ from: dateInput(from), to: dateInput(to) })}
-                className="rounded-full border border-line px-3 py-1 text-text-muted hover:text-ink"
+                className="chip"
               >
                 {p.label}
               </Link>
@@ -162,14 +169,14 @@ export default async function OperationsPage({
           })}
         </div>
 
-        <dl className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {metrics.map((m) => (
-            <div key={m.key} className="bg-surface p-4">
-              <dt className="text-xs text-text-muted">{m.label}</dt>
-              <dd className="mt-1 font-tabular text-2xl font-medium text-ink">{m.value}</dd>
-              <p className="mt-1 text-xs text-text-muted">{m.detail}</p>
+            <div key={m.key} className="card flex flex-col p-5">
+              <dt className="eyebrow">{m.label}</dt>
+              <dd className="mt-2 font-display text-4xl font-bold leading-none tracking-tight text-ink">{m.value}</dd>
+              <p className="mt-2.5 text-xs leading-relaxed text-text-muted">{m.detail}</p>
               {m.href && (
-                <Link href={m.href} className="mt-2 inline-block text-xs text-ink underline underline-offset-2">
+                <Link href={m.href} className="link mt-auto inline-block pt-3 text-xs">
                   See records →
                 </Link>
               )}
@@ -183,29 +190,47 @@ export default async function OperationsPage({
         {workload.length === 0 ? (
           <p className="text-sm text-text-muted">No team members yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr className="thead-row">
-                  <th className="py-2 pr-4">Person</th>
-                  <th className="py-2 pr-4 text-right">Open orders</th>
-                  <th className="py-2 pr-4 text-right">Open returns</th>
-                  <th className="py-2 pr-4 text-right">Open conversations</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workload.map((w) => (
-                  <tr key={w.userId} className="trow">
-                    <td className="py-3 pr-4 text-ink">
-                      {w.name} <span className="text-xs text-text-muted">{w.role === "OWNER" ? "Owner" : "Staff"}</span>
-                    </td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openOrders}</td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openReturns}</td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{w.openConversations}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          // Workload as bars, not a grid of numbers: who is carrying the most is visible before
+          // any figure is read. Bars share one scale (the busiest person = full width).
+          <div className="card divide-y divide-line">
+            {workload.map((w) => {
+              const total = w.openOrders + w.openReturns + w.openConversations;
+              const max = Math.max(1, ...workload.map((x) => x.openOrders + x.openReturns + x.openConversations));
+              return (
+                <div key={w.userId} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-6">
+                  <div className="flex items-center gap-3 sm:w-56 sm:shrink-0">
+                    <Avatar name={w.name} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{w.name}</p>
+                      <p className="text-xs text-text-muted">{w.role === "OWNER" ? "Owner" : "Staff"}</p>
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex h-2.5 overflow-hidden rounded-full bg-paper" aria-hidden="true">
+                      <div className="flex h-full gap-0.5" style={{ width: `${(total / max) * 100}%` }}>
+                        {w.openOrders > 0 && <span className="rounded-full bg-accent" style={{ flexGrow: w.openOrders, flexBasis: 0 }} />}
+                        {w.openReturns > 0 && <span className="rounded-full bg-[#f0a41c]" style={{ flexGrow: w.openReturns, flexBasis: 0 }} />}
+                        {w.openConversations > 0 && <span className="rounded-full bg-[#18a66a]" style={{ flexGrow: w.openConversations, flexBasis: 0 }} />}
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-text-muted">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-accent" />
+                        <span className="font-tabular font-semibold text-ink">{w.openOrders}</span> open orders
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#f0a41c]" />
+                        <span className="font-tabular font-semibold text-ink">{w.openReturns}</span> open returns
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#18a66a]" />
+                        <span className="font-tabular font-semibold text-ink">{w.openConversations}</span> open conversations
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

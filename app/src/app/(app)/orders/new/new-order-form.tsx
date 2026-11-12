@@ -86,28 +86,41 @@ export function NewOrderForm({
   }
 
   return (
-    <form {...formProps} className="flex max-w-2xl flex-col gap-8">
+    <form {...formProps} className="flex max-w-3xl flex-col gap-5">
       <input type="hidden" name="itemsJson" value={JSON.stringify(cart)} />
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-ink">Customer</h2>
+      <section className="card flex flex-col gap-4 p-5 sm:p-6">
+        <h2 className="section-title flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs font-bold text-gold">1</span>
+          Customer
+        </h2>
 
-        <div className="flex gap-4 text-sm">
-          <label className="flex items-center gap-2">
+        <div className="flex w-fit gap-1 rounded-xl bg-paper p-1 text-sm">
+          <label
+            className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 font-medium transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
+              customerMode === "existing" ? "bg-surface text-ink shadow-card" : "text-text-muted hover:text-ink"
+            }`}
+          >
             <input
               type="radio"
               name="customerMode"
+              className="sr-only"
               value="existing"
               checked={customerMode === "existing"}
               onChange={() => setCustomerMode("existing")}
             />
             Existing customer
           </label>
-          <label className="flex items-center gap-2">
+          <label
+            className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 font-medium transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
+              customerMode === "new" ? "bg-surface text-ink shadow-card" : "text-text-muted hover:text-ink"
+            }`}
+          >
             <input
               type="radio"
               name="customerMode"
+              className="sr-only"
               value="new"
               checked={customerMode === "new"}
               onChange={() => setCustomerMode("new")}
@@ -132,9 +145,9 @@ export function NewOrderForm({
             ))}
           </select>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="customerName" className="text-sm font-medium text-ink">
+              <label htmlFor="customerName" className="field-label">
                 Name
               </label>
               <input
@@ -145,7 +158,7 @@ export function NewOrderForm({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="customerPhone" className="text-sm font-medium text-ink">
+              <label htmlFor="customerPhone" className="field-label">
                 Phone
               </label>
               <input
@@ -160,12 +173,15 @@ export function NewOrderForm({
         )}
       </section>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-ink">Items</h2>
+      <section className="card flex flex-col gap-4 p-5 sm:p-6">
+        <h2 className="section-title flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs font-bold text-gold">2</span>
+          Items
+        </h2>
 
-        <div className="flex items-end gap-3">
-          <div className="flex flex-1 flex-col gap-1.5">
-            <label htmlFor="product" className="text-sm font-medium text-ink">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
+            <label htmlFor="product" className="field-label">
               Product
             </label>
             <select
@@ -187,7 +203,7 @@ export function NewOrderForm({
             </select>
           </div>
           <div className="flex w-24 flex-col gap-1.5">
-            <label htmlFor="quantity" className="text-sm font-medium text-ink">
+            <label htmlFor="quantity" className="field-label">
               Qty
             </label>
             <input
@@ -203,9 +219,9 @@ export function NewOrderForm({
           <button
             type="button"
             onClick={addToCart}
-            className="btn btn-secondary"
+            className="btn btn-dark"
           >
-            Add
+            Add item
           </button>
         </div>
         {addError && <p className="text-sm text-status-attention-fg">{addError}</p>}
@@ -245,7 +261,7 @@ export function NewOrderForm({
                         </td>
                         <td className="px-4 py-3 text-right font-tabular text-text-muted">
                           {formatMoney(unitPrice)}
-                          {isAgreed && <span className="ml-1 text-xs text-text-muted">agreed</span>}
+                          {isAgreed && <span className="ml-1.5 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">agreed</span>}
                         </td>
                         <td className="px-4 py-3 text-right font-tabular text-ink">
                           {formatMoney(unitPrice * line.quantity)}
@@ -265,18 +281,21 @@ export function NewOrderForm({
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between border-t border-line px-4 py-3">
-              <span className="text-sm font-medium text-ink">Total</span>
-              <span className="font-tabular text-sm font-medium text-ink">{formatMoney(total)}</span>
+            <div className="flex items-center justify-between border-t border-line bg-paper/60 px-[1.125rem] py-3.5">
+              <span className="text-sm font-semibold text-ink">Total</span>
+              <span className="font-display text-2xl font-bold tracking-tight text-ink">{formatMoney(total)}</span>
             </div>
           </div>
         )}
       </section>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-ink">Delivery &amp; notes (optional)</h2>
+      <section className="card flex flex-col gap-4 p-5 sm:p-6">
+        <h2 className="section-title flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs font-bold text-gold">3</span>
+          Delivery &amp; notes (optional)
+        </h2>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="deliveryAddress" className="text-sm font-medium text-ink">
+          <label htmlFor="deliveryAddress" className="field-label">
             Delivery address
           </label>
           <textarea
@@ -288,7 +307,7 @@ export function NewOrderForm({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="notes" className="text-sm font-medium text-ink">
+          <label htmlFor="notes" className="field-label">
             Notes
           </label>
           <textarea
@@ -310,7 +329,7 @@ export function NewOrderForm({
         <button
           type="submit"
           disabled={pending || cart.length === 0}
-          className="btn btn-primary"
+          className="btn btn-primary btn-lg"
         >
           {pending ? "Creating…" : "Create draft order"}
         </button>

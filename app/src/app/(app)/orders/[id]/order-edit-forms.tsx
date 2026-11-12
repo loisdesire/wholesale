@@ -90,7 +90,7 @@ export function OrderDetailsForm({
     <form {...formProps} className="flex flex-col gap-4 card p-5">
       <div className="grid gap-4 md:grid-cols-3">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="deliveryAddress" className="text-sm font-medium text-ink">
+          <label htmlFor="deliveryAddress" className="field-label">
             Delivery address
           </label>
           <textarea
@@ -108,13 +108,13 @@ export function OrderDetailsForm({
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="notes" className="text-sm font-medium text-ink">
+          <label htmlFor="notes" className="field-label">
             Notes
           </label>
           <textarea id="notes" name="notes" rows={3} defaultValue={notes ?? ""} className={inputClass} />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="dueAt" className="text-sm font-medium text-ink">
+          <label htmlFor="dueAt" className="field-label">
             Due date
           </label>
           <input

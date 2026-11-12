@@ -25,13 +25,13 @@ export function ReplyForm({ conversationId }: { conversationId: string }) {
           {state.error}
         </p>
       )}
-      <div>
+      <div className="flex justify-end">
         <button
           type="submit"
           disabled={pending}
           className="btn btn-primary"
         >
-          {pending ? "Sending…" : "Send reply"}
+          {pending ? "Sending…" : "Send on WhatsApp"}
         </button>
       </div>
     </form>

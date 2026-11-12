@@ -5,7 +5,7 @@ export default function NewCustomerPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <Link href="/customers" className="text-sm text-text-muted hover:text-ink">
+        <Link href="/customers" className="back-link">
           ← Customers
         </Link>
         <h1 className="mt-2 page-title">New customer</h1>
