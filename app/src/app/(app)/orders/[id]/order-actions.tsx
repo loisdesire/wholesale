@@ -72,7 +72,7 @@ export function OrderActions({
             day. Check before confirming so the customer isn&apos;t charged twice.
           </p>
         )}
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-2">
         <ActionButton
           action={confirmOrderAction.bind(null, orderId, repeat)}
           label={repeat ? "Confirm anyway — it's intended" : "Confirm order"}
@@ -92,8 +92,8 @@ export function OrderActions({
 
   if (status === "CONFIRMED") {
     return (
-      <div className="flex flex-wrap items-start gap-4">
-        <ActionButton action={markPaidAction.bind(null, orderId)} label="Mark as paid (cash/transfer)" pendingLabel="Saving…" />
+      <div className="flex flex-wrap items-start gap-2">
+        <ActionButton action={markPaidAction.bind(null, orderId)} label="Mark as paid" pendingLabel="Saving…" />
         <PaymentLinkButton orderId={orderId} />
         <ActionButton
           action={cancelOrderAction.bind(null, orderId)}
@@ -107,7 +107,7 @@ export function OrderActions({
 
   if (status === "PAID") {
     return (
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-2">
         <ActionButton
           action={markFulfilledAction.bind(null, orderId)}
           label="Ship everything remaining"

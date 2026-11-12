@@ -33,13 +33,8 @@ export default async function OperationsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="page-title">Operations</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            What needs attention right now, how the business is running, and who&apos;s carrying what.
-          </p>
-        </div>
+      <header className="page-head">
+        <h1 className="page-title">Operations</h1>
         <div className="flex items-center gap-2">
           {isOwner && (
             <Link href="/operations/settings" className="btn btn-secondary">
@@ -47,7 +42,7 @@ export default async function OperationsPage({
             </Link>
           )}
           <Link href="/reports" className="btn btn-secondary">
-            Reports &amp; exports →
+            Reports
           </Link>
         </div>
       </header>
@@ -91,12 +86,6 @@ export default async function OperationsPage({
           <div className="card divide-y divide-line overflow-hidden">
             {attention.map((item) => (
               <div key={item.key} className="relative flex flex-col gap-3 px-5 py-3.5 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                <span
-                  aria-hidden="true"
-                  className={`absolute inset-y-0 left-0 w-[3px] ${
-                    item.severity === "critical" ? "bg-status-attention-fg" : item.severity === "warning" ? "bg-[#f0a41c]" : "bg-line-strong"
-                  }`}
-                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <SeverityBadge severity={item.severity} />
@@ -131,50 +120,45 @@ export default async function OperationsPage({
       </section>
 
       <section>
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <h2 className="section-title">
-            Performance — {formatRangeLabel(range)}
-          </h2>
-          <form action="/operations" className="flex items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs text-text-muted">
-              From
-              <input name="from" type="date" defaultValue={dateInput(range.from)} className="input input-sm" />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-text-muted">
-              To
-              <input name="to" type="date" defaultValue={dateInput(range.to)} className="input input-sm" />
-            </label>
-            <button type="submit" className="btn btn-secondary">
-              Apply
-            </button>
-          </form>
-        </div>
-        <div className="flex gap-1.5 text-xs">
+        <h2 className="section-title mb-3">Performance · {formatRangeLabel(range)}</h2>
+        <div className="chip-row">
           {[
-            { label: "Last 7 days", days: 7 },
-            { label: "Last 30 days", days: 30 },
-            { label: "Last 90 days", days: 90 },
+            { label: "7 days", days: 7 },
+            { label: "30 days", days: 30 },
+            { label: "90 days", days: 90 },
           ].map((p) => {
             const to = new Date();
             const from = new Date(to.getTime() - p.days * 24 * 60 * 60 * 1000);
             return (
-              <Link
-                key={p.label}
-                href={rangeLink({ from: dateInput(from), to: dateInput(to) })}
-                className="chip"
-              >
+              <Link key={p.label} href={rangeLink({ from: dateInput(from), to: dateInput(to) })} className="chip">
                 {p.label}
               </Link>
             );
           })}
+          <details className="relative">
+            <summary className="chip cursor-pointer list-none [&::-webkit-details-marker]:hidden">Custom</summary>
+            <form action="/operations" className="absolute left-0 z-10 mt-1.5 flex items-end gap-2 rounded-xl border border-line bg-surface p-3 shadow-pop max-md:fixed max-md:inset-x-4 max-md:left-4">
+              <label className="flex flex-col gap-1 text-xs text-text-muted">
+                From
+                <input name="from" type="date" defaultValue={dateInput(range.from)} className="input input-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-muted">
+                To
+                <input name="to" type="date" defaultValue={dateInput(range.to)} className="input input-sm" />
+              </label>
+              <button type="submit" className="btn btn-primary btn-sm">
+                Apply
+              </button>
+            </form>
+          </details>
         </div>
 
-        <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
           {metrics.map((m) => (
-            <div key={m.key} className="card flex flex-col p-5">
-              <dt className="eyebrow">{m.label}</dt>
-              <dd className="mt-2 font-display text-4xl font-bold leading-none tracking-tight text-ink">{m.value}</dd>
-              <p className="mt-2.5 text-xs leading-relaxed text-text-muted">{m.detail}</p>
+            <div key={m.key} className="card flex flex-col p-4 sm:p-5">
+              <dt className="text-xs font-medium text-text-muted">{m.label}</dt>
+              <dd className="mt-1.5 font-display text-3xl font-bold leading-none tracking-tight text-ink sm:text-4xl">{m.value}</dd>
+              <p className="mt-2.5 hidden text-xs leading-relaxed text-text-muted sm:block">{m.detail}</p>
               {m.href && (
                 <Link href={m.href} className="link mt-auto inline-block pt-3 text-xs">
                   See records →

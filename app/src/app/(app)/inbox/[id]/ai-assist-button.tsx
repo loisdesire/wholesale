@@ -16,10 +16,9 @@ export function AIAssistButton({ conversationId }: { conversationId: string }) {
     <div className="flex flex-col gap-3 rounded-xl border border-accent/20 bg-accent-soft p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ink">AI product-matching assist</p>
+          <p className="text-sm font-semibold text-ink">AI assist</p>
           <p className="text-xs text-text-muted">
-            Searches the catalogue and proposes a reply — drafts an order if confident, never
-            confirms one.
+            Drafts a reply from your catalogue. Never confirms an order.
           </p>
         </div>
         <form action={formAction}>

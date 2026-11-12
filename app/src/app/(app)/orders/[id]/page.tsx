@@ -10,7 +10,6 @@ import { getReturnableQuantities } from "@/lib/returns";
 import { findDuplicateOrders } from "@/lib/orders";
 import { listOrganizationMembers } from "@/lib/membership";
 import { AssigneeControl } from "@/components/assignee-control";
-import { Avatar } from "@/components/avatar";
 import { removeOrderItemAction } from "../actions";
 import { OrderActions } from "./order-actions";
 import { OrderDetailsForm, QuantityForm } from "./order-edit-forms";
@@ -131,129 +130,91 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   });
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
+      {/* Who, how much, where it is in its journey, and the next step — in that order. */}
       <header className="flex flex-col gap-4">
         <Link href="/orders" className="back-link self-start">
           ← Orders
         </Link>
-        {/* The order "ticket": who, how much, where it is in its journey, and what can be done
-            next — the four things someone opening an order needs before anything else. */}
-        <div className="card overflow-hidden">
-          <div className="flex flex-col gap-5 p-5 sm:p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 items-start gap-3.5">
-                <Avatar name={order.customer.name ?? order.customer.phone} size="lg" />
-                <div className="min-w-0">
-                  <h1 className="font-mono text-sm font-medium text-text-muted">{order.reference}</h1>
-                  <p className="truncate font-display text-2xl font-bold tracking-tight text-ink">
-                    <Link href={`/customers/${order.customer.id}`} className="underline-offset-4 hover:underline">
-                      {order.customer.name ?? "Unnamed"}
-                    </Link>
-                  </p>
-                  <p className="mt-0.5 text-sm text-text-muted">
-                    <span className="font-tabular">{order.customer.phone}</span>
-                    {order.conversation && (
-                      <>
-                        {" · from "}
-                        <Link href="/inbox" className="link">
-                          conversation
-                        </Link>
-                      </>
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div className="sm:text-right">
-                <p className="eyebrow">Order total</p>
-                <p className="font-display text-4xl font-bold leading-tight tracking-tight text-ink">
-                  {formatMoney(order.totalCents, order.currency)}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <OrderStepper status={order.status} />
-              <div className="flex shrink-0 items-center gap-2 text-sm text-text-muted">
-                Assigned to
-                <AssigneeControl
-                  kind="order"
-                  id={order.id}
-                  currentAssigneeId={order.assignedToId}
-                  members={members}
-                  isOwner={isOwner}
-                  currentUserId={session!.user.id}
-                />
-              </div>
-            </div>
-          </div>
-          {["DRAFT", "CONFIRMED", "PAID", "PARTIALLY_FULFILLED"].includes(order.status) && (
-            <div className="border-t border-line bg-paper/60 px-5 py-4 sm:px-6">
-              <OrderActions
-                orderId={order.id}
-                status={order.status}
-                isOwner={isOwner}
-                duplicateOf={duplicates.map((d) => d.reference)}
-              />
-            </div>
-          )}
-        </div>
-      </header>
-
-      {order.status !== "DRAFT" && (
-        <section>
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="section-title">Payments</h2>
-            <p className="font-tabular text-sm font-medium text-ink">
-              {formatMoney(paidCents, order.currency)} of {formatMoney(order.totalCents, order.currency)}
-              {paidCents > order.totalCents && (
-                <span className="ml-2 rounded-full bg-status-attention-bg px-2 py-0.5 text-xs font-medium text-status-attention-fg">
-                  Overpaid by {formatMoney(paidCents - order.totalCents, order.currency)}
-                </span>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="page-title truncate">
+              <Link href={`/customers/${order.customer.id}`} className="underline-offset-4 hover:underline">
+                {order.customer.name ?? "Unnamed"}
+              </Link>
+            </h1>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-text-muted">
+              <span className="font-mono text-xs">{order.reference}</span>
+              <span className="font-tabular">{order.customer.phone}</span>
+              {order.conversation && (
+                <Link href="/inbox" className="link">
+                  Chat
+                </Link>
               )}
             </p>
           </div>
-          <div className="mb-3 h-2 overflow-hidden rounded-full bg-line" aria-hidden="true">
-            <div
-              className={`h-full rounded-full ${paidCents >= order.totalCents ? "bg-status-success-fg" : "bg-accent"}`}
-              style={{ width: `${order.totalCents > 0 ? Math.min(100, Math.round((paidCents / order.totalCents) * 100)) : 0}%` }}
+          <p className="shrink-0 font-display text-2xl font-bold tracking-tight text-ink sm:text-4xl">
+            {formatMoney(order.totalCents, order.currency)}
+          </p>
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <OrderStepper status={order.status} />
+          <div className="flex shrink-0 items-center gap-2 text-sm text-text-muted">
+            Assigned to
+            <AssigneeControl
+              kind="order"
+              id={order.id}
+              currentAssigneeId={order.assignedToId}
+              members={members}
+              isOwner={isOwner}
+              currentUserId={session!.user.id}
             />
           </div>
-          {order.payments.length === 0 ? (
-            <p className="empty">
-              No payments recorded yet.
-            </p>
-          ) : (
-            <div className="card">
-              <div className="overflow-x-auto">
-                <table className="table">
-                  <thead>
-                    <tr className="thead-row">
-                      <th className="px-4 py-2">Method</th>
-                      <th className="px-4 py-2 text-right">Amount</th>
-                      <th className="px-4 py-2">When</th>
-                      <th className="px-4 py-2">Recorded by</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order.payments.map((p) => (
-                      <tr key={p.id} className="trow">
-                        <td className="px-4 py-3 text-ink">{p.method === "PROVIDER" ? "Paystack" : "Manual"}</td>
-                        <td className="px-4 py-3 text-right font-tabular text-ink">{formatMoney(p.amountCents, p.currency)}</td>
-                        <td className="px-4 py-3 text-xs text-text-muted">{formatDateTime(p.createdAt)}</td>
-                        <td className="px-4 py-3 text-text-muted">{p.recordedBy?.name ?? (p.method === "PROVIDER" ? "Verified automatically" : "—")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
+        </div>
+        {["DRAFT", "CONFIRMED", "PAID", "PARTIALLY_FULFILLED"].includes(order.status) && (
+          <OrderActions
+            orderId={order.id}
+            status={order.status}
+            isOwner={isOwner}
+            duplicateOf={duplicates.map((d) => d.reference)}
+          />
+        )}
+      </header>
 
+      <div className="rail-layout">
+        <div>
       <section>
         <h2 className="section-title mb-3">Items</h2>
-        <div className="card">
-          <div className="overflow-x-auto">
+        <div className="card overflow-hidden">
+          <ul className="divide-y divide-line md:hidden">
+            {order.items.map((item) => (
+              <li key={item.id} className="flex flex-col gap-2 px-4 py-3 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink">{item.product.name}</p>
+                    <p className="text-xs text-text-muted">
+                      {item.variantLabel ? `${item.variantLabel} · ` : ""}
+                      {item.quantity} × {formatMoney(item.unitPriceCents, order.currency)}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-tabular font-semibold text-ink">
+                    {formatMoney(item.unitPriceCents * item.quantity, order.currency)}
+                  </p>
+                </div>
+                {order.status === "DRAFT" && (
+                  <div className="flex items-center justify-between gap-3">
+                    <QuantityForm orderId={order.id} orderItemId={item.id} quantity={item.quantity} moq={item.product.moq} />
+                    <form action={removeOrderItemAction.bind(null, order.id, item.id)}>
+                      <button type="submit" className="text-xs text-status-attention-fg hover:underline">
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="table">
               <thead>
                 <tr className="thead-row">
@@ -313,9 +274,16 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
-      {order.status === "CONFIRMED" && (
+      {order.status === "DRAFT" && (
         <section>
-          <h2 className="section-title mb-3">Amend this order</h2>
+          <h2 className="section-title mb-3">Add a product</h2>
+          <AddItemForm orderId={order.id} products={productOptions} />
+        </section>
+      )}
+
+      {order.status === "CONFIRMED" && (
+        <details className="disclosure card p-5">
+          <summary>Change quantities or add a product</summary>
           <AmendOrderForm
             orderId={order.id}
             lines={order.items.map((item) => ({
@@ -330,7 +298,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               return { id: p.id, label: `${p.name}${variant ? ` (${Object.values(variant).join(" / ")})` : ""}` };
             })}
           />
-        </section>
+        </details>
       )}
 
       {(canShip || shipments.length > 0) && (
@@ -378,25 +346,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </section>
       )}
 
-      <section>
-        <h2 className="section-title mb-3">Delivery &amp; notes</h2>
-        <OrderDetailsForm
-          orderId={order.id}
-          notes={order.notes}
-          deliveryAddress={order.deliveryAddress}
-          dueAt={order.dueAt}
-          addressOptions={order.customer.addresses}
-          editable={order.status !== "FULFILLED" && order.status !== "CANCELLED"}
-        />
-      </section>
-
-      {order.status === "DRAFT" && (
-        <section>
-          <h2 className="section-title mb-3">Add an item</h2>
-          <AddItemForm orderId={order.id} products={productOptions} />
-        </section>
-      )}
-
       {(returns.length > 0 || canRequestReturn) && (
         <section className="flex flex-col gap-4">
           <h2 className="section-title">Returns &amp; refunds</h2>
@@ -430,7 +379,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
               <ul className="divide-y divide-line text-sm">
                 {ret.items.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between py-2">
+                  <li key={item.id} className="flex flex-col gap-0.5 py-2 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-ink">
                       {item.quantity} × {item.orderItem.product.name}
                       {item.orderItem.variantLabel ? ` (${item.orderItem.variantLabel})` : ""}
@@ -457,7 +406,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 </p>
               )}
 
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <ReturnActions
                   returnId={ret.id}
                   status={ret.status}
@@ -481,13 +430,74 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           ))}
 
           {canRequestReturn && (
-            <div>
-              <h3 className="mb-2 text-sm text-text-muted">Request a return</h3>
+            <details className="disclosure card p-5">
+              <summary>Request a return</summary>
               <RequestReturnForm orderId={order.id} lines={returnableLines} />
-            </div>
+            </details>
           )}
         </section>
       )}
+
+        </div>
+
+        <aside>
+      {order.status !== "DRAFT" && (
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="section-title">Payments</h2>
+            <p className="font-tabular text-sm font-medium text-ink">
+              {formatMoney(paidCents, order.currency)} of {formatMoney(order.totalCents, order.currency)}
+              {paidCents > order.totalCents && (
+                <span className="ml-2 rounded-full bg-status-attention-bg px-2 py-0.5 text-xs font-medium text-status-attention-fg">
+                  Overpaid by {formatMoney(paidCents - order.totalCents, order.currency)}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="mb-3 h-2 overflow-hidden rounded-full bg-line" aria-hidden="true">
+            <div
+              className={`h-full rounded-full ${paidCents >= order.totalCents ? "bg-status-success-fg" : "bg-accent"}`}
+              style={{ width: `${order.totalCents > 0 ? Math.min(100, Math.round((paidCents / order.totalCents) * 100)) : 0}%` }}
+            />
+          </div>
+          {order.payments.length === 0 ? (
+            <p className="text-sm text-text-muted">Nothing paid yet.</p>
+          ) : (
+            <ul className="card divide-y divide-line">
+              {order.payments.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink">{p.method === "PROVIDER" ? "Paystack" : "Cash / transfer"}</p>
+                    <p className="truncate text-xs text-text-muted">
+                      {formatDateTime(p.createdAt)} · {p.recordedBy?.name ?? (p.method === "PROVIDER" ? "Verified automatically" : "—")}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-tabular font-semibold text-ink">{formatMoney(p.amountCents, p.currency)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <details className="disclosure card p-5">
+        <summary>
+          <span className="min-w-0">
+            Delivery
+            <span className="block truncate text-sm font-normal text-text-muted">
+              {order.deliveryAddress ?? "No address yet"}
+            </span>
+          </span>
+        </summary>
+        <OrderDetailsForm
+          orderId={order.id}
+          notes={order.notes}
+          deliveryAddress={order.deliveryAddress}
+          dueAt={order.dueAt}
+          addressOptions={order.customer.addresses}
+          editable={order.status !== "FULFILLED" && order.status !== "CANCELLED"}
+        />
+      </details>
 
       <section>
         <h2 className="section-title mb-3">History</h2>
@@ -499,7 +509,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <li key={entry.id} className="relative flex gap-3.5 pb-4 text-sm last:pb-0">
                 {i < auditLog.length - 1 && <span aria-hidden="true" className="absolute left-[5px] top-4 h-full w-px bg-line" />}
                 <span aria-hidden="true" className={`relative mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full border-2 ${i === 0 ? "border-accent bg-accent" : "border-line-strong bg-surface"}`} />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="font-medium text-ink">{AUDIT_ACTION_LABEL[entry.action] ?? entry.action}</span>
                   <span className="shrink-0 text-xs text-text-muted">
                     {entry.actor?.name ?? "System"} · {formatDateTime(entry.createdAt)}
@@ -510,6 +520,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </ol>
         )}
       </section>
+        </aside>
+      </div>
     </div>
   );
 }

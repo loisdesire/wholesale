@@ -124,7 +124,28 @@ export function OrdersTable({
         </div>
       )}
 
-      <div className="card overflow-x-auto">
+      {/* Phone: one tappable row per order. The table (with bulk-assign) is the desk view. */}
+      <ul className="card divide-y divide-line overflow-hidden md:hidden">
+        {orders.map((o) => (
+          <li key={o.id}>
+            <Link href={`/orders/${o.id}`} className="mrow">
+              <Avatar name={o.customerName ?? o.customerPhone} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-ink">{o.customerName ?? "Unnamed"}</span>
+                <span className="block truncate text-xs text-text-muted">
+                  <span className="font-mono">{o.reference}</span> · {o.units} units
+                </span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className="font-tabular font-semibold text-ink">{formatMoney(o.totalCents, o.currency)}</span>
+                <OrderStatusBadge status={o.status} />
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <div className="card hidden overflow-x-auto md:block">
         <table className="table">
           <thead>
             <tr className="thead-row">

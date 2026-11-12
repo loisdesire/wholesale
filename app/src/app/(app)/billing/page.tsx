@@ -39,18 +39,14 @@ export default async function BillingPage() {
     <div className="flex flex-col gap-8">
       <header>
         <h1 className="page-title">Billing</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Plan, usage and subscription payment history. Plan prices and limits here are illustrative placeholders, not
-          final pricing.
-        </p>
+        <p className="mt-1 text-sm text-text-muted">Prices and limits shown are placeholders.</p>
       </header>
 
       <section className="overflow-hidden rounded-2xl bg-ink text-white shadow-pop">
         <div className="flex flex-wrap items-start justify-between gap-4 p-5 sm:p-7">
           <div>
-            <p className="eyebrow !text-white/55">Current plan</p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-3">
-              <h2 className="font-display text-4xl font-bold tracking-tight">{limits.label}</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="font-display text-4xl font-bold tracking-tight">{limits.label} plan</h2>
               <SubscriptionStatusBadge status={org.subscriptionStatus} />
             </div>
             <p className="mt-1 text-sm text-white/65">
@@ -86,7 +82,7 @@ export default async function BillingPage() {
             const pct = row.limit > 0 ? Math.min(100, Math.round((row.used / row.limit) * 100)) : 0;
             return (
               <div key={row.label} className="card p-5">
-                <p className="eyebrow">{row.label}</p>
+                <p className="text-xs font-medium text-text-muted">{row.label}</p>
                 <p className="mt-2 font-display text-4xl font-bold leading-none tracking-tight text-ink">
                   <span className={row.over ? "text-status-attention-fg" : ""}>{row.used}</span>
                   <span className="ml-1.5 font-sans text-sm font-medium tracking-normal text-text-muted">of {row.limit}</span>
@@ -102,10 +98,7 @@ export default async function BillingPage() {
             );
           })}
         </div>
-        <p className="mt-2 text-xs text-text-muted">
-          Going over a limit is shown here, never blocked automatically — real limits and enforcement wait until
-          pricing is final.
-        </p>
+        <p className="mt-2 text-xs text-text-muted">Going over a limit is shown, never blocked.</p>
       </section>
 
       <section>
@@ -146,10 +139,7 @@ export default async function BillingPage() {
 
       <section>
         <h2 className="section-title mb-1">Reconciliation</h2>
-        <p className="mb-3 text-xs text-text-muted">
-          Compares what Paystack says it successfully charged against what&apos;s recorded here — catches a webhook
-          that silently never arrived or never applied. Read-only; nothing here changes any record.
-        </p>
+        <p className="mb-3 text-xs text-text-muted">Checks Paystack&apos;s charges against what&apos;s recorded here. Read-only.</p>
         <ReconciliationPanel />
       </section>
 

@@ -74,13 +74,9 @@ function SiteHeader() {
 
 function Hero() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-5 pb-10 pt-12 md:pt-20">
+    <section className="mx-auto w-full max-w-6xl px-5 pb-10 pt-10 md:pt-20">
       <div className="anim-rise max-w-4xl">
-        <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-text-muted shadow-card">
-          <span className="h-2 w-2 rounded-full bg-wa" />
-          Order operations for WhatsApp wholesalers
-        </p>
-        <h1 className="mt-6 font-display text-[44px] font-extrabold leading-[0.98] tracking-[-0.035em] sm:text-7xl lg:text-[88px]">
+        <h1 className="font-display text-[44px] font-extrabold leading-[0.98] tracking-[-0.035em] sm:text-7xl lg:text-[88px]">
           Chats come in.
           <br />
           <span className="relative whitespace-nowrap">
@@ -88,17 +84,15 @@ function Hero() {
             <span aria-hidden="true" className="absolute inset-x-[-0.08em] bottom-[0.06em] z-0 h-[0.34em] rounded-md bg-gold" />
           </span>
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-muted md:text-xl">
-          Adaeze turns every WhatsApp enquiry into a tracked order — with a status, an owner and a
-          record of what happened — so nothing gets lost between &ldquo;how much?&rdquo; and
-          &ldquo;delivered&rdquo;.
+        <p className="mt-5 max-w-xl text-lg leading-relaxed text-text-muted md:text-xl">
+          Every WhatsApp enquiry becomes a tracked order, with a status and an owner.
         </p>
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+        <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
           <Link href="/login" className="btn btn-primary btn-lg">
-            Sign in to your workspace
+            Sign in
             <ArrowRight size={17} />
           </Link>
-          <a href="#how" className="btn btn-secondary btn-lg">
+          <a href="#how" className="text-[15px] font-semibold text-ink underline-offset-4 hover:underline">
             See how it works
           </a>
         </div>
@@ -113,7 +107,7 @@ function Hero() {
 function HeroScene() {
   return (
     <div
-      className="anim-rise relative mt-12 overflow-hidden rounded-[28px] bg-accent p-4 sm:p-8 lg:p-12"
+      className="anim-rise relative mt-10 overflow-hidden rounded-[28px] bg-accent p-3 sm:p-8 lg:p-12"
       style={{ animationDelay: "0.15s" }}
     >
       {/* Dot grid: a quiet texture that says "workspace" without a gradient blob. */}
@@ -125,7 +119,7 @@ function HeroScene() {
           backgroundSize: "22px 22px",
         }}
       />
-      <div className="relative grid items-center gap-5 lg:grid-cols-[1fr_auto_1.1fr] lg:gap-6">
+      <div className="relative grid items-center gap-3 lg:grid-cols-[1fr_auto_1.1fr] lg:gap-6">
         <ChatCard />
 
         <div className="flex items-center justify-center lg:flex-col">
@@ -176,12 +170,14 @@ function ChatCard() {
         <Bubble side="in" delay={0.3}>
           Good morning. Do you still have the Ankara two-piece in red? I need 12 in size M.
         </Bubble>
-        <Bubble side="out" delay={0.55} label="Drafted by AI assist · sent by Chidinma">
+        <Bubble side="out" delay={0.55} label="Drafted by AI · sent by Chidinma">
           We do — 15 in stock. 12 × ₦18,500 comes to ₦222,000. Shall I confirm it for you?
         </Bubble>
-        <Bubble side="in" delay={0.8}>
-          Yes please, confirm.
-        </Bubble>
+        <div className="hidden sm:block">
+          <Bubble side="in" delay={0.8}>
+            Yes please, confirm.
+          </Bubble>
+        </div>
       </div>
     </div>
   );
@@ -225,7 +221,7 @@ function OrderTicket() {
         ))}
       </div>
 
-      <div className="mt-4 rounded-xl border border-line">
+      <div className="mt-4 hidden rounded-xl border border-line sm:block">
         <div className="flex items-center justify-between gap-3 px-3.5 py-3 text-sm">
           <div className="min-w-0">
             <p className="truncate font-medium">Ankara Two-Piece Set</p>
@@ -244,7 +240,7 @@ function OrderTicket() {
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-text-muted">
+      <div className="mt-3 hidden items-center justify-between text-xs text-text-muted sm:flex">
         <span className="flex items-center gap-2">
           <Avatar name="Chidinma Okafor" size="xs" />
           Assigned to Chidinma
@@ -283,17 +279,13 @@ function LifecycleTicker() {
 
 function HowItWorks() {
   return (
-    <section id="how" className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-20 md:py-28">
-      <SectionHeading
-        eyebrow="How it works"
-        title="From “how much?” to “delivered”, in one thread"
-        body="The conversation, the order, the stock and the money stay attached to each other — so anyone on your team can pick up where someone else left off."
-      />
-      <ol className="mt-12 grid gap-5 lg:grid-cols-3">
+    <section id="how" className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-14 md:py-24">
+      <SectionHeading title="How it works" />
+      <ol className="mt-8 grid gap-3 md:mt-12 md:gap-5 lg:grid-cols-3">
         <Step
           n={1}
           title="A customer messages you"
-          body="WhatsApp messages and photos land in a shared inbox, matched to the customer by phone number — no more hunting through one person's phone."
+          body="Chats and photos land in one shared inbox."
         >
           <div className="flex flex-col gap-2 text-sm">
             <div className="flex items-center gap-2 text-xs font-semibold text-text-muted">
@@ -307,8 +299,8 @@ function HowItWorks() {
         </Step>
         <Step
           n={2}
-          title="It becomes a draft order"
-          body="AI assist matches the request to your catalogue and drafts the order at your prices. It asks instead of guessing — and a person always confirms."
+          title="It becomes an order"
+          body="AI drafts it from your catalogue. A person confirms."
         >
           <div className="flex flex-col gap-2 text-sm">
             {[
@@ -332,7 +324,7 @@ function HowItWorks() {
         <Step
           n={3}
           title="Confirm, get paid, ship"
-          body="Confirming reserves the stock. Payment is verified, not assumed. Ship all at once or in parts — every step leaves a record."
+          body="Stock is reserved, payment verified, every step recorded."
         >
           <ul className="flex flex-col gap-2 text-sm">
             {[
@@ -355,31 +347,25 @@ function HowItWorks() {
 
 function Step({ n, title, body, children }: { n: number; title: string; body: string; children: ReactNode }) {
   return (
-    <li className="flex flex-col rounded-3xl border border-line bg-surface p-5 shadow-card sm:p-6">
-      <div className="min-h-[168px] rounded-2xl bg-paper/70 p-4">
+    <li className="flex flex-col rounded-3xl border border-line bg-surface p-4 shadow-card sm:p-6">
+      <div className="mb-6 hidden min-h-[168px] rounded-2xl bg-paper/70 p-4 md:block">
         <div className="rounded-xl bg-surface p-3.5 shadow-card">{children}</div>
       </div>
-      <div className="mt-6 flex items-start gap-4">
+      <div className="flex items-center gap-4 md:items-start">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink font-display text-lg font-bold text-gold">
           {n}
         </span>
         <div>
-          <h3 className="font-display text-xl font-bold tracking-tight">{title}</h3>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-text-muted">{body}</p>
+          <h3 className="font-display text-lg font-bold tracking-tight md:text-xl">{title}</h3>
+          <p className="mt-0.5 text-[15px] leading-snug text-text-muted">{body}</p>
         </div>
       </div>
     </li>
   );
 }
 
-function SectionHeading({ eyebrow, title, body, tone = "dark" }: { eyebrow: string; title: string; body?: string; tone?: "dark" | "light" }) {
-  return (
-    <div className="max-w-3xl">
-      <p className={`text-xs font-bold uppercase tracking-[0.14em] ${tone === "light" ? "text-gold" : "text-accent"}`}>{eyebrow}</p>
-      <h2 className="mt-3 font-display text-4xl font-extrabold leading-[1.04] tracking-[-0.03em] sm:text-5xl">{title}</h2>
-      {body && <p className={`mt-4 text-lg leading-relaxed ${tone === "light" ? "text-white/65" : "text-text-muted"}`}>{body}</p>}
-    </div>
-  );
+function SectionHeading({ title }: { title: string }) {
+  return <h2 className="max-w-3xl font-display text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl">{title}</h2>;
 }
 
 /* ── Features (bento) ────────────────────────────────────────────────────── */
@@ -387,16 +373,12 @@ function SectionHeading({ eyebrow, title, body, tone = "dark" }: { eyebrow: stri
 function Features() {
   return (
     <section id="features" className="scroll-mt-20 border-y border-line bg-surface">
-      <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-28">
-        <SectionHeading
-          eyebrow="What's inside"
-          title="Everything the order touches, in one place"
-          body="Six parts of the business that usually live in six different notebooks, chats and spreadsheets."
-        />
+      <div className="mx-auto w-full max-w-6xl px-5 py-14 md:py-24">
+        <SectionHeading title="Everything an order touches, in one place" />
 
-        <div className="mt-12 grid gap-4 md:grid-cols-6">
+        <div className="mt-8 grid gap-3 md:mt-12 md:grid-cols-6 md:gap-4">
           {/* Inbox — wide */}
-          <Tile className="md:col-span-4" icon={<MessageCircle size={18} />} title="A shared inbox" body="Every conversation has a status and an owner. Photos come through too, and you can see when a reply was delivered and read.">
+          <Tile className="md:col-span-4" icon={<MessageCircle size={18} />} title="A shared inbox" body="Every chat has a status and an owner.">
             <div className="grid gap-2 sm:grid-cols-2">
               {[
                 ["Funmilayo Adebayo", "Ok let me know, I'll take the 4 for now", "Awaiting staff", "attention"],
@@ -420,7 +402,7 @@ function Features() {
           </Tile>
 
           {/* Stock — ink tile */}
-          <Tile className="md:col-span-2" tone="ink" icon={<Package size={18} />} title="Stock you can promise" body="Available is what's on the shelf minus what's reserved and what's damaged. That's the only number customers are promised.">
+          <Tile className="md:col-span-2" tone="ink" icon={<Package size={18} />} title="Stock you can promise" body="Available means on the shelf, not reserved, not damaged.">
             <div className="rounded-xl bg-white/[0.07] p-4">
               <div className="flex items-end justify-between">
                 <div>
@@ -443,7 +425,7 @@ function Features() {
           </Tile>
 
           {/* Orders */}
-          <Tile className="md:col-span-2" icon={<ReceiptText size={18} />} title="Orders with a status" body="Draft, confirmed, paid, shipped. Amend before payment, ship in parts, and see who did what.">
+          <Tile className="md:col-span-2" icon={<ReceiptText size={18} />} title="Orders with a status" body="Draft, confirmed, paid, shipped. Ship in parts if you need to.">
             <div className="flex flex-col gap-2">
               {[
                 ["ORD-1002", "₦170,000", "Draft", "neutral"],
@@ -463,7 +445,7 @@ function Features() {
           </Tile>
 
           {/* Payments — citron tile */}
-          <Tile className="md:col-span-2" tone="gold" icon={<BadgeCheck size={18} />} title="Payments with proof" body="An order is paid when the money is verified — by Paystack, or by a person confirming a transfer arrived. Never on a customer's say-so.">
+          <Tile className="md:col-span-2" tone="gold" icon={<BadgeCheck size={18} />} title="Payments with proof" body="Paid means verified, never a customer saying so.">
             <div className="rounded-xl bg-ink p-4 text-white">
               <p className="text-xs text-white/55">Paid so far</p>
               <p className="mt-0.5 font-display text-3xl font-bold">
@@ -472,12 +454,12 @@ function Features() {
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
                 <div className="h-full w-[63%] rounded-full bg-gold" />
               </div>
-              <p className="mt-2 text-xs text-white/60">Part-payments add up. ₦59,000 still to come.</p>
+              <p className="mt-2 text-xs text-white/60">₦59,000 still to come.</p>
             </div>
           </Tile>
 
           {/* Customers */}
-          <Tile className="md:col-span-2" icon={<Users size={18} />} title="Customers, remembered" body="Agreed prices per customer, what they owe, what you owe them — and duplicates flagged, never merged behind your back.">
+          <Tile className="md:col-span-2" icon={<Users size={18} />} title="Customers remembered" body="Agreed prices, and who owes what.">
             <div className="rounded-xl border border-line bg-surface p-3.5">
               <div className="flex items-center gap-3">
                 <Avatar name="Ngozi Eze" />
@@ -500,7 +482,7 @@ function Features() {
           </Tile>
 
           {/* Reports — wide */}
-          <Tile className="md:col-span-4" icon={<CheckCheck size={18} />} title="Reports that don't flatter" body="Revenue, cash received and what's owed are kept separate. Margin only appears where you've recorded costs — and it tells you how much of your sales it covers.">
+          <Tile className="md:col-span-4" icon={<CheckCheck size={18} />} title="Reports that don't flatter" body="Revenue, cash and what's owed, kept separate.">
             <div className="flex items-end gap-2 rounded-xl border border-line bg-surface p-4 sm:gap-3">
               {[38, 52, 44, 67, 58, 80, 72, 91, 64, 86, 100, 78].map((h, i) => (
                 <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
@@ -514,7 +496,7 @@ function Features() {
           </Tile>
 
           {/* Returns */}
-          <Tile className="md:col-span-2" icon={<Undo2 size={18} />} title="Returns done properly" body="Refunds need an owner's approval. Goods coming back are booked in as resellable or damaged — so the shelf count stays true.">
+          <Tile className="md:col-span-2" icon={<Undo2 size={18} />} title="Returns handled" body="Refunds need an owner. Returned goods go back into stock.">
             <ul className="flex flex-col gap-2 text-sm">
               {["Requested by customer", "Approved by owner", "Goods received", "Refund paid"].map((s, i) => (
                 <li key={s} className="flex items-center gap-2.5">
@@ -565,16 +547,20 @@ function Tile({
 }) {
   const surface =
     tone === "ink" ? "bg-ink text-white" : tone === "gold" ? "bg-gold text-gold-ink" : "bg-paper text-ink";
-  const bodyColor = tone === "ink" ? "text-white/65" : tone === "gold" ? "text-gold-ink/75" : "text-text-muted";
+  const bodyColor = tone === "ink" ? "text-white/70" : tone === "gold" ? "text-gold-ink/80" : "text-text-muted";
   const iconColor = tone === "ink" ? "bg-white/10 text-gold" : tone === "gold" ? "bg-ink text-gold" : "bg-ink text-white";
+  // On a phone a tile is icon + title + one line. The mini visuals show only on the two colour
+  // tiles there (they are short); every tile gets its visual from sm up.
   return (
-    <article className={`flex flex-col gap-5 rounded-3xl p-5 sm:p-6 ${surface} ${className}`}>
-      <div>
-        <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconColor}`}>{icon}</span>
-        <h3 className="mt-4 font-display text-2xl font-bold tracking-tight">{title}</h3>
-        <p className={`mt-1.5 max-w-xl text-[15px] leading-relaxed ${bodyColor}`}>{body}</p>
+    <article className={`flex flex-col gap-4 rounded-3xl p-4 sm:gap-5 sm:p-6 ${surface} ${className}`}>
+      <div className="flex items-center gap-3.5 sm:block">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>{icon}</span>
+        <div>
+          <h3 className="font-display text-lg font-bold tracking-tight sm:mt-4 sm:text-2xl">{title}</h3>
+          <p className={`text-[15px] leading-snug sm:mt-1.5 ${bodyColor}`}>{body}</p>
+        </div>
       </div>
-      <div className="mt-auto">{children}</div>
+      <div className={`mt-auto ${tone === "light" ? "hidden sm:block" : ""}`}>{children}</div>
     </article>
   );
 }
@@ -583,31 +569,25 @@ function Tile({
 
 function Principles() {
   const items = [
-    ["Stock is a ledger", "There's no number to quietly edit. Every unit in or out is a recorded movement with a reason and a name."],
-    ["A payment needs evidence", "Nothing is marked paid on a promise. It's a verified provider payment or a person confirming the cash arrived."],
-    ["Agreed prices stay agreed", "An order's prices lock when it's made. Changing your price list tomorrow never rewrites yesterday's deal."],
-    ["Every change has a name", "Confirmations, amendments, refunds and reassignments are logged — who, what and when."],
-    ["Your data stays yours", "Each business's records are isolated at the database level, not just hidden in the interface."],
-    ["People stay in charge", "AI drafts and suggests. Confirming an order, approving a refund or merging customers is always a human decision."],
+    ["Stock is a ledger", "Every unit in or out is a recorded movement."],
+    ["A payment needs evidence", "Nothing is marked paid on a promise."],
+    ["Agreed prices stay agreed", "An order's prices lock when it's made."],
+    ["Every change has a name", "Who did what, and when, is logged."],
+    ["Your data stays yours", "Each business's records are isolated in the database."],
+    ["People stay in charge", "AI drafts. Confirming and refunding stay human decisions."],
   ];
   return (
     <section id="principles" className="scroll-mt-20 bg-ink text-white">
-      <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-28">
-        <SectionHeading
-          tone="light"
-          eyebrow="Why trust it"
-          title="Built so the numbers can be believed"
-          body="Wholesale runs on trust — between you and your customers, and between you and your own records. These rules are built into how the system works, not left to habit."
-        />
-        <div className="mt-12 grid gap-px overflow-hidden rounded-3xl bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map(([title, body], i) => (
-            <div key={title} className="bg-ink p-6 sm:p-7">
-              <p className="font-tabular text-sm font-semibold text-gold">{String(i + 1).padStart(2, "0")}</p>
-              <h3 className="mt-3 font-display text-xl font-bold tracking-tight">{title}</h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-white/65">{body}</p>
+      <div className="mx-auto w-full max-w-6xl px-5 py-14 md:py-24">
+        <SectionHeading title="Numbers you can believe" />
+        <dl className="mt-8 grid gap-x-10 sm:grid-cols-2 md:mt-12 lg:grid-cols-3">
+          {items.map(([title, body]) => (
+            <div key={title} className="border-t border-white/15 py-4 md:py-5">
+              <dt className="font-display text-lg font-bold tracking-tight">{title}</dt>
+              <dd className="mt-0.5 text-[15px] leading-snug text-white/70">{body}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       </div>
     </section>
   );
@@ -617,17 +597,14 @@ function Principles() {
 
 function FinalCta() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-5 py-16 md:py-24">
-      <div className="relative overflow-hidden rounded-[28px] bg-gold px-6 py-14 text-gold-ink sm:px-12 md:py-20">
+    <section className="mx-auto w-full max-w-6xl px-5 py-10 md:py-24">
+      <div className="relative overflow-hidden rounded-[28px] bg-gold px-6 py-10 text-gold-ink sm:px-12 md:py-20">
         <h2 className="max-w-3xl font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
           Stop scrolling chats to find an order.
         </h2>
-        <p className="mt-5 max-w-xl text-lg leading-relaxed text-gold-ink/75">
-          Your enquiries, orders, stock and payments are already connected. Pick up where the team left off.
-        </p>
         <div className="mt-8">
           <Link href="/login" className="btn btn-dark btn-lg">
-            Sign in to your workspace
+            Sign in
             <ArrowRight size={17} />
           </Link>
         </div>
@@ -639,9 +616,8 @@ function FinalCta() {
 function SiteFooter() {
   return (
     <footer className="border-t border-line">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-text-muted sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-6 text-sm text-text-muted">
         <Logo />
-        <p>Order operations for wholesale teams.</p>
         <Link href="/login" className="font-medium text-ink underline-offset-4 hover:underline">
           Sign in
         </Link>

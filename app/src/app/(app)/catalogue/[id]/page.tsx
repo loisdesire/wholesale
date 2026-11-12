@@ -53,7 +53,7 @@ export default async function ProductDetailPage({
   const variant = product.variantAttributes as Record<string, string> | null;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-4">
         <Link href="/catalogue" className="back-link self-start">
           ← Catalogue
@@ -106,39 +106,15 @@ export default async function ProductDetailPage({
         </div>
       </header>
 
+      <div className="rail-layout">
+        <div>
       <section>
-        <h2 className="section-title mb-3">Photos</h2>
-        <ProductImages productId={product.id} images={product.images} />
-      </section>
-
-      <section>
-        <h2 className="section-title mb-3">Product details</h2>
-        <EditProductForm
-          productId={product.id}
-          defaultValues={{
-            sku: product.sku,
-            name: product.name,
-            attributes: variant ?? undefined,
-            priceNaira: product.priceCents / 100,
-            costNaira: product.costCents ? product.costCents / 100 : undefined,
-            moq: product.moq,
-            unit: product.unit,
-            active: product.active,
-            priceTiers: product.priceTiers.map((t) => ({
-              minQuantity: t.minQuantity,
-              priceNaira: t.priceCents / 100,
-            })),
-          }}
-        />
-      </section>
-
-      <section>
-        <h2 className="section-title mb-3">Record a stock movement</h2>
+        <h2 className="section-title mb-3">Add or remove stock</h2>
         <StockMovementForm productId={product.id} />
       </section>
 
       <section>
-        <h2 className="section-title mb-3">Movement history</h2>
+        <h2 className="section-title mb-3">Stock history</h2>
         {movements.length === 0 ? (
           <p className="empty">
             No movements recorded yet.
@@ -183,6 +159,37 @@ export default async function ProductDetailPage({
           </div>
         )}
       </section>
+      <details className="disclosure">
+        <summary className="rounded-2xl border border-line bg-surface px-5 py-4 shadow-card">Edit product details</summary>
+        <EditProductForm
+          productId={product.id}
+          defaultValues={{
+            sku: product.sku,
+            name: product.name,
+            attributes: variant ?? undefined,
+            priceNaira: product.priceCents / 100,
+            costNaira: product.costCents ? product.costCents / 100 : undefined,
+            moq: product.moq,
+            unit: product.unit,
+            active: product.active,
+            priceTiers: product.priceTiers.map((t) => ({
+              minQuantity: t.minQuantity,
+              priceNaira: t.priceCents / 100,
+            })),
+          }}
+        />
+      </details>
+
+        </div>
+
+        <aside>
+      <section>
+        <h2 className="section-title mb-3">Photos</h2>
+        <ProductImages productId={product.id} images={product.images} />
+      </section>
+
+        </aside>
+      </div>
     </div>
   );
 }

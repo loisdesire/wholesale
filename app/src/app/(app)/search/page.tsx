@@ -18,9 +18,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <div className="flex flex-col gap-8">
       <header>
         <h1 className="page-title">Search</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Orders, customers, products and returns. Phone numbers match in any format.
-        </p>
         <form action="/search" className="card mt-4 flex max-w-2xl gap-2 p-2">
           <input
             name="q"

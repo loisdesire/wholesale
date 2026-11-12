@@ -21,15 +21,15 @@ export function AddItemForm({ orderId, products }: { orderId: string; products: 
 
   return (
     <form {...formProps} className="flex flex-col gap-3 card p-5">
-      <div className="flex items-end gap-3">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex min-w-0 basis-full flex-col gap-1.5 sm:flex-1 sm:basis-0">
           <label htmlFor="productId" className="field-label">
             Product
           </label>
           <select
             id="productId"
             name="productId"
-            className="input"
+            className="input w-full"
           >
             {products.map((p) => (
               <option key={p.id} value={p.id}>
@@ -57,9 +57,9 @@ export function AddItemForm({ orderId, products }: { orderId: string; products: 
         <button
           type="submit"
           disabled={pending}
-          className="btn btn-secondary"
+          className="btn btn-dark"
         >
-          {pending ? "Adding…" : "Add item"}
+          {pending ? "Adding…" : "Add"}
         </button>
       </div>
       {state.error && <p className="text-sm text-status-attention-fg">{state.error}</p>}

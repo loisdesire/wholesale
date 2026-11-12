@@ -23,12 +23,7 @@ export default async function PlatformAdminPage() {
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="page-title">Platform admin</h1>
-        <p className="mt-1 max-w-3xl text-sm text-text-muted">
-          Every organization on the platform. Nothing here edits an organization&apos;s plan, seats or usage limits —
-          only the two narrow support actions below (extending a trial, unsticking a past-due subscription), each
-          recorded in that organization&apos;s own audit log. See an organization&apos;s own data by signing in as a
-          member of it.
-        </p>
+        <p className="mt-1 text-sm text-text-muted">Read-only, apart from two logged support actions.</p>
       </header>
 
       {overview.length === 0 ? (

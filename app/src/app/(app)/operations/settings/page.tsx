@@ -29,9 +29,7 @@ export default async function OperationsSettingsPage() {
       {back}
       <header>
         <h1 className="page-title">Attention thresholds</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          How long something may wait before the needs-attention queue calls it a warning or a critical exception.
-        </p>
+        <p className="mt-1 text-sm text-text-muted">Hours something may wait before it is flagged.</p>
       </header>
       <SlaSettingsForm overrides={overrides} defaults={defaults} />
     </div>

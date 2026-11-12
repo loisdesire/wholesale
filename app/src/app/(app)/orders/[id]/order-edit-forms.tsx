@@ -69,7 +69,7 @@ export function OrderDetailsForm({
 
   if (!editable) {
     return (
-      <dl className="grid gap-4 card p-5 text-sm md:grid-cols-3">
+      <dl className="grid gap-4 text-sm">
         <div>
           <dt className="text-xs text-text-muted">Delivery address</dt>
           <dd className="mt-1 whitespace-pre-wrap text-ink">{deliveryAddress ?? "—"}</dd>
@@ -87,8 +87,8 @@ export function OrderDetailsForm({
   }
 
   return (
-    <form {...formProps} className="flex flex-col gap-4 card p-5">
-      <div className="grid gap-4 md:grid-cols-3">
+    <form {...formProps} className="flex flex-col gap-4">
+      <div className="grid gap-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="deliveryAddress" className="field-label">
             Delivery address
@@ -96,7 +96,7 @@ export function OrderDetailsForm({
           <textarea
             id="deliveryAddress"
             name="deliveryAddress"
-            rows={3}
+            rows={2}
             defaultValue={deliveryAddress ?? ""}
             className={inputClass}
           />
@@ -111,7 +111,7 @@ export function OrderDetailsForm({
           <label htmlFor="notes" className="field-label">
             Notes
           </label>
-          <textarea id="notes" name="notes" rows={3} defaultValue={notes ?? ""} className={inputClass} />
+          <textarea id="notes" name="notes" rows={2} defaultValue={notes ?? ""} className={inputClass} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="dueAt" className="field-label">
@@ -124,7 +124,6 @@ export function OrderDetailsForm({
             defaultValue={dueAt ? dueAt.toISOString().slice(0, 10) : ""}
             className={inputClass}
           />
-          <p className="text-xs text-text-muted">Shows up on Operations once it&apos;s passed.</p>
         </div>
       </div>
       {state.error && (
@@ -138,7 +137,7 @@ export function OrderDetailsForm({
           disabled={pending}
           className="btn btn-secondary"
         >
-          {pending ? "Saving…" : "Save details"}
+          {pending ? "Saving…" : "Save"}
         </button>
       </div>
     </form>

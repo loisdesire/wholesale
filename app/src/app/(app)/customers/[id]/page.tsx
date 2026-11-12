@@ -88,29 +88,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         : "Net: settled";
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-4">
         <Link href="/customers" className="back-link self-start">
           ← Customers
         </Link>
-        <div className="flex items-start gap-4">
-          <Avatar name={customer.name ?? customer.phone} size="xl" />
+        <div className="flex items-center gap-3.5">
+          <Avatar name={customer.name ?? customer.phone} size="lg" />
           <div className="min-w-0">
             <h1 className="page-title">{customer.name ?? "Unnamed"}</h1>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-text-muted">
-              <span className="font-tabular">{customer.phone}</span>
-              <span>
-                {orders.length} order{orders.length === 1 ? "" : "s"}
-              </span>
-              {agreedPrices.length > 0 && (
-                <span>
-                  {agreedPrices.length} agreed price{agreedPrices.length === 1 ? "" : "s"}
-                </span>
-              )}
-            </p>
-            {customer.notes && <p className="mt-2 max-w-xl text-sm text-ink/80">{customer.notes}</p>}
+            <p className="mt-0.5 font-tabular text-sm text-text-muted">{customer.phone}</p>
+            
           </div>
         </div>
+        {customer.notes && <p className="max-w-2xl text-sm text-text-muted">{customer.notes}</p>}
       </header>
 
       {mergedInto && (
@@ -160,24 +151,33 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
+      <div className="rail-layout">
+        <div>
       <section>
-        <h2 className="section-title mb-3">Balance</h2>
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line shadow-card md:grid-cols-4">
-          {figures.map((f) => (
-            <div key={f.label} className="bg-surface p-4">
-              <dt className="eyebrow">{f.label}</dt>
+        <h2 className="sr-only">Balance</h2>
+        <dl className="card grid grid-cols-2 divide-x divide-line">
+          {figures.slice(0, 2).map((f) => (
+            <div key={f.label} className="p-4 sm:p-5">
+              <dt className="text-xs font-medium text-text-muted">{f.label}</dt>
               <dd
-                className={`mt-1.5 font-display text-2xl font-bold tracking-tight ${
+                className={`mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl ${
                   f.attention && f.value > 0 ? "text-status-attention-fg" : "text-ink"
                 }`}
               >
                 {formatMoney(f.value)}
               </dd>
-              <p className="mt-1 text-xs text-text-muted">{f.hint}</p>
             </div>
           ))}
         </dl>
-        <p className="mt-3 inline-flex rounded-full bg-ink px-3 py-1 text-sm font-medium text-white">{netLabel}</p>
+        <p className="mt-2 text-sm text-text-muted">
+          {figures.slice(2).map((f, idx) => (
+            <span key={f.label}>
+              {idx > 0 && " · "}
+              {f.label} <span className="font-tabular font-medium text-ink">{formatMoney(f.value)}</span>
+            </span>
+          ))}
+        </p>
+        <p className="mt-1 text-sm font-medium text-ink">{netLabel}</p>
         {balance.refundRequestedCents > 0 && (
           <p className="mt-1 text-sm text-text-muted">
             A further {formatMoney(balance.refundRequestedCents)} is on returns still awaiting the owner&apos;s decision.
@@ -186,56 +186,87 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       </section>
 
       <section>
-        <h2 className="section-title mb-3">Details</h2>
-        <EditCustomerForm customerId={customer.id} name={customer.name} email={customer.email} notes={customer.notes} />
-      </section>
-
-      <section>
-        <h2 className="section-title mb-3">Delivery addresses</h2>
-        {addresses.length > 0 && (
-          <ul className="mb-3 card divide-y divide-line">
-            {addresses.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                <div>
-                  <p className="text-ink">
-                    {a.label ? `${a.label} · ` : ""}
-                    {a.text}
-                    {a.isDefault && (
-                      <span className="ml-2 rounded-full bg-status-neutral-bg px-2 py-0.5 text-xs text-status-neutral-fg">
-                        Default
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex gap-3 text-xs">
-                  {!a.isDefault && (
-                    <form action={setDefaultAddressAction.bind(null, customer.id, a.id)}>
-                      <button type="submit" className="text-ink underline-offset-2 hover:underline">
-                        Make default
-                      </button>
-                    </form>
-                  )}
-                  <form action={removeAddressAction.bind(null, customer.id, a.id)}>
-                    <button type="submit" className="text-status-attention-fg underline-offset-2 hover:underline">
-                      Remove
-                    </button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <h2 className="section-title mb-3">Orders</h2>
+        {orders.length === 0 ? (
+          <p className="empty">
+            No orders yet.
+          </p>
+        ) : (
+          <div className="card overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr className="thead-row">
+                  <th className="py-2 pr-4">Order</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Placed</th>
+                  <th className="py-2 pr-4 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.id} className="trow">
+                    <td className="py-3 pr-4 font-mono text-[13px] font-medium text-ink">
+                      <Link href={`/orders/${o.id}`} className="underline-offset-4 hover:text-accent hover:underline">
+                        {o.reference}
+                      </Link>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <OrderStatusBadge status={o.status} />
+                    </td>
+                    <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-        <div className="max-w-xl">
-          <AddAddressForm customerId={customer.id} />
-        </div>
       </section>
 
+      {returns.length > 0 && (
+        <section>
+          <h2 className="section-title mb-3">Returns &amp; refunds</h2>
+          <div className="card overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr className="thead-row">
+                  <th className="py-2 pr-4">Return</th>
+                  <th className="py-2 pr-4">Order</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Refund</th>
+                  <th className="py-2 pr-4 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {returns.map((r) => (
+                  <tr key={r.id} className="trow">
+                    <td className="py-3 pr-4 font-tabular text-ink">{r.reference}</td>
+                    <td className="py-3 pr-4 font-tabular">
+                      <Link href={`/orders/${r.orderId}`} className="text-ink underline-offset-2 hover:underline">
+                        {r.order.reference}
+                      </Link>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <ReturnStatusBadge status={r.status} />
+                    </td>
+                    <td className="py-3 pr-4">
+                      {r.status === "REJECTED" || r.status === "REQUESTED" ? (
+                        <span className="text-xs text-text-muted">—</span>
+                      ) : (
+                        <RefundStatusBadge status={r.refundStatus} />
+                      )}
+                    </td>
+                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.refundCents, r.order.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
       <section>
         <h2 className="section-title mb-1">Agreed prices</h2>
-        <p className="mb-3 text-sm text-text-muted">
-          A price agreed with this customer beats the list price and quantity breaks on new orders. Orders already
-          placed keep the price they were made at.
-        </p>
+        <p className="mb-3 text-sm text-text-muted">Used instead of the list price on new orders.</p>
         {agreedPrices.length > 0 && (
           <div className="card mb-3 overflow-x-auto">
             <table className="table">
@@ -287,42 +318,52 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         )}
       </section>
 
+        </div>
+
+        <aside>
+      <details className="disclosure card p-5">
+        <summary>Edit details</summary>
+        <EditCustomerForm customerId={customer.id} name={customer.name} email={customer.email} notes={customer.notes} />
+      </details>
+
       <section>
-        <h2 className="section-title mb-3">Orders</h2>
-        {orders.length === 0 ? (
-          <p className="empty">
-            No orders yet.
-          </p>
-        ) : (
-          <div className="card overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr className="thead-row">
-                  <th className="py-2 pr-4">Order</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Placed</th>
-                  <th className="py-2 pr-4 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr key={o.id} className="trow">
-                    <td className="py-3 pr-4 font-mono text-[13px] font-medium text-ink">
-                      <Link href={`/orders/${o.id}`} className="underline-offset-4 hover:text-accent hover:underline">
-                        {o.reference}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <OrderStatusBadge status={o.status} />
-                    </td>
-                    <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(o.totalCents, o.currency)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <h2 className="section-title mb-3">Addresses</h2>
+        {addresses.length > 0 && (
+          <ul className="mb-3 card divide-y divide-line">
+            {addresses.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                <div>
+                  <p className="text-ink">
+                    {a.label ? `${a.label} · ` : ""}
+                    {a.text}
+                    {a.isDefault && (
+                      <span className="ml-2 rounded-full bg-status-neutral-bg px-2 py-0.5 text-xs text-status-neutral-fg">
+                        Default
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex gap-3 text-xs">
+                  {!a.isDefault && (
+                    <form action={setDefaultAddressAction.bind(null, customer.id, a.id)}>
+                      <button type="submit" className="text-ink underline-offset-2 hover:underline">
+                        Make default
+                      </button>
+                    </form>
+                  )}
+                  <form action={removeAddressAction.bind(null, customer.id, a.id)}>
+                    <button type="submit" className="text-status-attention-fg underline-offset-2 hover:underline">
+                      Remove
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
+        <div>
+          <AddAddressForm customerId={customer.id} />
+        </div>
       </section>
 
       {merges.length > 0 && (
@@ -359,7 +400,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <h2 className="section-title mb-3">Activity</h2>
           <div className="card divide-y divide-line">
             {activity.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between px-4 py-3 text-sm">
+              <div key={entry.id} className="flex flex-col gap-0.5 px-4 py-3 text-sm">
                 <span className="text-ink">{ACTIVITY_LABEL[entry.action] ?? entry.action}</span>
                 <span className="text-xs text-text-muted">
                   {entry.actor?.name ?? "System"} · {formatDateTime(entry.createdAt)}
@@ -370,47 +411,8 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
-      {returns.length > 0 && (
-        <section>
-          <h2 className="section-title mb-3">Returns &amp; refunds</h2>
-          <div className="card overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr className="thead-row">
-                  <th className="py-2 pr-4">Return</th>
-                  <th className="py-2 pr-4">Order</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Refund</th>
-                  <th className="py-2 pr-4 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {returns.map((r) => (
-                  <tr key={r.id} className="trow">
-                    <td className="py-3 pr-4 font-tabular text-ink">{r.reference}</td>
-                    <td className="py-3 pr-4 font-tabular">
-                      <Link href={`/orders/${r.orderId}`} className="text-ink underline-offset-2 hover:underline">
-                        {r.order.reference}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <ReturnStatusBadge status={r.status} />
-                    </td>
-                    <td className="py-3 pr-4">
-                      {r.status === "REJECTED" || r.status === "REQUESTED" ? (
-                        <span className="text-xs text-text-muted">—</span>
-                      ) : (
-                        <RefundStatusBadge status={r.refundStatus} />
-                      )}
-                    </td>
-                    <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.refundCents, r.order.currency)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+        </aside>
+      </div>
     </div>
   );
 }

@@ -10,10 +10,6 @@ export default function NewProductPage() {
           ← Catalogue
         </Link>
         <h1 className="mt-2 page-title">New product</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Opening stock is recorded as the product&apos;s first ledger movement — stock is never
-          set directly.
-        </p>
       </header>
 
       <ProductForm action={createProductAction} submitLabel="Create product" showOpeningStock />

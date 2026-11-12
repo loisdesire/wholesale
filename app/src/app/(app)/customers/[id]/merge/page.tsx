@@ -61,9 +61,7 @@ export default async function MergePage({
       <header>
         {back}
         <h1 className="mt-2 page-title">Merge customers</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Review what will move. Nothing is deleted — the merged record is archived and the merge can be undone.
-        </p>
+        <p className="mt-1 text-sm text-text-muted">Nothing is deleted. A merge can be undone.</p>
       </header>
 
       {error ? (

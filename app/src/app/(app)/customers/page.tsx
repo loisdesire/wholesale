@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
@@ -63,45 +63,29 @@ export default async function CustomersPage({
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="page-title">Customers</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Identified by phone number, with their order and conversation history. Balances are summed from orders
-            and refunds, never typed in.
-          </p>
-        </div>
-        <Link
-          href="/customers/new"
-          className="btn btn-primary"
-        >
+    <div className="flex flex-col gap-5">
+      <header className="page-head">
+        <h1 className="page-title">Customers</h1>
+        <Link href="/customers/new" className="btn btn-primary">
           <Plus size={16} strokeWidth={2.4} />
           New customer
         </Link>
       </header>
 
-      <div className="card flex flex-col gap-3 p-4">
-        <form action="/customers" className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3">
+        <form action="/customers" className="relative max-w-md">
           {filter && <input type="hidden" name="filter" value={filter} />}
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             name="q"
             type="search"
             defaultValue={q}
-            placeholder="Name, phone (any format), email, notes…"
-            aria-label="Search customers"
-            className="input w-full sm:w-80"
+            placeholder="Search customers"
+            aria-label="Search customers by name, phone, email or notes"
+            className="input w-full pl-9"
           />
-          <button type="submit" className="btn btn-secondary">
-            Search
-          </button>
-          {(q || filter) && (
-            <Link href="/customers" className="py-2 text-sm text-text-muted underline-offset-2 hover:text-ink hover:underline">
-              Clear
-            </Link>
-          )}
         </form>
-        <nav aria-label="Filter by balance" className="flex flex-wrap gap-1.5">
+        <nav aria-label="Filter by balance" className="chip-row">
           {FILTERS.map((f) => {
             const active = filter === f.value;
             return (
@@ -115,6 +99,11 @@ export default async function CustomersPage({
               </Link>
             );
           })}
+          {(q || filter) && (
+            <Link href="/customers" className="link self-center pl-1 text-xs">
+              Clear
+            </Link>
+          )}
         </nav>
       </div>
 
@@ -123,7 +112,43 @@ export default async function CustomersPage({
           {q || filter ? "No customers match." : "No customers yet."}
         </p>
       ) : (
-        <div className="card overflow-x-auto">
+        <>
+        {/* Phone: who they are, and money only when there is some. */}
+        <ul className="card divide-y divide-line overflow-hidden md:hidden">
+          {customers.map((c) => {
+            const owes = balances.get(c.id)?.outstandingCents ?? 0;
+            const weOwe = balances.get(c.id)?.refundDueCents ?? 0;
+            return (
+              <li key={c.id}>
+                <Link href={`/customers/${c.id}`} className="mrow">
+                  <Avatar name={c.name ?? c.phone} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-ink">{c.name ?? "Unnamed"}</span>
+                    <span className="block truncate font-tabular text-xs text-text-muted">{c.phone}</span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-0.5 text-xs">
+                    {owes > 0 && (
+                      <span className="text-text-muted">
+                        Owes <span className="font-tabular text-sm font-semibold text-ink">{formatMoney(owes)}</span>
+                      </span>
+                    )}
+                    {weOwe > 0 && (
+                      <span className="text-status-attention-fg">
+                        You owe <span className="font-tabular text-sm font-semibold">{formatMoney(weOwe)}</span>
+                      </span>
+                    )}
+                    {owes <= 0 && weOwe <= 0 && (
+                      <span className="text-text-muted">
+                        {c._count.orders} order{c._count.orders === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="card hidden overflow-x-auto md:block">
           <table className="table">
             <thead>
               <tr className="thead-row">
@@ -172,6 +197,7 @@ export default async function CustomersPage({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {totalPages > 1 && (

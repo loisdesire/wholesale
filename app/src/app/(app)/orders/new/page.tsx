@@ -49,9 +49,6 @@ export default async function NewOrderPage({
           ← Orders
         </Link>
         <h1 className="mt-2 page-title">New order</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Starts as a draft — nothing is reserved from stock until it&apos;s confirmed.
-        </p>
       </header>
 
       <NewOrderForm

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Package, Plus, Search } from "lucide-react";
+import { ArrowDownUp, Package, Plus, Search } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
@@ -53,46 +53,40 @@ export default async function CataloguePage({
     `/catalogue?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(p) })}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="page-title">Catalogue</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Stock is a running ledger, not an editable number — this total is the
-            sum of every movement recorded for the product.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <a
-            href="/api/catalogue/export"
-            className="btn btn-secondary"
-          >
-            Export CSV
-          </a>
-          <Link
-            href="/catalogue/import"
-            className="btn btn-secondary"
-          >
-            Import CSV
-          </Link>
-          <Link
-            href="/catalogue/new"
-            className="btn btn-primary"
-          >
+    <div className="flex flex-col gap-5">
+      <header className="page-head">
+        <h1 className="page-title">Catalogue</h1>
+        <div className="flex items-center gap-2">
+          {/* Import/export are occasional desk jobs: off the phone header, behind one menu. */}
+          <details className="relative hidden sm:block">
+            <summary className="btn btn-secondary list-none [&::-webkit-details-marker]:hidden">
+              <ArrowDownUp size={15} />
+              CSV
+            </summary>
+            <div className="absolute right-0 z-10 mt-1.5 flex w-44 flex-col rounded-xl border border-line bg-surface p-1 text-sm shadow-pop">
+              <Link href="/catalogue/import" className="rounded-lg px-3 py-2 hover:bg-paper">
+                Import products
+              </Link>
+              <a href="/api/catalogue/export" className="rounded-lg px-3 py-2 hover:bg-paper">
+                Export products
+              </a>
+            </div>
+          </details>
+          <Link href="/catalogue/new" className="btn btn-primary">
             <Plus size={16} strokeWidth={2.4} />
             New product
           </Link>
         </div>
       </header>
 
-      <form action="/catalogue" className="relative flex max-w-sm">
+      <form action="/catalogue" className="relative flex max-w-md">
         <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
         <input
           type="search"
           name="q"
           defaultValue={query}
-          placeholder="Search by name or SKU…"
-          aria-label="Search products"
+          placeholder="Search products"
+          aria-label="Search products by name or SKU"
           className="input w-full pl-9"
         />
       </form>
@@ -113,7 +107,47 @@ export default async function CataloguePage({
         </p>
       ) : (
         <>
-          <div className="card overflow-x-auto">
+          {/* Phone: photo, name, variant on the left; what's available and the price on the right. */}
+          <ul className="card divide-y divide-line overflow-hidden md:hidden">
+            {products.map((p) => {
+              const stock = stockMap.get(p.id)?.available ?? 0;
+              const variant = p.variantAttributes as Record<string, string> | null;
+              const thumbnail = p.images[0];
+              return (
+                <li key={p.id}>
+                  <Link href={`/catalogue/${p.id}`} className="mrow">
+                    {thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route
+                      <img src={`/api/product-images/${thumbnail.id}`} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-line object-cover" />
+                    ) : (
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-paper text-text-muted/70">
+                        <Package size={18} strokeWidth={1.6} />
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate font-medium ${p.active ? "text-ink" : "text-text-muted"}`}>{p.name}</span>
+                      <span className="block truncate text-xs text-text-muted">
+                        {variant ? Object.values(variant).join(" / ") : p.sku}
+                        {!p.active && " · Inactive"}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="font-tabular font-semibold text-ink">{formatMoney(p.priceCents, p.currency)}</span>
+                      <span
+                        className={`font-tabular text-xs ${
+                          stock <= 0 ? "font-semibold text-status-attention-fg" : stock <= 5 ? "font-semibold text-status-progress-fg" : "text-text-muted"
+                        }`}
+                      >
+                        {stock <= 0 ? "Out of stock" : `${stock} left`}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="card hidden overflow-x-auto md:block">
             <table className="table">
               <thead>
                 <tr className="thead-row">

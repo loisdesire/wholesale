@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Search, SlidersHorizontal } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { buildOrderWhere, parseOrderStatus } from "@/lib/search";
@@ -72,62 +72,31 @@ export default async function OrdersPage({
   }));
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="page-title">Orders</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Draft, confirmed, paid, and fulfilled — every order in one place.
-          </p>
-        </div>
-        <Link
-          href="/orders/new"
-          className="btn btn-primary"
-        >
+    <div className="flex flex-col gap-5">
+      <header className="page-head">
+        <h1 className="page-title">Orders</h1>
+        <Link href="/orders/new" className="btn btn-primary">
           <Plus size={16} strokeWidth={2.4} />
           New order
         </Link>
       </header>
 
-      <div className="card flex flex-col gap-3 p-4">
-        <form action="/orders" className="flex flex-wrap items-end gap-2">
-          {filters.status && <input type="hidden" name="status" value={filters.status} />}
+      {/* Filters sit on the canvas in three quiet layers: search, one scrolling line of status
+          chips, and the rarely-used date/assignee filters behind a disclosure. */}
+      <form action="/orders" className="flex flex-col gap-3">
+        {filters.status && <input type="hidden" name="status" value={filters.status} />}
+        <div className="relative max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             name="q"
             type="search"
             defaultValue={filters.q}
-            placeholder="Reference, customer, phone, product…"
-            aria-label="Search orders"
-            className="w-72 input"
+            placeholder="Search orders"
+            aria-label="Search orders by reference, customer, phone or product"
+            className="input w-full pl-9"
           />
-          <label className="flex flex-col gap-1 text-xs text-text-muted">
-            From
-            <input
-              name="from"
-              type="date"
-              defaultValue={filters.from}
-              className="input input-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-text-muted">
-            To
-            <input
-              name="to"
-              type="date"
-              defaultValue={filters.to}
-              className="input input-sm"
-            />
-          </label>
-          <button type="submit" className="btn btn-secondary">
-            Apply
-          </button>
-          {filtered && (
-            <Link href="/orders" className="py-2 text-sm text-text-muted underline-offset-2 hover:text-ink hover:underline">
-              Clear
-            </Link>
-          )}
-        </form>
-        <nav aria-label="Filter by status" className="flex flex-wrap gap-1.5">
+        </div>
+        <nav aria-label="Filter by status" className="chip-row">
           {STATUS_FILTERS.map((f) => {
             const active = filters.status === f.value;
             return (
@@ -142,28 +111,51 @@ export default async function OrdersPage({
             );
           })}
         </nav>
-        <nav aria-label="Filter by assignee" className="flex flex-wrap items-center gap-1.5">
-          <span className="eyebrow mr-1">Assigned</span>
-          {[{ value: undefined, label: "Anyone" }, { value: "none", label: "Unassigned" }, ...members.map((m) => ({ value: m.id, label: m.name }))].map((f) => {
-            const active = filters.assignee === f.value;
-            return (
-              <Link
-                key={f.label}
-                href={link({ assignee: f.value, page: undefined })}
-                aria-current={active ? "true" : undefined}
-                className={`chip ${active ? "chip-active" : ""}`}
-              >
-                {f.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <details className="text-sm" open={Boolean(filters.from || filters.to || filters.assignee)}>
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 font-medium text-text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+            <SlidersHorizontal size={14} />
+            Date &amp; assignee
+          </summary>
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-xs text-text-muted">
+                From
+                <input name="from" type="date" defaultValue={filters.from} className="input input-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-muted">
+                To
+                <input name="to" type="date" defaultValue={filters.to} className="input input-sm" />
+              </label>
+              <button type="submit" className="btn btn-secondary btn-sm">
+                Apply
+              </button>
+            </div>
+            <nav aria-label="Filter by assignee" className="chip-row">
+              {[{ value: undefined, label: "Anyone" }, { value: "none", label: "Unassigned" }, ...members.map((m) => ({ value: m.id, label: m.name }))].map((f) => {
+                const active = filters.assignee === f.value;
+                return (
+                  <Link
+                    key={f.label}
+                    href={link({ assignee: f.value, page: undefined })}
+                    aria-current={active ? "true" : undefined}
+                    className={`chip ${active ? "chip-active" : ""}`}
+                  >
+                    {f.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </details>
         {filtered && (
           <p className="text-xs text-text-muted">
-            {totalCount} {totalCount === 1 ? "order matches" : "orders match"}
+            {totalCount} {totalCount === 1 ? "order matches" : "orders match"} ·{" "}
+            <Link href="/orders" className="link">
+              Clear filters
+            </Link>
           </p>
         )}
-      </div>
+      </form>
 
       {orders.length === 0 && filtered ? (
         <p className="empty">

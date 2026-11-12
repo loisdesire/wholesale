@@ -23,7 +23,7 @@ export function StockMovementForm({ productId }: { productId: string }) {
 
   return (
     <form {...formProps} className="flex flex-col gap-4 card p-5">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="reason" className="field-label">
             Reason

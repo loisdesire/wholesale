@@ -183,7 +183,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
           ) : (
             <p className="flex items-start gap-2.5 rounded-xl bg-paper px-3.5 py-3 text-sm text-text-muted">
               <Sparkles size={16} className="mt-0.5 shrink-0" />
-              AI product-matching isn&apos;t configured in this environment (missing OPENAI_API_KEY).
+              AI assist isn&apos;t set up yet.
             </p>
           )}
           {whatsappReady ? (
@@ -191,8 +191,7 @@ export default async function ConversationDetailPage({ params }: { params: Promi
           ) : (
             <p className="flex items-start gap-2.5 rounded-xl bg-paper px-3.5 py-3 text-sm text-text-muted">
               <Send size={16} className="mt-0.5 shrink-0" />
-              WhatsApp sending isn&apos;t configured in this environment (missing WHATSAPP_ACCESS_TOKEN /
-              WHATSAPP_PHONE_NUMBER_ID) — replies can&apos;t be sent until it is.
+              WhatsApp isn&apos;t connected yet, so replies can&apos;t be sent.
             </p>
           )}
         </div>

@@ -21,12 +21,11 @@ export function AmendOrderForm({
 }) {
   const { state, pending, formProps } = useSubmitAction(amendOrderAction.bind(null, orderId), { error: null } as FormState, { resetOnSuccess: true });
   return (
-    <form {...formProps} className="flex flex-col gap-4 card p-5">
+    <form {...formProps} className="flex flex-col gap-4">
       <p className="text-sm text-text-muted">
-        Lines you change are re-priced at today&apos;s prices and the stock reservation is adjusted; lines you leave alone
-        keep their agreed price. Set a quantity to 0 to remove a line.
+        Changed lines are re-priced at today&apos;s prices. Set a quantity to 0 to remove a line.
       </p>
-      <div className="card overflow-x-auto">
+      <div className="overflow-x-auto rounded-xl border border-line">
         <table className="table">
           <thead>
             <tr className="thead-row">

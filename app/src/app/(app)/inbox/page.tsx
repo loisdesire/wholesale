@@ -25,9 +25,6 @@ export default async function InboxPage() {
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="page-title">Inbox</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Every WhatsApp conversation, regardless of who or what is handling it.
-        </p>
       </header>
 
       {conversations.length === 0 ? (
@@ -43,12 +40,14 @@ export default async function InboxPage() {
             const name = c.customer.name ?? "Unnamed";
             return (
               <li key={c.id} className="relative">
-                {waiting && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-accent" />}
                 <Link
                   href={`/inbox/${c.id}`}
                   className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-paper/70 sm:items-center sm:px-5"
                 >
-                  <Avatar name={c.customer.name ?? c.customer.phone} />
+                  <span className="relative shrink-0">
+                    <Avatar name={c.customer.name ?? c.customer.phone} />
+                    {waiting && <span aria-label="Waiting on a reply" className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-surface bg-accent" />}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className={`text-sm text-ink ${waiting ? "font-semibold" : "font-medium"}`}>{name}</span>

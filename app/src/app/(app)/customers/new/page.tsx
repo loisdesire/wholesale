@@ -9,10 +9,6 @@ export default function NewCustomerPage() {
           ← Customers
         </Link>
         <h1 className="mt-2 page-title">New customer</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          A phone number identifies a customer however it&apos;s written (0803…, +234 803…), so the same person
-          can&apos;t be added twice.
-        </p>
       </header>
       <NewCustomerForm />
     </div>

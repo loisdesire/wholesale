@@ -35,8 +35,8 @@ export function EditCustomerForm({
     error: null,
   } as FormState);
   return (
-    <form {...formProps} className="flex max-w-xl flex-col gap-4 card p-5">
-      <div className="grid gap-4 md:grid-cols-2">
+    <form {...formProps} className="flex flex-col gap-4">
+      <div className="grid gap-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="name" className="field-label">Name</label>
           <input id="name" name="name" defaultValue={name ?? ""} className={inputClass} />
@@ -66,7 +66,7 @@ export function AddAddressForm({ customerId }: { customerId: string }) {
   } as FormState, { resetOnSuccess: true });
   return (
     <form {...formProps} className="flex flex-col gap-3 card p-5">
-      <div className="grid gap-3 md:grid-cols-[10rem_1fr]">
+      <div className="grid gap-3">
         <input name="label" placeholder="Label (e.g. Shop)" aria-label="Address label" className={inputClass} />
         <input name="text" required placeholder="Full address" aria-label="Address" className={inputClass} />
       </div>
@@ -92,7 +92,7 @@ export function AgreedPriceForm({
   } as FormState, { resetOnSuccess: true });
   return (
     <form {...formProps} className="flex flex-col gap-3 card p-5">
-      <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
+      <div className="grid gap-3">
         <select name="productId" aria-label="Product" className={inputClass} defaultValue="">
           <option value="" disabled>
             Choose a product…

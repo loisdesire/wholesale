@@ -55,7 +55,7 @@ export function ProductForm({ action, submitLabel, defaultValues, showOpeningSto
   );
 
   return (
-    <form action={formAction} className="card flex max-w-2xl flex-col gap-6 p-5 sm:p-6">
+    <form action={formAction} className="card flex max-w-3xl flex-col gap-6 p-5 sm:p-6">
       <input type="hidden" name="attributesJson" value={attributesJson} />
       <input type="hidden" name="priceTiersJson" value={priceTiersJson} />
 

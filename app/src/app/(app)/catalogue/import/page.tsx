@@ -9,10 +9,7 @@ export default function ImportCataloguePage() {
           ← Catalogue
         </Link>
         <h1 className="mt-2 page-title">Import catalogue</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Upload a CSV, review exactly what will change, then commit — nothing is written until
-          you confirm.
-        </p>
+        <p className="mt-1 text-sm text-text-muted">Nothing is saved until you confirm.</p>
       </header>
 
       <ImportFlow />

@@ -1633,3 +1633,17 @@ route's protection are unchanged. The dashboard's pipeline query also sums `tota
 loads 200 at both widths with no page-level horizontal overflow. **Not verified:** real photos in
 product thumbnails/chat attachments (seed data has none), the AI-assist and WhatsApp-reply states
 with real credentials, and other browsers than Chromium.
+
+## Done (2026-11-12, later — layout pass after user feedback)
+
+The user judged the first redesign to be a colour change: phones cluttered, desktop unorganised,
+copy too long. This pass changed structure, guided by sites browsed live this time (Mercury's
+product demo for the filter bar, summary strip and detail panel; Shopify's mobile-app page for
+stacked rows and one-line copy; Linear for sparse copy). Rules are in CLAUDE.md → Design system →
+"Layout rules". Changed: page heads on one row; phone lists as stacked rows instead of scrolling
+tables (orders, catalogue, customers, order items); filters reduced to search + one chip line with
+the rest behind a disclosure; dashboard, order, customer and product pages rebuilt as main column +
+side rail; occasional tools behind disclosures; page subtitles removed or cut to a line; landing
+page cut to heading + visual + one line per section (phone length roughly halved). No behaviour
+changes. Verified with lint, typecheck, tests and screenshots at 1366px and 390px against a
+separate seeded database (`wholesale_design`), not the user's dev data.

@@ -332,6 +332,20 @@ the dashboard pipeline proportion bar, the product stock split bar, payment prog
 bars, billing usage meters, product-demand bars. Keep that rule for new screens — but only where
 the visual encodes real data.
 
+Layout rules (layout pass, 2026-11-12 — the user found the first redesign "just colours": cluttered
+on phones, unorganised on desktop, copy too long). Keep these when adding screens:
+- **Page head** (`.page-head`): title + at most one primary action on one row at every width. No
+  explanatory subtitle under a page title unless it states something the user must know.
+- **Lists on phones are stacked rows** (`.mrow` inside a `card`, `md:hidden`), not side-scrolling
+  tables; the table is `hidden md:block`. Done for orders, catalogue, customers, order items.
+- **Filters**: search, then one sideways-scrolling `.chip-row`; rarely-used filters go behind a
+  `<details>`. Filters sit on the canvas, not in a card.
+- **Detail pages use `.rail-layout`**: the work in the main column, reference facts (payments,
+  delivery, history, addresses, photos) in the side rail from `lg`; one column on phones.
+- **Occasional tools go behind `.disclosure`** (amend order, request return, edit details, delivery).
+- **Copy**: one short sentence at most; name the action. Landing sections are heading + visual + one
+  line. No kicker/eyebrow above headings, no coloured edge stripes on rows, no nested cards.
+
 The public landing page is `src/app/welcome/page.tsx`, served at `/` to signed-out visitors by a
 rewrite in `src/proxy.ts` (signed-in users still get the dashboard at `/`; every other route stays
 protected). Its visuals are built from the product's own UI vocabulary, and it shows **no

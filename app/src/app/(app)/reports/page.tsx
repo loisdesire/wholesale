@@ -35,20 +35,12 @@ export default async function ReportsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="page-title">Reports</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Everything below is computed from real records for {formatRangeLabel(range)}. Revenue, cash, receivables and
-            refunds are kept separate — none of this is labelled profit unless a cost is on record.
-          </p>
-        </div>
-        <Link href="/operations" className="btn btn-secondary">
-          ← Operations
-        </Link>
+      <header>
+        <h1 className="page-title">Reports</h1>
+        <p className="mt-0.5 text-sm text-text-muted">{formatRangeLabel(range)}</p>
       </header>
 
-      <form action="/reports" className="card flex flex-wrap items-end gap-2 p-4">
+      <form action="/reports" className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs text-text-muted">
           From
           <input name="from" type="date" defaultValue={dateInput(range.from)} className="input input-sm" />
@@ -91,15 +83,15 @@ export default async function ReportsPage({
           ].map((f, i) => (
             // The first figure (order value) is the headline, so it alone gets the dark tile.
             <div key={f.label} className={i === 0 ? "rounded-2xl bg-ink p-4 text-white shadow-card sm:p-5" : "card p-4 sm:p-5"}>
-              <dt className={`eyebrow ${i === 0 ? "!text-white/60" : ""}`}>{f.label}</dt>
+              <dt className={`text-xs font-medium ${i === 0 ? "text-white/70" : "text-text-muted"}`}>{f.label}</dt>
               <dd
-                className={`mt-2 break-words font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl ${
+                className={`mt-1.5 break-words font-display text-xl font-bold leading-tight tracking-tight sm:text-3xl ${
                   i === 0 ? "text-gold" : f.attention ? "text-status-attention-fg" : "text-ink"
                 }`}
               >
                 {f.value}
               </dd>
-              <p className={`mt-1.5 text-xs leading-relaxed ${i === 0 ? "text-white/60" : "text-text-muted"}`}>{f.hint}</p>
+              <p className={`mt-1.5 hidden text-xs leading-relaxed sm:block ${i === 0 ? "text-white/70" : "text-text-muted"}`}>{f.hint}</p>
             </div>
           ))}
         </dl>
@@ -131,11 +123,11 @@ export default async function ReportsPage({
               <tbody>
                 {demand.map((d) => (
                   <tr key={d.productId} className="trow">
-                    <td className="py-3 pr-4 text-ink">
+                    <td className="whitespace-nowrap py-3 pr-4 text-ink">
                       <Link href={`/catalogue/${d.productId}`} className="underline-offset-2 hover:underline">
                         {d.name}
                       </Link>
-                      <span className="ml-2 font-mono text-xs text-text-muted">{d.sku}</span>
+                      <span className="ml-2 hidden font-mono text-xs text-text-muted sm:inline">{d.sku}</span>
                     </td>
                     <td className="py-3 pr-4 text-right font-tabular text-ink">{d.units}</td>
                     <td className="py-3 pr-4 text-right font-tabular font-semibold text-ink">
@@ -229,7 +221,7 @@ export default async function ReportsPage({
                       <Link href={`/customers/${r.customerId}`} className="underline-offset-2 hover:underline">
                         {r.name}
                       </Link>
-                      <span className="ml-2 font-tabular text-xs text-text-muted">{r.phone}</span>
+                      <span className="ml-2 hidden font-tabular text-xs text-text-muted sm:inline">{r.phone}</span>
                     </td>
                     <td className="py-3 pr-4 text-right font-tabular text-ink">{formatMoney(r.owesUsCents)}</td>
                     <td className={`py-3 pr-4 text-right font-tabular ${r.weOweCents > 0 ? "text-status-attention-fg" : "text-ink"}`}>
