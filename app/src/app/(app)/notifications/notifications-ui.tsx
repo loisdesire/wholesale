@@ -14,7 +14,7 @@ export function MarkAllReadButton() {
         await markAllNotificationsReadAction();
         setPending(false);
       }}
-      className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60"
+      className="btn btn-secondary"
     >
       Mark all as read
     </button>

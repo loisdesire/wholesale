@@ -1,56 +1,49 @@
 import Link from "next/link";
+import { ShieldAlert } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import type { OwnerAIBriefing } from "@/lib/owner-ai";
-import { ShieldAlert } from "lucide-react";
 
+/** Today's money at a glance: one big figure, two supporting ones, and the one alert that matters. */
 export function OwnerAIBriefingCard({ briefing }: { briefing: OwnerAIBriefing }) {
   const { metrics, criticalAlerts } = briefing;
   const hasDebt = metrics.totalReceivablesCents > 0;
+  const waiting = metrics.activeWhatsAppChats24h;
 
   return (
-    <div className="border-b border-line pb-6">
-      {/* One figure does the talking; everything else is plain supporting text beside it. */}
-      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-        <div>
-          <p className="font-display text-4xl sm:text-5xl font-semibold tracking-tight text-ink font-tabular">
-            {formatMoney(metrics.todayCashCents)}
-          </p>
-          <p className="mt-1 text-sm text-text-muted">Cash settled today, bank &amp; Paystack</p>
-        </div>
-
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1.5 text-sm pb-1">
-          <span className="text-text-muted">
-            7 days <span className="font-tabular font-medium text-ink">{formatMoney(metrics.weekCashCents)}</span>
+    <section className="card p-4 sm:p-5">
+      <p className="text-sm text-text-muted">Cash received today</p>
+      <p className="font-display text-4xl font-bold leading-tight tracking-tight text-ink font-tabular sm:text-5xl">
+        {formatMoney(metrics.todayCashCents)}
+      </p>
+      <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-text-muted">
+        <span>
+          7 days <span className="font-tabular font-semibold text-ink">{formatMoney(metrics.weekCashCents)}</span>
+        </span>
+        <span>
+          Owed to you{" "}
+          <span className={`font-tabular font-semibold ${hasDebt ? "text-status-attention-fg" : "text-ink"}`}>
+            {formatMoney(metrics.totalReceivablesCents)}
           </span>
-          <span className="text-text-muted">
-            Receivables{" "}
-            <span className={`font-tabular font-medium ${hasDebt ? "text-status-attention-fg" : "text-ink"}`}>
-              {formatMoney(metrics.totalReceivablesCents)}
-            </span>
-          </span>
-          <Link href="/inbox" className="text-accent hover:text-accent-2 font-medium">
-            {metrics.activeWhatsAppChats24h} buyer{metrics.activeWhatsAppChats24h === 1 ? "" : "s"} waiting on a reply
+        </span>
+        {waiting > 0 && (
+          <Link href="/inbox" className="link">
+            {waiting} chat{waiting === 1 ? "" : "s"} active
           </Link>
-        </div>
-      </div>
+        )}
+      </p>
 
       {criticalAlerts.length > 0 && (
-        <div className="mt-5 flex flex-col sm:flex-row sm:items-start gap-3 rounded-lg border border-status-attention-fg/25 bg-status-attention-bg px-4 py-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5 text-status-attention-fg" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-status-attention-fg">{criticalAlerts[0].title}</p>
-              <p className="text-xs text-status-attention-fg/80 mt-0.5">{criticalAlerts[0].detail}</p>
-            </div>
+        <div className="mt-4 flex flex-col gap-2 rounded-xl bg-status-attention-bg px-3.5 py-3 sm:flex-row sm:items-center sm:gap-3">
+          <ShieldAlert size={16} className="hidden shrink-0 text-status-attention-fg sm:block" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-status-attention-fg">{criticalAlerts[0].title}</p>
+            <p className="text-xs text-status-attention-fg/90">{criticalAlerts[0].detail}</p>
           </div>
-          <Link
-            href={criticalAlerts[0].actionHref}
-            className="shrink-0 text-xs font-semibold text-status-attention-fg hover:underline sm:self-center"
-          >
+          <Link href={criticalAlerts[0].actionHref} className="shrink-0 text-sm font-semibold text-status-attention-fg hover:underline">
             {criticalAlerts[0].actionLabel}
           </Link>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -1,38 +1,48 @@
 @import "tailwindcss";
 
+/*
+ * Design system — "Dispatch" (redesigned 2026-11-12, see CLAUDE.md → Design system).
+ * A bright, cool canvas with white objects sitting on it, one saturated brand colour (cobalt),
+ * and a citron highlighter kept for dark surfaces and marketing visuals. Status colours are a
+ * separate family on purpose, so "needs attention" never looks like "the primary action".
+ */
 :root {
-  /* Deep aubergine: reads as rich dye rather than corporate black */
-  --ink: #1d1030;
-  --ink-2: #2b1845;
-
-  /* Warm, unbleached-cotton paper — grounded textile commerce */
-  --paper: #fbf3e9;
+  /* Near-black with a blue cast — the text colour and the dark-surface colour. */
+  --ink: #0b1020;
+  --ink-2: #1b2238;
+  /* Cool canvas (not cream): the page. White cards read as objects on top of it. */
+  --paper: #f3f4f7;
   --surface: #ffffff;
-  --line: #e8dbca;
-  --line-subtle: #f2e9dc;
+  --line: #e3e6ec;
+  --line-strong: #cdd2dc;
+  --line-subtle: #eef0f4;
 
-  /* Signature raspberry-magenta: calibrated for WCAG AA+ (5.2:1 contrast against white) */
-  --accent: #b80f48;
-  --accent-2: #9a0c3c;
+  /* Cobalt: the one brand colour. Primary actions, links-as-actions and selected state. */
+  --accent: #2347f5;
+  --accent-2: #1a35c4;
   --accent-ink: #ffffff;
+  --accent-soft: #ecefff;
+  /* Citron: the highlighter. Only on dark (ink) surfaces and in marketing visuals. */
+  --gold: #d8f44a;
+  --gold-ink: #1d2400;
+  /* WhatsApp's own green — used only where the WhatsApp channel itself is depicted. */
+  --wa: #1faa59;
+  --wa-soft: #e3f8ea;
 
-  /* Marigold: warm, lustrous second accent */
-  --gold: #d48208;
-  --gold-ink: #321d02;
+  --text: #0b1020;
+  --text-muted: #5b6275;
 
-  /* High-contrast body and secondary text tokens (exceeding WCAG 4.5:1 minimums) */
-  --text: #1d1030;
-  --text-muted: #332742;
+  --status-neutral-fg: #485064;
+  --status-neutral-bg: #eaecf1;
+  --status-progress-fg: #8f5200;
+  --status-progress-bg: #fff0d1;
+  --status-success-fg: #08774a;
+  --status-success-bg: #dcf6e7;
+  --status-attention-fg: #c2261d;
+  --status-attention-bg: #fde7e4;
 
-  /* Status Tokens */
-  --status-neutral-fg: #2c2338;
-  --status-neutral-bg: #ece5dc;
-  --status-progress-fg: #7a4200;
-  --status-progress-bg: #fbedd4;
-  --status-success-fg: #055a3e;
-  --status-success-bg: #def2e8;
-  --status-attention-fg: #941712;
-  --status-attention-bg: #fae4e1;
+  --shadow-card: 0 1px 2px rgb(11 16 32 / 0.04), 0 1px 1px rgb(11 16 32 / 0.02);
+  --shadow-pop: 0 12px 32px -8px rgb(11 16 32 / 0.18), 0 2px 6px rgb(11 16 32 / 0.06);
 }
 
 @theme inline {
@@ -41,12 +51,16 @@
   --color-paper: var(--paper);
   --color-surface: var(--surface);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-line-subtle: var(--line-subtle);
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
   --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
   --color-gold: var(--gold);
   --color-gold-ink: var(--gold-ink);
+  --color-wa: var(--wa);
+  --color-wa-soft: var(--wa-soft);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-status-neutral-fg: var(--status-neutral-fg);
@@ -60,10 +74,14 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-display: var(--font-display);
+  /* Controls are 10px, cards 16px — one step friendlier than the default scale. */
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
 
-  /* Default Tailwind scale (12/14/16px) reads as too small across a data-dense
-     app used heavily on mobile. Nudge the whole scale up one notch so text-xs
-     is no longer fine-print-sized and text-sm/base keep a clear, readable gap. */
+  /* Readability: the default scale (12/14/16px) is too small for a data-dense app used on phones.
+     Nudged up one notch (kept from the previous design pass — text-xs is never fine print). */
   --text-xs: 0.8125rem;
   --text-xs--line-height: 1.25rem;
   --text-sm: 0.9375rem;
@@ -73,58 +91,462 @@
 }
 
 body {
-  background: var(--paper);
-  color: var(--text);
   text-wrap: pretty;
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
 }
 
-/* Unified Modern Grotesque: tight, controlled tracking on headings */
-.font-display {
-  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
-  letter-spacing: -0.025em;
-  font-weight: 600;
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
 }
 
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Money, quantities, times: the UI sans with tabular figures, so columns align without the
+   terminal look a monospace face gives every number. Mono (`font-mono`) is for SKUs and refs. */
 .font-tabular {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* Crisp tactile planes — grounded paper and hairline ink rules */
-.card-base {
-  background-color: var(--surface);
-  border: 1px solid var(--line);
+/* Display face (Bricolage Grotesque): page titles, headline figures, marketing headlines. */
+.font-display {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
-.card-hover {
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.card-hover:hover {
-  border-color: #d6c4ad;
-}
-
-/* Accessible focus ring defaults */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Scrollbar polish */
+/* Scrollbars and focus, themed from the palette rather than left at browser defaults. */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(29, 16, 48, 0.2);
+  background: rgb(11 16 32 / 0.18);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(29, 16, 48, 0.35);
+  background: rgb(11 16 32 / 0.32);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* Older components still say card-base / card-hover; same surfaces as .card. */
+  .card-base {
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .card-hover {
+    transition: border-color 0.15s ease;
+  }
+  .card-hover:hover {
+    border-color: var(--line-strong);
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.625rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 550;
+    white-space: nowrap;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.05s;
+    cursor: pointer;
+  }
+  .btn:active {
+    transform: translateY(0.5px);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 1px 2px rgb(35 71 245 / 0.35);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-2);
+  }
+  .btn-dark {
+    background: var(--ink);
+    color: #fff;
+  }
+  .btn-dark:hover:not(:disabled) {
+    background: var(--ink-2);
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-card);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--paper);
+    border-color: #b4bac8;
+  }
+  .btn-danger {
+    background: var(--surface);
+    color: var(--status-attention-fg);
+    border: 1px solid #f3c3be;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--status-attention-bg);
+  }
+  .btn-sm {
+    padding: 0.3125rem 0.625rem;
+    font-size: 0.8125rem;
+    border-radius: 0.5rem;
+  }
+  .btn-lg {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9375rem;
+    border-radius: 0.75rem;
+  }
+
+  /* ── Form controls ───────────────────────────────────────────────────── */
+  .input {
+    /* Grid/flex children default to min-width:auto, which lets a long <select> option push
+       the control past its card on a phone. */
+    min-width: 0;
+    max-width: 100%;
+    border-radius: 0.625rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input::placeholder {
+    color: #9097a6;
+  }
+  .input:hover {
+    border-color: #b4bac8;
+  }
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgb(35 71 245 / 0.16);
+  }
+  .input-sm {
+    padding: 0.3125rem 0.5rem;
+    border-radius: 0.5rem;
+  }
+  .field-label {
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: var(--ink);
+  }
+
+  /* ── Filter chips ────────────────────────────────────────────────────── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    padding: 0.3125rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  }
+  .chip:hover {
+    color: var(--ink);
+    border-color: #b4bac8;
+  }
+  .chip-active,
+  .chip-active:hover {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+
+  /* ── Surfaces ────────────────────────────────────────────────────────── */
+  .card {
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .empty {
+    border-radius: 1rem;
+    border: 1px dashed var(--line-strong);
+    background: rgb(255 255 255 / 0.55);
+    padding: 1.75rem 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Type roles ──────────────────────────────────────────────────────── */
+  .page-title {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-size: 1.75rem;
+    line-height: 2.125rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) {
+    .page-title {
+      font-size: 2rem;
+      line-height: 2.375rem;
+    }
+  }
+  .section-title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.15s;
+  }
+  .back-link:hover {
+    color: var(--ink);
+  }
+  .link {
+    color: var(--accent);
+    font-weight: 500;
+    text-underline-offset: 3px;
+  }
+  .link:hover {
+    text-decoration: underline;
+  }
+
+  /* ── Tables ──────────────────────────────────────────────────────────── */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .thead-row {
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .thead-row th {
+    font-weight: inherit;
+  }
+  .trow {
+    border-bottom: 1px solid var(--line);
+    transition: background-color 0.12s;
+  }
+  .trow:last-child {
+    border-bottom: 0;
+  }
+  .trow:hover {
+    background: #f8f9fb;
+  }
+  /* A table wrapped in a card: first/last cells get the card's inner gutter. */
+  .card .table th:first-child,
+  .card .table td:first-child {
+    padding-left: 1.125rem;
+  }
+  .card .table th:last-child,
+  .card .table td:last-child {
+    padding-right: 1.125rem;
+  }
+  .card .table .thead-row {
+    background: #f8f9fb;
+  }
+  .card .table .thead-row th {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+  .card .table .thead-row th:first-child {
+    border-top-left-radius: 1rem;
+  }
+  .card .table .thead-row th:last-child {
+    border-top-right-radius: 1rem;
+  }
+}
+
+/* ── Layout primitives (layout pass, 2026-11-12) ───────────────────────── */
+@layer components {
+  /* Title and its one primary action share a row at every width — the action never drops to a
+     full-width bar under the title on a phone. */
+  .page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .page-head > :first-child {
+    min-width: 0;
+  }
+  /* A single line of filter chips that scrolls sideways instead of wrapping into a block. */
+  .chip-row {
+    display: flex;
+    gap: 0.375rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+  }
+  .chip-row::-webkit-scrollbar {
+    display: none;
+  }
+  .chip-row > * {
+    flex: none;
+  }
+  @media (min-width: 768px) {
+    .chip-row {
+      margin-inline: 0;
+      padding-inline: 0;
+      flex-wrap: wrap;
+    }
+  }
+  /* Detail pages: the work in a main column, reference facts in a side rail from lg up. */
+  .rail-layout {
+    display: grid;
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .rail-layout > * {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+  @media (min-width: 1024px) {
+    .rail-layout {
+      grid-template-columns: minmax(0, 1fr) 21rem;
+      gap: 2rem;
+    }
+  }
+  /* Secondary tools tucked behind a disclosure so they don't crowd the page until wanted. */
+  .disclosure > summary {
+    display: flex;
+    cursor: pointer;
+    list-style: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 650;
+    color: var(--ink);
+  }
+  .disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+  .disclosure > summary::after {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    flex: none;
+    border-right: 2px solid var(--text-muted);
+    border-bottom: 2px solid var(--text-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s;
+    margin-right: 0.25rem;
+  }
+  .disclosure[open] > summary::after {
+    transform: rotate(-135deg);
+  }
+  .disclosure[open] > summary {
+    margin-bottom: 0.875rem;
+  }
+  /* Phone list rows: the stacked replacement for a wide table. */
+  .mrow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+  .mrow:active {
+    background: #f8f9fb;
+  }
+}
+
+/* ── Marketing page motion (reduced-motion safe) ───────────────────────── */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-rise {
+  animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.anim-pop {
+  animation: pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-marquee {
+  animation: marquee 38s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise,
+  .anim-pop,
+  .anim-marquee {
+    animation: none;
+  }
 }

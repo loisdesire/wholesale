@@ -1,18 +1,19 @@
 import Link from "next/link";
+import { ArrowRight, Plus } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { formatMoney, formatRelativeTime } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/status-badge";
+import { Avatar } from "@/components/avatar";
 import { getOwnerAIBriefing } from "@/lib/owner-ai";
 import { OwnerAIBriefingCard } from "@/components/owner-ai-briefing";
 import { DashboardAttentionConsole } from "@/components/dashboard-attention-console";
 import { DebtReminderDrafts } from "@/components/debt-reminder-drafts";
-import { Plus } from "lucide-react";
 
-const URGENCY_LABEL: Record<string, string> = {
-  CRITICAL: "text-status-attention-fg",
-  WARNING: "text-status-progress-fg",
-  WATCH: "text-text-muted",
+const URGENCY_STYLE: Record<string, string> = {
+  CRITICAL: "bg-status-attention-bg text-status-attention-fg",
+  WARNING: "bg-status-progress-bg text-status-progress-fg",
+  WATCH: "bg-status-neutral-bg text-status-neutral-fg",
 };
 
 export default async function DashboardPage() {
@@ -77,198 +78,168 @@ export default async function DashboardPage() {
   ]);
 
   const pipelineOrder = ["DRAFT", "CONFIRMED", "PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const;
-  const countByStatus = Object.fromEntries(
-    pipelineCounts.map((row) => [row.status, row._count._all])
-  );
-  const valueByStatus = Object.fromEntries(
-    pipelineCounts.map((row) => [row.status, row._sum.totalCents ?? 0])
-  );
-  const totalPipelineOrders = Object.values(countByStatus).reduce((a, b) => a + b, 0);
-  const totalPipelineValue = Object.values(valueByStatus).reduce((a, b) => a + b, 0);
+  const countByStatus = Object.fromEntries(pipelineCounts.map((row) => [row.status, row._count._all]));
+  const valueByStatus = Object.fromEntries(pipelineCounts.map((row) => [row.status, row._sum.totalCents ?? 0]));
+  const pipelineMax = Math.max(1, ...pipelineOrder.map((st) => countByStatus[st] ?? 0));
+  const currency = recentOrders[0]?.currency ?? "NGN";
 
-  const today = new Date().toLocaleDateString("en-NG", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-
+  const today = new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" });
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="flex flex-col pb-14 max-w-6xl mx-auto">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-6">
+    <div className="flex flex-col gap-6">
+      <header className="page-head">
         <div>
-          <p className="text-sm text-text-muted">
-            {organization?.name ?? "Wholesale"}, {today}
-          </p>
-          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h1 className="page-title">
             {greeting}, {session!.user.name?.split(" ")[0]}
           </h1>
+          <p className="mt-0.5 text-sm text-text-muted">
+            {organization?.name ?? "Wholesale"} · {today}
+          </p>
         </div>
-
-        <Link
-          href="/orders/new"
-          className="inline-flex h-10 items-center gap-2 bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-2"
-        >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span>New wholesale order</span>
+        <Link href="/orders/new" className="btn btn-primary">
+          <Plus size={16} strokeWidth={2.4} />
+          New order
         </Link>
       </header>
 
-      {/* Today's figure + attention queue */}
-      <OwnerAIBriefingCard briefing={ownerBriefing} />
-      <DashboardAttentionConsole
-        conversations={attentionConversations}
-        orders={attentionOrders}
-        returns={attentionReturns}
-      />
+      {/* Desk layout: the day's money and the work queue lead in the main column; the pipeline,
+          stock risk and reminders are reference, so they live in the side rail. */}
+      <div className="rail-layout">
+        <div>
+          <OwnerAIBriefingCard briefing={ownerBriefing} />
+          <DashboardAttentionConsole
+            conversations={attentionConversations}
+            orders={attentionOrders}
+            returns={attentionReturns}
+          />
 
-      {/* Pipeline — plain counts in one ledger strip, not five boxed tiles */}
-      <section className="border-b border-line py-5">
-        <div className="flex items-baseline justify-between pb-3">
-          <h2 className="font-display text-base font-semibold text-ink">Order pipeline</h2>
-          <span className="text-xs text-text-muted font-tabular">
-            {totalPipelineOrders} orders, {formatMoney(totalPipelineValue)}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-line/70 border border-line">
-          {pipelineOrder.map((status) => {
-            const count = countByStatus[status] ?? 0;
-            return (
-              <Link
-                key={status}
-                href={`/orders?status=${status}`}
-                className="px-4 py-3.5 hover:bg-surface transition-colors"
-              >
-                <p className="font-display text-2xl font-semibold font-tabular text-ink">{count}</p>
-                <p className="mt-0.5 text-xs text-text-muted">{STATUS_SHORT_LABEL[status]}</p>
+          <section>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="section-title">Recent orders</h2>
+              <Link href="/orders" className="link inline-flex items-center gap-1 text-sm">
+                All <ArrowRight size={14} />
               </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Stock risk forecast — only shown when something's actually at risk */}
-      {ownerBriefing.stockoutRisks.length > 0 && (
-        <section className="border-b border-line py-5">
-          <div className="pb-1">
-            <h2 className="font-display text-base font-semibold text-ink">Stock risk forecast</h2>
-            <p className="text-xs text-text-muted">Based on confirmed sales over the last 7 days.</p>
-          </div>
-          <div className="divide-y divide-line/70">
-            {ownerBriefing.stockoutRisks.map((risk) => (
-              <Link
-                key={risk.productId}
-                href={`/catalogue/${risk.productId}`}
-                className="group flex items-center justify-between gap-4 py-3 hover:bg-surface -mx-1 px-1 transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-text-muted">{risk.sku}</span>
-                    <span className={`text-xs font-semibold ${URGENCY_LABEL[risk.urgency]}`}>
-                      {risk.urgency}
-                    </span>
-                  </div>
-                  <p className="text-sm font-medium text-ink truncate mt-0.5 group-hover:text-accent transition-colors">
-                    {risk.name}
-                  </p>
-                  <p className="text-xs text-text-muted mt-0.5">{risk.recommendation}</p>
-                </div>
-                <span className="shrink-0 font-tabular text-sm font-semibold text-ink">
-                  {risk.available} left
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <DebtReminderDrafts debtors={ownerBriefing.debtDrafts} />
-
-      {/* Recent orders & inbound messages */}
-      <section className="grid gap-x-10 lg:grid-cols-2">
-        <div className="min-w-0 py-5 border-b border-line lg:border-b-0">
-          <div className="flex items-baseline justify-between pb-3">
-            <h2 className="font-display text-base font-semibold text-ink">Recent orders</h2>
-            <Link href="/orders" className="text-xs font-medium text-accent hover:text-accent-2">
-              View all
-            </Link>
-          </div>
-
-          {recentOrders.length === 0 ? (
-            <p className="py-6 text-sm text-text-muted">No orders recorded yet.</p>
-          ) : (
-            <div className="divide-y divide-line/70">
-              {recentOrders.map((o) => (
-                <Link
-                  key={o.id}
-                  href={`/orders/${o.id}`}
-                  className="group flex items-center justify-between gap-3 py-3 hover:bg-surface -mx-1 px-1 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-text-muted">{o.reference}</span>
+            </div>
+            {recentOrders.length === 0 ? (
+              <div className="empty">No orders yet.</div>
+            ) : (
+              <div className="card divide-y divide-line overflow-hidden">
+                {recentOrders.map((o) => (
+                  <Link key={o.id} href={`/orders/${o.id}`} className="mrow transition-colors hover:bg-paper/70">
+                    <Avatar name={o.customer.name ?? o.customer.phone} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-ink">{o.customer.name ?? o.customer.phone}</p>
+                      <p className="font-mono text-xs text-text-muted">{o.reference}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="font-tabular font-semibold text-ink">{formatMoney(o.totalCents, o.currency)}</span>
                       <OrderStatusBadge status={o.status} />
                     </div>
-                    <p className="text-sm font-medium text-ink truncate mt-0.5 group-hover:text-accent transition-colors">
-                      {o.customer.name ?? o.customer.phone}
-                    </p>
-                  </div>
-                  <span className="shrink-0 font-tabular text-sm font-semibold text-ink">
-                    {formatMoney(o.totalCents, o.currency)}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
 
-        <div className="min-w-0 py-5">
-          <div className="flex items-baseline justify-between pb-3">
-            <h2 className="font-display text-base font-semibold text-ink">Inbound messages</h2>
-            <Link href="/inbox" className="text-xs font-medium text-accent hover:text-accent-2">
-              Open inbox
-            </Link>
-          </div>
+        <aside>
+          <section>
+            <h2 className="section-title mb-3">Pipeline</h2>
+            <div className="card divide-y divide-line overflow-hidden">
+              {pipelineOrder.map((status) => {
+                const count = countByStatus[status] ?? 0;
+                return (
+                  <Link
+                    key={status}
+                    href={`/orders?status=${status}`}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-paper/70"
+                  >
+                    <span className="w-28 shrink-0 text-ink">{STATUS_LABEL[status]}</span>
+                    <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-paper" aria-hidden="true">
+                      <span className={`block h-full rounded-full ${STAGE_TONE[status]}`} style={{ width: `${(count / pipelineMax) * 100}%` }} />
+                    </span>
+                    <span className="w-5 shrink-0 text-right font-tabular font-semibold text-ink">{count}</span>
+                    <span className="hidden w-20 shrink-0 text-right font-tabular text-xs text-text-muted min-[420px]:block lg:hidden xl:block">
+                      {formatMoney(valueByStatus[status] ?? 0, currency)}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
 
-          {recentMessages.length === 0 ? (
-            <p className="py-6 text-sm text-text-muted">No messages yet.</p>
-          ) : (
-            <div className="divide-y divide-line/70">
-              {recentMessages.map((m) => (
-                <Link
-                  key={m.id}
-                  href={`/inbox/${m.conversationId}`}
-                  className="group flex items-start justify-between gap-3 py-3 hover:bg-surface -mx-1 px-1 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-ink group-hover:text-accent transition-colors truncate">
-                        {m.conversation.customer.name ?? m.conversation.customer.phone}
-                      </span>
-                      <span className="text-xs text-text-muted">{m.sender === "CUSTOMER" ? "buyer" : "AI"}</span>
+          {ownerBriefing.stockoutRisks.length > 0 && (
+            <section>
+              <h2 className="section-title">Running low</h2>
+              <p className="mb-3 text-xs text-text-muted">Based on the last 7 days of sales.</p>
+              <div className="card divide-y divide-line overflow-hidden">
+                {ownerBriefing.stockoutRisks.map((risk) => (
+                  <Link key={risk.productId} href={`/catalogue/${risk.productId}`} className="block px-4 py-3 transition-colors hover:bg-paper/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-sm font-medium text-ink">{risk.name}</p>
+                      <span className="shrink-0 font-tabular text-sm font-semibold text-ink">{risk.available} left</span>
                     </div>
-                    <p className="text-xs text-text-muted truncate mt-0.5 max-w-xs sm:max-w-sm">{m.body}</p>
-                  </div>
-                  <span className="shrink-0 font-tabular text-xs text-text-muted mt-0.5">
-                    {formatRelativeTime(m.createdAt)}
-                  </span>
-                </Link>
-              ))}
-            </div>
+                    <p className="mt-1 flex items-center gap-2 text-xs text-text-muted">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${URGENCY_STYLE[risk.urgency] ?? URGENCY_STYLE.WATCH}`}>
+                        {risk.urgency.charAt(0) + risk.urgency.slice(1).toLowerCase()}
+                      </span>
+                      <span className="truncate">{risk.recommendation}</span>
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
           )}
-        </div>
-      </section>
+
+          <DebtReminderDrafts debtors={ownerBriefing.debtDrafts} />
+
+          <section>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="section-title">Latest messages</h2>
+              <Link href="/inbox" className="link inline-flex items-center gap-1 text-sm">
+                Inbox <ArrowRight size={14} />
+              </Link>
+            </div>
+            {recentMessages.length === 0 ? (
+              <div className="empty">No messages yet.</div>
+            ) : (
+              <div className="card divide-y divide-line overflow-hidden">
+                {recentMessages.map((m) => (
+                  <Link key={m.id} href={`/inbox/${m.conversationId}`} className="flex items-start gap-3 px-4 py-3 text-sm transition-colors hover:bg-paper/70">
+                    <Avatar name={m.conversation.customer.name ?? m.conversation.customer.phone} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="truncate font-medium text-ink">{m.conversation.customer.name ?? m.conversation.customer.phone}</span>
+                        <span className="shrink-0 font-tabular text-xs text-text-muted">{formatRelativeTime(m.createdAt)}</span>
+                      </div>
+                      <p className="truncate text-text-muted">{m.body}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
 
-const STATUS_SHORT_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
-  CONFIRMED: "Confirmed",
-  PAID: "Paid",
+  CONFIRMED: "To be paid",
+  PAID: "To ship",
   PARTIALLY_FULFILLED: "Partly shipped",
   FULFILLED: "Fulfilled",
+};
+
+// One colour per stage, so the bar and its row read together.
+const STAGE_TONE: Record<string, string> = {
+  DRAFT: "bg-[#aab1c0]",
+  CONFIRMED: "bg-[#f0a41c]",
+  PAID: "bg-accent",
+  PARTIALLY_FULFILLED: "bg-[#7c8cf8]",
+  FULFILLED: "bg-[#18a66a]",
 };

@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { formatRelativeTime } from "@/lib/format";
 import { ConversationStatusBadge } from "@/components/status-badge";
-import { MessageSquare, ShoppingBag } from "lucide-react";
 
 export default async function InboxPage() {
   const session = await auth();
@@ -22,197 +22,68 @@ export default async function InboxPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 pb-12">
-      {/* Header */}
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-baseline gap-2.5">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Conversations Inbox</h1>
-            <span className="font-tabular text-sm text-text-muted">{conversations.length} active</span>
-          </div>
-          <p className="mt-1 text-sm text-text-muted">
-            Live customer message streams, order negotiations, and catalogue inquiries across Telegram and WhatsApp.
-          </p>
-        </div>
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="page-title">Inbox</h1>
       </header>
 
-      {/* Main Table & Mobile Card View */}
       {conversations.length === 0 ? (
-        <div className="border border-line flex flex-col items-center justify-center p-12 text-center">
-          <MessageSquare className="h-6 w-6 text-text-muted" />
-          <h2 className="mt-3 font-display text-base font-bold text-ink">No conversations active</h2>
-          <p className="mt-1 max-w-sm text-xs text-text-muted">
-            Incoming customer messages from Telegram and WhatsApp will appear here in real-time.
-          </p>
-        </div>
+        <p className="empty">
+          No conversations yet.
+        </p>
       ) : (
-        <div className="space-y-4">
-          {/* Mobile Card Stack (< 640px) */}
-          <div className="block sm:hidden space-y-3">
-            {conversations.map((c) => {
-              const lastMsg = c.messages[0];
-              return (
+        // A conversation list, not a spreadsheet: who, what they last said, and whether it's
+        // waiting on us. Rows that need a person carry a cobalt marker on the left edge.
+        <ul className="card divide-y divide-line overflow-hidden">
+          {conversations.map((c) => {
+            const waiting = c.status === "AWAITING_STAFF" || c.status === "NEW";
+            const name = c.customer.name ?? "Unnamed";
+            return (
+              <li key={c.id} className="relative">
                 <Link
-                  key={c.id}
                   href={`/inbox/${c.id}`}
-                  className="card-base block p-4 transition-colors active:bg-paper/80"
+                  className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-paper/70 sm:items-center sm:px-5"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-text-muted">{c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}</p>
-                      <span className="font-semibold text-ink text-base truncate">
-                        {c.customer.name ?? "Unnamed Customer"}
-                      </span>
-                      <p className="font-tabular text-xs text-text-muted mt-0.5">{c.customer.phone}</p>
-                    </div>
-
-                    <div className="flex flex-col items-end shrink-0 gap-1">
-                      <span className="font-tabular text-xs text-text-muted">
-                        {formatRelativeTime(c.lastMessageAt)}
-                      </span>
+                  <span className="relative shrink-0">
+                    <Avatar name={c.customer.name ?? c.customer.phone} />
+                    {waiting && <span aria-label="Waiting on a reply" className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-surface bg-accent" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className={`text-sm text-ink ${waiting ? "font-semibold" : "font-medium"}`}>{name}</span>
                       <ConversationStatusBadge status={c.status} />
-                    </div>
-                  </div>
-
-                  {/* Latest Message Preview */}
-                  <div className="mt-3 bg-paper/60 px-3 py-2 text-xs text-ink/80 line-clamp-2">
-                    {lastMsg?.body ? (
-                      <span>{lastMsg.body}</span>
-                    ) : (
-                      <span className="italic text-text-muted">No message content</span>
-                    )}
-                  </div>
-
-                  {/* Footer: Assigned Staff & Linked Orders */}
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-2.5 text-xs text-text-muted">
-                    <div className="flex items-center gap-1.5">
-                      {c.assignedTo ? (
-                        <span className="inline-flex items-center gap-1 text-ink font-medium text-xs">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          <span>{c.assignedTo.name}</span>
+                      {c.orders.map((o) => (
+                        <span key={o.reference} className="rounded-md bg-paper px-1.5 py-0.5 font-mono text-[11px] text-text-muted">
+                          {o.reference}
                         </span>
+                      ))}
+                    </div>
+                    <p className={`mt-0.5 truncate text-sm ${waiting ? "text-ink" : "text-text-muted"}`}>
+                      {c.messages[0]?.body ?? "No messages yet"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-text-muted sm:hidden">
+                      {c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"} · {c.assignedTo?.name ?? "Unassigned"} · {formatRelativeTime(c.lastMessageAt)}
+                    </p>
+                  </div>
+                  <div className="hidden shrink-0 flex-col items-end gap-1 text-xs text-text-muted sm:flex">
+                    <span className="font-tabular">{formatRelativeTime(c.lastMessageAt)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="rounded-md bg-paper px-1.5 py-0.5 text-[11px] font-medium">{c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}</span>
+                      {c.assignedTo?.name ? (
+                        <>
+                          <Avatar name={c.assignedTo.name} size="xs" />
+                          {c.assignedTo.name}
+                        </>
                       ) : (
-                        <span className="text-text-muted italic text-xs">Unassigned</span>
+                        "Unassigned"
                       )}
-                    </div>
-
-                    {c.orders.length > 0 && (
-                      <div className="flex items-center gap-1.5">
-                        <ShoppingBag className="h-3.5 w-3.5 text-text-muted" />
-                        <span className="font-tabular font-medium text-xs text-ink">
-                          {c.orders.length} {c.orders.length === 1 ? "order" : "orders"}
-                        </span>
-                      </div>
-                    )}
+                    </span>
                   </div>
                 </Link>
-              );
-            })}
-          </div>
-
-          {/* Desktop Table View (>= 640px) */}
-          <div className="hidden sm:block card-base overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm table-fixed">
-                <thead>
-                  <tr className="border-b border-line text-xs font-medium text-text-muted">
-                    <th className="py-3.5 pl-5 pr-4 w-[200px]">Customer</th>
-                    <th className="py-3.5 pr-4 w-[90px]">Channel</th>
-                    <th className="py-3.5 pr-4 w-[130px]">Status</th>
-                    <th className="py-3.5 pr-4 min-w-[240px]">Latest message</th>
-                    <th className="py-3.5 pr-4 w-[150px]">Linked orders</th>
-                    <th className="py-3.5 pr-4 w-[130px]">Assigned</th>
-                    <th className="py-3.5 pl-4 pr-5 text-right w-[100px]">Active</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {conversations.map((c) => {
-                    const lastMsg = c.messages[0];
-                    return (
-                      <tr
-                        key={c.id}
-                        className="group transition-colors hover:bg-paper/40 cursor-pointer"
-                      >
-                        {/* Customer Info */}
-                        <td className="py-3.5 pl-5 pr-4">
-                          <Link href={`/inbox/${c.id}`} className="block">
-                            <p className="font-semibold text-ink group-hover:text-accent transition-colors truncate">
-                              {c.customer.name ?? "Unnamed Customer"}
-                            </p>
-                            <p className="font-tabular text-xs text-text-muted mt-0.5">{c.customer.phone}</p>
-                          </Link>
-                        </td>
-                        <td className="py-3.5 pr-4 align-middle text-xs text-text-muted">
-                          {c.channel === "TELEGRAM" ? "Telegram" : "WhatsApp"}
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-3.5 pr-4 align-middle">
-                          <ConversationStatusBadge status={c.status} />
-                        </td>
-
-                        {/* Latest Message snippet */}
-                        <td className="py-3.5 pr-4">
-                          <Link href={`/inbox/${c.id}`} className="block">
-                            <p className="truncate text-xs text-ink/80 group-hover:text-ink transition-colors">
-                              {lastMsg?.body ?? "—"}
-                            </p>
-                          </Link>
-                        </td>
-
-                        {/* Linked Orders */}
-                        <td className="py-3.5 pr-4 align-middle">
-                          {c.orders.length > 0 ? (
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {c.orders.slice(0, 2).map((o) => (
-                                <Link
-                                  key={o.id}
-                                  href={`/orders/${o.id}`}
-                                  className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-0.5 font-mono text-xs font-bold text-ink hover:bg-accent/10 hover:text-accent transition-colors whitespace-nowrap"
-                                >
-                                  <span>{o.reference}</span>
-                                </Link>
-                              ))}
-                              {c.orders.length > 2 && (
-                                <span className="font-mono text-xs font-semibold text-text-muted">
-                                  +{c.orders.length - 2}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-text-muted">—</span>
-                          )}
-                        </td>
-
-                        {/* Assigned */}
-                        <td className="py-3.5 pr-4 align-middle text-xs">
-                          {c.assignedTo ? (
-                            <span className="inline-flex items-center gap-1.5 text-ink font-medium">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <span>{c.assignedTo.name}</span>
-                            </span>
-                          ) : (
-                            <span className="text-text-muted italic">Unassigned</span>
-                          )}
-                        </td>
-
-                        {/* Last Active */}
-                        <td className="py-3.5 pl-4 pr-5 text-right font-tabular text-xs text-text-muted align-middle">
-                          <Link
-                            href={`/inbox/${c.id}`}
-                            className="group-hover:text-accent transition-colors"
-                          >
-                            {formatRelativeTime(c.lastMessageAt)}
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

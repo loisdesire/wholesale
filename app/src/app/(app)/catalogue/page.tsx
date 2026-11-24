@@ -1,16 +1,10 @@
 import Link from "next/link";
+import { ArrowDownUp, Package, Plus, Search } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
 import { getStockBreakdownByProduct } from "@/lib/stock";
 import { ci } from "@/lib/search";
-import {
-  Plus,
-  Search,
-  Download,
-  Upload,
-  Package,
-} from "lucide-react";
 
 const PAGE_SIZE = 50;
 
@@ -50,12 +44,10 @@ export default async function CataloguePage({
     }),
     db.product.count({ where }),
   ]);
-
-  const stockMap = await getStockBreakdownByProduct(
-    organizationId,
-    { productIds: products.map((p) => p.id) },
-    db
-  );
+  // Only this page's products, not the whole catalogue's ledger.
+  const stockMap = await getStockBreakdownByProduct(organizationId, {
+    productIds: products.map((p) => p.id),
+  }, db);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const link = (overrides: Record<string, string | undefined>) => {
@@ -65,359 +57,223 @@ export default async function CataloguePage({
     const qs = next.toString();
     return qs ? `/catalogue?${qs}` : "/catalogue";
   };
+  const pageLink = (p: number) => link({ page: String(p) });
 
   return (
-    <div className="flex flex-col gap-6 pb-16">
-      {/* Page Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-baseline gap-2.5">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Catalogue &amp; Stock</h1>
-            <span className="font-tabular text-sm text-text-muted">{totalCount} SKUs</span>
-          </div>
-          <p className="mt-1 text-sm text-text-muted">
-            Active inventory batches, wholesale tier pricing, and SKU availability.
-          </p>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="/api/catalogue/export"
-            className="inline-flex h-10 items-center gap-1.5 border border-line bg-surface px-3.5 text-xs font-semibold text-ink hover:bg-paper transition-colors cursor-pointer"
-          >
-            <Download className="h-3.5 w-3.5 text-text-muted" />
-            <span>Export CSV</span>
-          </a>
-          <Link
-            href="/catalogue/import"
-            className="inline-flex h-10 items-center gap-1.5 border border-line bg-surface px-3.5 text-xs font-semibold text-ink hover:bg-paper transition-colors"
-          >
-            <Upload className="h-3.5 w-3.5 text-text-muted" />
-            <span>Import CSV</span>
-          </Link>
-          <Link
-            href="/catalogue/new"
-            className="inline-flex h-10 items-center gap-1.5 bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-2 cursor-pointer"
-          >
-            <Plus className="h-4 w-4 stroke-[2.5]" />
-            <span>New Product</span>
+    <div className="flex flex-col gap-5">
+      <header className="page-head">
+        <h1 className="page-title">Catalogue</h1>
+        <div className="flex items-center gap-2">
+          {/* Import/export are occasional desk jobs: off the phone header, behind one menu. */}
+          <details className="relative hidden sm:block">
+            <summary className="btn btn-secondary list-none [&::-webkit-details-marker]:hidden">
+              <ArrowDownUp size={15} />
+              CSV
+            </summary>
+            <div className="absolute right-0 z-10 mt-1.5 flex w-44 flex-col rounded-xl border border-line bg-surface p-1 text-sm shadow-pop">
+              <Link href="/catalogue/import" className="rounded-lg px-3 py-2 hover:bg-paper">
+                Import products
+              </Link>
+              <a href="/api/catalogue/export" className="rounded-lg px-3 py-2 hover:bg-paper">
+                Export products
+              </a>
+            </div>
+          </details>
+          <Link href="/catalogue/new" className="btn btn-primary">
+            <Plus size={16} strokeWidth={2.4} />
+            New product
           </Link>
         </div>
       </header>
 
-      {/* Search and Filters Bar */}
-      <div className="border border-line flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-        <form action="/catalogue" className="relative min-w-[260px] flex-1">
-          {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-          <input
-            type="search"
-            name="q"
-            defaultValue={query}
-            placeholder="Search catalogue by product name or SKU…"
-            className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
-          />
-        </form>
+      <form action="/catalogue" className="relative flex max-w-md">
+        {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+        <input
+          type="search"
+          name="q"
+          defaultValue={query}
+          placeholder="Search products"
+          aria-label="Search products by name or SKU"
+          className="input w-full pl-9"
+        />
+      </form>
 
-        {/* Status Quick Filter Tabs — plain underline, not a pill segmented control */}
-        <nav aria-label="Filter by status" className="flex items-center gap-5 text-xs font-semibold">
+      <nav aria-label="Filter by status" className="chip-row -mt-2">
+        {[
+          { label: "All", value: undefined },
+          { label: "Active", value: "active" },
+          { label: "Inactive", value: "inactive" },
+        ].map((f) => (
           <Link
-            href={link({ status: undefined })}
-            className={`border-b-2 pb-0.5 transition-colors ${
-              !statusFilter ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
-            }`}
+            key={f.label}
+            href={link({ status: f.value, page: undefined })}
+            aria-current={statusFilter === f.value ? "true" : undefined}
+            className={`chip ${statusFilter === f.value ? "chip-active" : ""}`}
           >
-            All items
+            {f.label}
           </Link>
-          <Link
-            href={link({ status: "active" })}
-            className={`border-b-2 pb-0.5 transition-colors ${
-              statusFilter === "active" ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
-            }`}
-          >
-            Active only
-          </Link>
-          <Link
-            href={link({ status: "inactive" })}
-            className={`border-b-2 pb-0.5 transition-colors ${
-              statusFilter === "inactive" ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
-            }`}
-          >
-            Archived
-          </Link>
-        </nav>
-      </div>
+        ))}
+      </nav>
 
-      {/* Products Table & Mobile Cards */}
       {products.length === 0 ? (
-        <div className="border border-line flex flex-col items-center justify-center p-12 text-center">
-          <Package className="h-6 w-6 text-text-muted" />
-          <h2 className="mt-3 font-display text-base font-bold text-ink">
-            {query ? `No items found matching "${query}"` : "Catalogue is empty"}
-          </h2>
-          <p className="mt-1 max-w-sm text-xs text-text-muted">
-            {query
-              ? "Check for SKU spelling variations or clear the search query."
-              : "Add your first wholesale garment or fabric item to begin trade."}
-          </p>
-          {!query && (
-            <Link
-              href="/catalogue/new"
-              className="mt-4 inline-flex h-10 items-center gap-1.5 bg-accent px-4 text-xs font-semibold text-white"
-            >
-              <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-              <span>Add First Product</span>
-            </Link>
+        <p className="empty">
+          {query ? (
+            `No products match "${query}".`
+          ) : (
+            <>
+              No products yet.{" "}
+              <Link href="/catalogue/new" className="link">
+                Add the first one
+              </Link>
+              .
+            </>
           )}
-        </div>
+        </p>
       ) : (
-        <div className="space-y-4">
-          {/* Mobile Card Stack (< 640px) */}
-          <div className="block sm:hidden space-y-3">
+        <>
+          {/* Phone: photo, name, variant on the left; what's available and the price on the right. */}
+          <ul className="card divide-y divide-line overflow-hidden md:hidden">
             {products.map((p) => {
-              const figures = stockMap.get(p.id);
-              const available = figures?.available ?? 0;
-              const physical = figures?.physical ?? 0;
+              const stock = stockMap.get(p.id)?.available ?? 0;
               const variant = p.variantAttributes as Record<string, string> | null;
               const thumbnail = p.images[0];
-
               return (
-                <Link
-                  key={p.id}
-                  href={`/catalogue/${p.id}`}
-                  className="card-base block p-4 transition-colors active:bg-paper/80"
-                >
-                  <div className="flex items-start gap-3.5">
-                    {/* Thumbnail */}
-                    <div className="shrink-0">
-                      {thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`/api/product-images/${thumbnail.id}`}
-                          alt=""
-                          className="h-14 w-14 rounded-xl border border-line object-cover shadow-2xs"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-line bg-paper/50 text-text-muted">
-                          <Package className="h-6 w-6" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Details */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h2 className="font-semibold text-ink text-base truncate">
-                          {p.name}
-                        </h2>
-                        <span className="font-tabular font-bold text-ink text-sm shrink-0">
-                          {formatMoney(p.priceCents, p.currency)}
-                        </span>
-                      </div>
-
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <span className="inline-block rounded-md bg-paper/90 px-1.5 py-0.5 font-mono text-xs font-bold text-ink">
-                          {p.sku}
-                        </span>
-                        {variant && (
-                          <span className="rounded-md border border-line/60 bg-paper/50 px-1.5 py-0.5 text-xs font-semibold text-text-muted">
-                            {Object.values(variant).join(" / ")}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Stock & Status Bar */}
-                      <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-2 text-xs">
-                        <div>
-                          {p.active ? (
-                            <span className="inline-flex items-center gap-1.5 text-emerald-800 font-medium text-xs">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <span>Active</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-stone-500 font-medium text-xs">
-                              <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
-                              <span>Archived</span>
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="text-right">
-                          <span
-                            className={`font-tabular text-xs font-bold ${
-                              available === 0 ? "text-rose-700" : "text-ink"
-                            }`}
-                          >
-                            {available} {p.unit}{available === 1 ? "" : "s"} avail
-                          </span>
-                          <span className="font-tabular text-xs text-text-muted ml-1">
-                            ({physical} total)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
+                <li key={p.id}>
+                  <Link href={`/catalogue/${p.id}`} className="mrow">
+                    {thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route
+                      <img src={`/api/product-images/${thumbnail.id}`} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-line object-cover" />
+                    ) : (
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-paper text-text-muted/70">
+                        <Package size={18} strokeWidth={1.6} />
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate font-medium ${p.active ? "text-ink" : "text-text-muted"}`}>{p.name}</span>
+                      <span className="block truncate text-xs text-text-muted">
+                        {variant ? Object.values(variant).join(" / ") : p.sku}
+                        {!p.active && " · Inactive"}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="font-tabular font-semibold text-ink">{formatMoney(p.priceCents, p.currency)}</span>
+                      <span
+                        className={`font-tabular text-xs ${
+                          stock <= 0 ? "font-semibold text-status-attention-fg" : stock <= 5 ? "font-semibold text-status-progress-fg" : "text-text-muted"
+                        }`}
+                      >
+                        {stock <= 0 ? "Out of stock" : `${stock} left`}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
 
-          {/* Desktop Table View (>= 640px) */}
-          <div className="hidden sm:block card-base overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm table-fixed">
-                <thead>
-                  <tr className="border-b border-line text-xs font-medium text-text-muted">
-                    <th className="py-3.5 pl-5 pr-3 w-[64px]"></th>
-                    <th className="py-3.5 pr-4 w-[150px]">SKU</th>
-                    <th className="py-3.5 pr-4 min-w-[220px]">Product</th>
-                    <th className="py-3.5 pr-4 w-[180px]">Variant</th>
-                    <th className="py-3.5 pr-4 w-[100px]">Status</th>
-                    <th className="py-3.5 pr-4 text-right w-[150px]">Available</th>
-                    <th className="py-3.5 pl-4 pr-5 text-right w-[140px]">List price</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {products.map((p) => {
-                    const figures = stockMap.get(p.id);
-                    const available = figures?.available ?? 0;
-                    const physical = figures?.physical ?? 0;
-                    const variant = p.variantAttributes as Record<string, string> | null;
-                    const thumbnail = p.images[0];
-
-                    return (
-                      <tr
-                        key={p.id}
-                        className="group transition-colors hover:bg-paper/40 cursor-pointer"
-                      >
-                        {/* Photo Thumbnail */}
-                        <td className="py-3 pl-5 pr-3 align-middle">
-                          <Link href={`/catalogue/${p.id}`} className="block">
-                            {thumbnail ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={`/api/product-images/${thumbnail.id}`}
-                                alt=""
-                                className="h-10 w-10 rounded-xl border border-line object-cover shadow-2xs transition-transform group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-line bg-paper/50 text-text-muted">
-                                <Package className="h-4 w-4" />
-                              </div>
-                            )}
-                          </Link>
-                        </td>
-
-                        {/* SKU */}
-                        <td className="py-3.5 pr-4 align-middle">
-                          <Link
-                            href={`/catalogue/${p.id}`}
-                            className="inline-flex items-center rounded-md bg-paper/80 px-2 py-1 font-mono text-xs font-bold text-ink group-hover:bg-accent/10 group-hover:text-accent transition-colors"
-                          >
-                            {p.sku}
-                          </Link>
-                        </td>
-
-                        {/* Product Title */}
-                        <td className="py-3.5 pr-4 align-middle">
-                          <Link href={`/catalogue/${p.id}`} className="block">
-                            <p className="font-semibold text-ink group-hover:text-accent transition-colors">
+          <div className="card hidden overflow-x-auto md:block">
+            <table className="table">
+              <thead>
+                <tr className="thead-row">
+                  <th className="py-2 pr-4">Product</th>
+                  <th className="py-2 pr-4">SKU</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4 text-right">Available</th>
+                  <th className="py-2 pr-4 text-right">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p) => {
+                  const figures = stockMap.get(p.id);
+                  const stock = figures?.available ?? 0;
+                  const variant = p.variantAttributes as Record<string, string> | null;
+                  const thumbnail = p.images[0];
+                  // Colour says what the number means: out (red), running low (amber), fine (ink).
+                  const stockTone =
+                    stock <= 0 ? "text-status-attention-fg" : stock <= 5 ? "text-status-progress-fg" : "text-ink";
+                  return (
+                    <tr key={p.id} className="trow">
+                      <td className="py-2.5 pr-4">
+                        <Link href={`/catalogue/${p.id}`} className="group flex items-center gap-3">
+                          {thumbnail ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route, not a static asset Next's image optimizer can handle
+                            <img
+                              src={`/api/product-images/${thumbnail.id}`}
+                              alt=""
+                              className="h-11 w-11 shrink-0 rounded-lg border border-line object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-paper text-text-muted/70">
+                              <Package size={18} strokeWidth={1.6} />
+                            </span>
+                          )}
+                          <span className="min-w-0">
+                            <span className="block whitespace-nowrap font-medium text-ink underline-offset-4 group-hover:text-accent group-hover:underline">
                               {p.name}
-                            </p>
-                            <p className="text-xs text-text-muted">MOQ: {p.moq} {p.unit}{p.moq === 1 ? "" : "s"}</p>
-                          </Link>
-                        </td>
+                            </span>
+                            <span className="block whitespace-nowrap text-xs text-text-muted">
+                              {variant ? Object.values(variant).join(" / ") : "No variant"}
+                            </span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap py-2.5 pr-4 font-mono text-xs text-text-muted">{p.sku}</td>
+                      <td className="py-2.5 pr-4">
+                        {p.active ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-status-success-fg">
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-text-muted">
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className={`whitespace-nowrap py-2.5 pr-4 text-right font-tabular ${stockTone}`}>
+                        <span className="font-semibold">{stock}</span>{" "}
+                        <span className="text-xs">
+                          {p.unit}
+                          {stock === 1 ? "" : "s"}
+                        </span>
+                        {stock <= 0 ? (
+                          <span className="ml-2 rounded-full bg-status-attention-bg px-1.5 py-0.5 text-[11px] font-semibold">Out</span>
+                        ) : stock <= 5 ? (
+                          <span className="ml-2 rounded-full bg-status-progress-bg px-1.5 py-0.5 text-[11px] font-semibold">Low</span>
+                        ) : null}
+                      </td>
+                      <td className="whitespace-nowrap py-2.5 pr-4 text-right font-tabular font-medium text-ink">
+                        {formatMoney(p.priceCents, p.currency)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                        {/* Variant Attributes */}
-                        <td className="py-3.5 pr-4 text-xs font-medium text-text-muted align-middle overflow-hidden">
-                          {variant ? (
-                            <span
-                              title={Object.values(variant).join(" / ")}
-                              className="block max-w-full truncate rounded-md border border-line/60 bg-paper/60 px-2 py-0.5 text-xs font-semibold text-ink"
-                            >
-                              {Object.values(variant).join(" / ")}
-                            </span>
-                          ) : (
-                            <span className="text-text-muted">—</span>
-                          )}
-                        </td>
-
-                        {/* Active Status Pip */}
-                        <td className="py-3.5 pr-4 align-middle text-xs">
-                          {p.active ? (
-                            <span className="inline-flex items-center gap-1.5 text-emerald-800 font-medium">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <span>Active</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-stone-500 font-medium">
-                              <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
-                              <span>Archived</span>
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Available Stock */}
-                        <td className="py-3.5 pr-4 text-right align-middle">
-                          <div className="flex flex-col items-end">
-                            <span
-                              className={`font-tabular text-sm font-bold ${
-                                available === 0 ? "text-rose-700" : "text-ink"
-                              }`}
-                            >
-                              {available} {p.unit}{available === 1 ? "" : "s"}
-                            </span>
-                            <span className="font-tabular text-xs text-text-muted">
-                              ({physical} on hand)
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Price */}
-                        <td className="py-3.5 pl-4 pr-5 text-right align-middle">
-                          <Link
-                            href={`/catalogue/${p.id}`}
-                            className="inline-flex items-center justify-end font-tabular text-sm font-bold text-ink group-hover:text-accent transition-colors"
-                          >
-                            {formatMoney(p.priceCents, p.currency)}
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm text-text-muted">
+              <span>
+                Page {page} of {totalPages} · {totalCount} products
+              </span>
+              <div className="flex gap-3">
+                {page > 1 && (
+                  <Link href={pageLink(page - 1)} className="link">
+                    Previous
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link href={pageLink(page + 1)} className="link">
+                    Next
+                  </Link>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pagination Footer */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-2 pt-2 text-xs text-text-muted">
-          <span>
-            Page <strong className="text-ink">{page}</strong> of {totalPages} ({totalCount} items)
-          </span>
-          <div className="flex items-center gap-2">
-            {page > 1 && (
-              <Link
-                href={link({ page: String(page - 1) })}
-                className="rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:bg-paper transition-colors"
-              >
-                ← Previous
-              </Link>
-            )}
-            {page < totalPages && (
-              <Link
-                href={link({ page: String(page + 1) })}
-                className="rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:bg-paper transition-colors"
-              >
-                Next →
-              </Link>
-            )}
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

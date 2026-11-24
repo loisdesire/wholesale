@@ -9,7 +9,6 @@ import {
   type FormState,
 } from "../actions";
 import { PaymentLinkButton } from "./payment-link-button";
-import { AlertCircle } from "lucide-react";
 
 function ActionButton({
   action,
@@ -21,7 +20,7 @@ function ActionButton({
   action: (prevState: FormState) => Promise<FormState>;
   label: string;
   pendingLabel: string;
-  variant?: "primary" | "secondary" | "danger";
+  variant?: "primary" | "danger";
   /** Ask "are you sure?" before running — for actions that move money. */
   confirmMessage?: string;
 }) {
@@ -33,22 +32,20 @@ function ActionButton({
       onSubmit={(e) => {
         if (confirmMessage && !window.confirm(confirmMessage)) e.preventDefault();
       }}
-      className="inline-flex items-center gap-2"
+      className="flex items-center gap-3"
     >
       <button
         type="submit"
         disabled={pending}
         className={
           variant === "primary"
-            ? "inline-flex min-h-[40px] items-center justify-center gap-1.5 bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-2 disabled:opacity-60 cursor-pointer"
-            : variant === "danger"
-              ? "inline-flex min-h-[40px] items-center justify-center gap-1.5 border border-rose-200 bg-rose-50/60 px-4 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-60 cursor-pointer"
-              : "inline-flex min-h-[40px] items-center justify-center gap-1.5 border border-line bg-surface px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-paper disabled:opacity-60 cursor-pointer"
+            ? "btn btn-primary"
+            : "btn btn-danger"
         }
       >
         {pending ? pendingLabel : label}
       </button>
-      {state.error && <p className="text-xs font-medium text-rose-700">{state.error}</p>}
+      {state.error && <p className="text-sm text-status-attention-fg">{state.error}</p>}
     </form>
   );
 }
@@ -68,28 +65,26 @@ export function OrderActions({
   if (status === "DRAFT") {
     const repeat = duplicateOf.length > 0;
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {repeat && (
-          <div role="status" className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
-            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-            <p>
-              <strong>Possible Repeat Order:</strong> {duplicateOf.join(", ")} contains the same customer and items in the last 24h. Verify before confirming to prevent accidental double-billing.
-            </p>
-          </div>
+          <p role="status" className="rounded-xl border border-status-attention-fg/20 bg-status-attention-bg px-4 py-3 text-sm text-status-attention-fg">
+            Possible repeat order: {duplicateOf.join(", ")} has the same customer and the same items from the last
+            day. Check before confirming so the customer isn&apos;t charged twice.
+          </p>
         )}
-        <div className="flex flex-wrap items-center gap-2">
-          <ActionButton
-            action={confirmOrderAction.bind(null, orderId, repeat)}
-            label={repeat ? "Confirm anyway — intended order" : "Confirm & Reserve Stock"}
-            pendingLabel="Confirming…"
-            confirmMessage={repeat ? `This looks like a repeat of ${duplicateOf.join(", ")}. Confirm it anyway?` : undefined}
-          />
-          <ActionButton
-            action={cancelOrderAction.bind(null, orderId)}
-            label="Cancel draft"
-            pendingLabel="Cancelling…"
-            variant="danger"
-          />
+        <div className="flex flex-wrap gap-2">
+        <ActionButton
+          action={confirmOrderAction.bind(null, orderId, repeat)}
+          label={repeat ? "Confirm anyway — it's intended" : "Confirm order"}
+          pendingLabel="Confirming…"
+          confirmMessage={repeat ? `This looks like a repeat of ${duplicateOf.join(", ")}. Confirm it anyway?` : undefined}
+        />
+        <ActionButton
+          action={cancelOrderAction.bind(null, orderId)}
+          label="Cancel order"
+          pendingLabel="Cancelling…"
+          variant="danger"
+        />
         </div>
       </div>
     );
@@ -97,16 +92,12 @@ export function OrderActions({
 
   if (status === "CONFIRMED") {
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <ActionButton
-          action={markPaidAction.bind(null, orderId)}
-          label="Record Manual Payment"
-          pendingLabel="Recording…"
-        />
+      <div className="flex flex-wrap items-start gap-2">
+        <ActionButton action={markPaidAction.bind(null, orderId)} label="Mark as paid" pendingLabel="Saving…" />
         <PaymentLinkButton orderId={orderId} />
         <ActionButton
           action={cancelOrderAction.bind(null, orderId)}
-          label="Cancel Order"
+          label="Cancel order"
           pendingLabel="Cancelling…"
           variant="danger"
         />
@@ -116,22 +107,22 @@ export function OrderActions({
 
   if (status === "PAID") {
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap gap-2">
         <ActionButton
           action={markFulfilledAction.bind(null, orderId)}
-          label="Dispatch & Fulfill Remaining"
+          label="Ship everything remaining"
           pendingLabel="Saving…"
         />
         {isOwner ? (
           <ActionButton
             action={cancelOrderAction.bind(null, orderId)}
-            label="Cancel & Void to Refund"
+            label="Cancel order and refund"
             pendingLabel="Cancelling…"
             variant="danger"
-            confirmMessage="Cancel this paid order? Its reserved stock is released and the full amount becomes an outstanding refund owed to the customer."
+            confirmMessage="Cancel this paid order? Its stock is released and the full amount becomes a refund you owe the customer."
           />
         ) : (
-          <span className="text-xs text-text-muted">Cancellations on settled orders require owner approval.</span>
+          <p className="self-center text-sm text-text-muted">Cancelling a paid order means a refund — only an owner can do it.</p>
         )}
       </div>
     );
@@ -141,7 +132,7 @@ export function OrderActions({
     return (
       <ActionButton
         action={markFulfilledAction.bind(null, orderId)}
-        label="Dispatch & Fulfill Remaining"
+        label="Ship everything remaining"
         pendingLabel="Saving…"
       />
     );

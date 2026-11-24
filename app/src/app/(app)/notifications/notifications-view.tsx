@@ -4,18 +4,7 @@ import { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/format";
 import { markAllNotificationsReadAction, markNotificationsReadAction } from "../operations/actions";
-import { 
-  Bell, 
-  CheckCheck, 
-  RotateCcw, 
-  DollarSign, 
-  UserCheck, 
-  Search, 
-  Check,
-  Loader2,
-  Inbox, 
-  Clock
-} from "lucide-react";
+import { Bell, Check, CheckCheck, Loader2, RotateCcw, Search, UserCheck, Wallet } from "lucide-react";
 
 export type SerializedNotification = {
   id: string;
@@ -108,45 +97,11 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
   function getKindMeta(n: SerializedNotification) {
     const k = n.kind.toUpperCase();
     const t = n.title.toLowerCase();
-
-    if (k === "REFUND_DUE" || t.includes("refund")) {
-      return {
-        badge: "Refund Required",
-        badgeClass: "bg-amber-500/10 text-amber-700 border-amber-500/20",
-        icon: <DollarSign className="h-4 w-4 text-amber-600" />,
-        actionText: "Process Refund",
-      };
-    }
-    if (k === "PAYMENT_VERIFIED" || t.includes("payment")) {
-      return {
-        badge: "Payment Verified",
-        badgeClass: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-        icon: <Check className="h-4 w-4 text-emerald-600" />,
-        actionText: "View Order",
-      };
-    }
-    if (k.startsWith("RETURN") || t.includes("return")) {
-      return {
-        badge: "Return Triage",
-        badgeClass: "bg-rose-500/10 text-rose-700 border-rose-500/20",
-        icon: <RotateCcw className="h-4 w-4 text-rose-700" />,
-        actionText: "Inspect Return",
-      };
-    }
-    if (k === "ASSIGNED" || t.includes("assign")) {
-      return {
-        badge: "Assignment",
-        badgeClass: "bg-accent/10 text-accent border-accent/20",
-        icon: <UserCheck className="h-4 w-4 text-accent" />,
-        actionText: "Open Task",
-      };
-    }
-    return {
-      badge: "Operational Notice",
-      badgeClass: "bg-ink/5 text-ink border-ink/10",
-      icon: <Bell className="h-4 w-4 text-ink" />,
-      actionText: "View Details",
-    };
+    if (k === "REFUND_DUE" || t.includes("refund")) return { icon: <Wallet size={16} />, tone: "bg-status-progress-bg text-status-progress-fg", action: "Pay refund" };
+    if (k === "PAYMENT_VERIFIED" || t.includes("payment")) return { icon: <Check size={16} />, tone: "bg-status-success-bg text-status-success-fg", action: "View order" };
+    if (k.startsWith("RETURN") || t.includes("return")) return { icon: <RotateCcw size={16} />, tone: "bg-status-attention-bg text-status-attention-fg", action: "Open return" };
+    if (k === "ASSIGNED" || t.includes("assign")) return { icon: <UserCheck size={16} />, tone: "bg-accent-soft text-accent", action: "Open" };
+    return { icon: <Bell size={16} />, tone: "bg-status-neutral-bg text-status-neutral-fg", action: "View" };
   }
 
   const [nowTimestamp] = useState(() => Date.now());
@@ -165,254 +120,111 @@ export function NotificationsView({ initialNotifications }: { initialNotificatio
     return formatDateTime(new Date(dateStr)).split(",")[0];
   }
 
+  const FILTERS: { key: FilterCategory; label: string; count: number }[] = [
+    { key: "ALL", label: "All", count: notifications.length },
+    { key: "UNREAD", label: "Unread", count: unreadCount },
+    { key: "FINANCE", label: "Money", count: financeCount },
+    { key: "RETURNS", label: "Returns", count: returnsCount },
+    { key: "ASSIGNMENTS", label: "Assigned", count: assignmentsCount },
+  ];
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Category metrics — one hairline-divided row, each cell doubling as a filter */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-line border border-line">
-        <button
-          type="button"
-          onClick={() => setCategory("UNREAD")}
-          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
-            category === "UNREAD" ? "bg-paper/60" : ""
-          }`}
-        >
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs text-text-muted">Unread alerts</span>
-            <div className={`h-2 w-2 rounded-full ${unreadCount > 0 ? "bg-accent animate-pulse" : "bg-text-muted"}`} />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className={`font-display text-2xl font-bold ${unreadCount > 0 ? "text-accent" : "text-ink"}`}>
-              {unreadCount}
-            </span>
-            <span className="text-xs text-text-muted">pending</span>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCategory("FINANCE")}
-          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
-            category === "FINANCE" ? "bg-paper/60" : ""
-          }`}
-        >
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs text-text-muted">Finance &amp; refunds</span>
-            <DollarSign className="h-4 w-4 text-amber-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-ink">{financeCount}</span>
-            <span className="text-xs text-text-muted">events</span>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCategory("RETURNS")}
-          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
-            category === "RETURNS" ? "bg-paper/60" : ""
-          }`}
-        >
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs text-text-muted">Returns triage</span>
-            <RotateCcw className="h-4 w-4 text-rose-700" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-ink">{returnsCount}</span>
-            <span className="text-xs text-text-muted">requests</span>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCategory("ASSIGNMENTS")}
-          className={`p-4 text-left cursor-pointer transition-colors hover:bg-paper/40 ${
-            category === "ASSIGNMENTS" ? "bg-paper/60" : ""
-          }`}
-        >
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs text-text-muted">My assignments</span>
-            <UserCheck className="h-4 w-4 text-accent" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-ink">{assignmentsCount}</span>
-            <span className="text-xs text-text-muted">assigned</span>
-          </div>
-        </button>
-      </section>
-
-      {/* Filter & Search Toolbar */}
-      <div className="border border-line p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Category Tabs — plain underline, not filled pills */}
-        <nav className="flex flex-wrap items-center gap-5 px-1 text-xs font-semibold">
-          {(
-            [
-              { id: "ALL", label: "All notices", count: notifications.length },
-              { id: "UNREAD", label: "Unread", count: unreadCount },
-              { id: "FINANCE", label: "Finance", count: financeCount },
-              { id: "RETURNS", label: "Returns", count: returnsCount },
-              { id: "ASSIGNMENTS", label: "Assigned", count: assignmentsCount },
-            ] as const
-          ).map((t) => {
-            const active = category === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setCategory(t.id)}
-                className={`border-b-2 pb-0.5 transition-colors ${
-                  active ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
-                }`}
-              >
-                {t.label} <span className="font-tabular font-normal">({t.count})</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Right Tools: Search & Mark All */}
-        <div className="flex items-center gap-2">
-          <div className="relative min-w-[180px] flex-1 sm:flex-none">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search notifications…"
-              className="w-full border border-line bg-surface py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-text-muted outline-none focus:border-ink focus:ring-1 focus:ring-ink"
-            />
-          </div>
-
-          {unreadCount > 0 && (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
+        <div className="relative max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search notifications"
+            aria-label="Search notifications"
+            className="input w-full pl-9"
+          />
+        </div>
+        <div className="chip-row">
+          {FILTERS.map((f) => (
             <button
+              key={f.key}
               type="button"
-              disabled={isPending}
-              onClick={handleMarkAllRead}
-              className="inline-flex items-center gap-1.5 border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60 shrink-0"
-              title="Mark all notifications as read"
+              onClick={() => setCategory(f.key)}
+              aria-pressed={category === f.key}
+              className={`chip ${category === f.key ? "chip-active" : ""}`}
             >
-              {isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCheck className="h-3.5 w-3.5 text-accent" />
-              )}
-              <span>Mark all read</span>
+              {f.label}
+              <span className="font-tabular opacity-70">{f.count}</span>
+            </button>
+          ))}
+          {unreadCount > 0 && (
+            <button type="button" onClick={handleMarkAllRead} disabled={isPending} className="link self-center whitespace-nowrap pl-1 text-sm disabled:opacity-60">
+              Mark all read
             </button>
           )}
         </div>
       </div>
 
-      {/* Main Notification Card Feed */}
       {filteredNotifications.length === 0 ? (
-        <div className="border border-line p-16 text-center flex flex-col items-center">
-          <Inbox className="h-6 w-6 text-text-muted mb-3" />
-          <h3 className="font-display text-base font-semibold text-ink">No notifications found</h3>
-          <p className="mt-1 text-xs text-text-muted max-w-sm">
-            {search || category !== "ALL"
-              ? "No alerts match your current filter settings. Try clearing the search query or selecting 'All Notices'."
-              : "You are completely up to date. You have no pending operational alerts or task assignments."}
-          </p>
+        <div className="empty">
+          {notifications.length === 0 ? "Nothing yet." : "No notifications match."}
           {(search || category !== "ALL") && (
-            <button
-              type="button"
-              onClick={() => {
-                setCategory("ALL");
-                setSearch("");
-              }}
-              className="mt-3 text-xs font-semibold text-accent underline underline-offset-2 hover:text-accent-2"
-            >
-              Clear filters
-            </button>
+            <>
+              {" "}
+              <button
+                type="button"
+                className="link"
+                onClick={() => {
+                  setSearch("");
+                  setCategory("ALL");
+                }}
+              >
+                Clear filters
+              </button>
+            </>
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
+        <ul className="card divide-y divide-line overflow-hidden">
           {filteredNotifications.map((n) => {
-            const isUnread = !n.readAt;
             const meta = getKindMeta(n);
-            const isMarking = markingIds.has(n.id);
-
-            return (
-              <div
-                key={n.id}
-                className={`card-base relative overflow-hidden transition-colors ${
-                  isUnread ? "bg-white ring-1 ring-accent/15" : "bg-surface/80"
-                }`}
-              >
-                <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Left Content Area */}
-                  <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-paper/60">
-                      {meta.icon}
-                    </div>
-
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${meta.badgeClass}`}>
-                          {meta.badge}
-                        </span>
-                        {isUnread && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-white">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                            New
-                          </span>
-                        )}
-                        <span className="text-xs text-text-muted font-tabular flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {getRelativeTime(n.createdAt)}
-                        </span>
-                      </div>
-
-                      <p className={`mt-1.5 text-sm ${isUnread ? "font-semibold text-ink" : "font-medium text-ink"}`}>
-                        {n.title}
-                      </p>
-
-                      {n.body && (
-                        <p className="mt-1 text-xs text-text-muted leading-relaxed line-clamp-2">
-                          {n.body}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Actions Area */}
-                  <div className="flex items-center justify-end gap-2 self-end sm:self-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto">
-                    {/* Mark Read Toggle if Unread */}
-                    {isUnread && (
-                      <button
-                        type="button"
-                        disabled={isMarking}
-                        onClick={(e) => handleMarkSingleRead(n.id, e)}
-                        className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-text-muted hover:text-ink hover:bg-paper transition-all"
-                        title="Mark as read"
-                      >
-                        {isMarking ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Check className="h-3 w-3 text-emerald-600" />
-                        )}
-                        <span>Dismiss</span>
-                      </button>
-                    )}
-
-                    {/* Open Reference Link */}
-                    {n.href && (
-                      <Link
-                        href={n.href}
-                        className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                          isUnread
-                            ? "bg-ink text-paper hover:bg-ink/90"
-                            : "bg-paper text-ink hover:bg-paper-2 border border-line"
-                        }`}
-                      >
-                        {meta.actionText}
-                      </Link>
-                    )}
-                  </div>
+            const unread = !n.readAt;
+            const row = (
+              <>
+                <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${meta.tone}`}>{meta.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className={unread ? "font-semibold text-ink" : "text-ink"}>{n.title}</p>
+                  {n.body && <p className="mt-0.5 text-text-muted">{n.body}</p>}
+                  <p className="mt-1 text-xs text-text-muted">
+                    {getRelativeTime(n.createdAt)}
+                    {n.href && <span className="font-medium text-accent"> · {meta.action}</span>}
+                  </p>
                 </div>
-              </div>
+              </>
+            );
+            return (
+              <li key={n.id} className={`flex items-start gap-3 px-4 py-3.5 text-sm sm:px-5 ${unread ? "bg-accent-soft/60" : ""}`}>
+                {n.href ? (
+                  <Link href={n.href} className="flex min-w-0 flex-1 items-start gap-3">
+                    {row}
+                  </Link>
+                ) : (
+                  <div className="flex min-w-0 flex-1 items-start gap-3">{row}</div>
+                )}
+                {unread && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleMarkSingleRead(n.id, e)}
+                    disabled={markingIds.has(n.id)}
+                    aria-label="Mark as read"
+                    title="Mark as read"
+                    className="mt-1 shrink-0 rounded-lg p-1.5 text-text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-60"
+                  >
+                    {markingIds.has(n.id) ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
+                  </button>
+                )}
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );

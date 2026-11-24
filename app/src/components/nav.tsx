@@ -3,36 +3,64 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { signOutAction, switchOrganizationAction } from "@/app/(app)/actions";
 import {
-  LayoutDashboard,
-  Inbox,
-  ShoppingBag,
-  Layers,
-  Users,
-  Search,
-  CreditCard,
-  ShieldCheck,
+  Activity,
   Bell,
+  ChartColumn,
+  ChevronsUpDown,
+  CreditCard,
+  Inbox,
+  LayoutDashboard,
   LogOut,
-  ChevronDown,
   Menu,
+  Package,
+  ReceiptText,
+  Search,
+  ShieldCheck,
+  Users,
   X,
-  Building2,
+  type LucideIcon,
 } from "lucide-react";
+import { signOutAction, switchOrganizationAction } from "@/app/(app)/actions";
+import { Avatar } from "@/components/avatar";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  ownerOnly?: boolean;
-  platformAdminOnly?: boolean;
-};
+type NavItem = { href: string; label: string; icon: LucideIcon; ownerOnly?: boolean; platformAdminOnly?: boolean };
 
-type NavGroup = {
-  title: string;
-  items: NavItem[];
-};
+// Grouped by how the work is done: the daily loop first, then the "how are we doing" views,
+// then workspace-level admin. Groups are separated visually, not labelled twice.
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Daily",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/inbox", label: "Inbox", icon: Inbox },
+      { href: "/orders", label: "Orders", icon: ReceiptText },
+      { href: "/catalogue", label: "Catalogue", icon: Package },
+      { href: "/customers", label: "Customers", icon: Users },
+    ],
+  },
+  {
+    label: "Insight",
+    items: [
+      { href: "/operations", label: "Operations", icon: Activity },
+      { href: "/reports", label: "Reports", icon: ChartColumn },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
+      { href: "/billing", label: "Billing", icon: CreditCard, ownerOnly: true },
+      { href: "/admin", label: "Platform Admin", icon: ShieldCheck, platformAdminOnly: true },
+    ],
+  },
+];
+
+// The four destinations staff reach for on a phone; everything else is behind "More".
+const TAB_ITEMS: NavItem[] = NAV_GROUPS[0].items.slice(0, 4);
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + "/");
+}
 
 export function Nav({
   orgName,
@@ -52,6 +80,12 @@ export function Nav({
   isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
+  // A fixed sidebar permanently visible doesn't fit a phone width — below md it becomes a
+  // slide-in drawer instead, opened from the bottom tab bar's "More". Closes automatically on
+  // navigation so staff aren't left staring at the menu after tapping a link. Adjusted during
+  // render, not in an effect (React's own recommended pattern for "reset state when a prop
+  // changes") — an unconditional setState in an effect causes an avoidable extra render on
+  // every navigation.
   const [open, setOpen] = useState(false);
   const [openForPathname, setOpenForPathname] = useState(pathname);
   if (pathname !== openForPathname) {
@@ -59,243 +93,197 @@ export function Nav({
     setOpen(false);
   }
 
-  const navGroups: NavGroup[] = [
-    {
-      title: "Daily Operations",
-      items: [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/inbox", label: "Inbox", icon: Inbox },
-        { href: "/orders", label: "Orders", icon: ShoppingBag },
-      ],
-    },
-    {
-      title: "Commerce & Trade",
-      items: [
-        { href: "/catalogue", label: "Catalogue & Stock", icon: Layers },
-        { href: "/customers", label: "Customers", icon: Users },
-        { href: "/search", label: "Quick Search", icon: Search },
-      ],
-    },
-  ];
-
-  const systemItems: NavItem[] = [];
-  if (userRole === "OWNER") {
-    systemItems.push({ href: "/billing", label: "Billing & Subscription", icon: CreditCard, ownerOnly: true });
-  }
-  if (isPlatformAdmin) {
-    systemItems.push({ href: "/admin", label: "Platform Operator", icon: ShieldCheck, platformAdminOnly: true });
-  }
-  if (systemItems.length > 0) {
-    navGroups.push({ title: "Account & System", items: systemItems });
-  }
+  const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
+  const visible = (item: NavItem) =>
+    (!item.ownerOnly || userRole === "OWNER") && (!item.platformAdminOnly || isPlatformAdmin);
+  const itemClass = (active: boolean) =>
+    `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+      active ? "bg-ink font-medium text-white shadow-sm" : "text-text-muted hover:bg-paper hover:text-ink"
+    }`;
 
   return (
     <>
-      {/* Mobile Sticky Bar (Clean touch targets: min 44x44px) */}
-      <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/10 bg-ink px-3 text-paper md:hidden shadow-md">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-label="Open navigation menu"
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent font-display text-xs font-bold text-white shadow-xs">
-              {orgName.charAt(0)}
-            </div>
-            <span className="truncate font-display text-sm font-semibold tracking-tight text-white max-w-[180px]">
-              {orgName}
-            </span>
-          </div>
+      {/* Mobile top bar */}
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-surface/90 px-4 py-2.5 backdrop-blur md:hidden">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Avatar name={orgName} shape="square" size="sm" />
+          <span className="truncate text-sm font-semibold text-ink">{orgName}</span>
         </div>
-
-        <Link
-          href="/notifications"
-          className="relative flex h-11 w-11 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          {unreadNotifications > 0 && (
-            <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-ink" />
-          )}
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link href="/search" aria-label="Search" className="rounded-lg p-2 text-text-muted hover:bg-paper hover:text-ink">
+            <Search size={19} />
+          </Link>
+          <Link
+            href="/notifications"
+            aria-label="Notifications"
+            className="relative rounded-lg p-2 text-text-muted hover:bg-paper hover:text-ink"
+          >
+            <Bell size={19} />
+            {unreadNotifications > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+                {unreadLabel}
+              </span>
+            )}
+          </Link>
+        </div>
       </div>
 
-      {/* Drawer Overlay */}
+      {/* Mobile bottom tab bar */}
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
+        {TAB_ITEMS.map((item) => {
+          const active = isActive(pathname, item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
+                active ? "text-accent" : "text-text-muted"
+              }`}
+            >
+              <Icon size={20} strokeWidth={active ? 2.3 : 1.8} />
+              {item.label === "Dashboard" ? "Home" : item.label}
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-text-muted"
+        >
+          <Menu size={20} strokeWidth={1.8} />
+          More
+        </button>
+      </nav>
+
       {open && (
         <div
           onClick={() => setOpen(false)}
           aria-hidden="true"
-          className="fixed inset-0 z-40 bg-ink/70 backdrop-blur-xs transition-opacity md:hidden"
+          className="fixed inset-0 z-30 bg-ink/40 backdrop-blur-[2px] md:hidden"
         />
       )}
 
-      {/* Main Sidebar (Sticky pinned on desktop, smooth drawer on mobile) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] flex-none -translate-x-full flex-col bg-ink text-paper shadow-2xl transition-transform duration-250 ease-out md:sticky md:top-0 md:h-screen md:w-64 md:z-20 md:translate-x-0 md:shadow-none border-r border-white/10 ${
-          open ? "translate-x-0" : ""
+        className={`fixed inset-y-0 left-0 z-40 flex h-dvh w-72 flex-none -translate-x-full flex-col border-r border-line bg-surface transition-transform duration-200 md:sticky md:top-0 md:z-auto md:w-60 md:translate-x-0 ${
+          open ? "translate-x-0 shadow-pop" : ""
         }`}
       >
-        {/* Brand Luxury Seal & Mobile Close Button */}
-        <div className="flex flex-col border-b border-white/10 p-4 sm:p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-white/15 to-white/5 border border-white/20 shadow-inner">
-                <span className="font-display text-lg font-bold text-paper tracking-wider">
-                  {orgName.charAt(0) || "W"}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="block truncate font-display text-sm font-semibold text-white tracking-tight">
-                  {orgName}
-                </span>
-                <span className="block text-xs font-medium text-white/70 tracking-wide">
-                  Wholesale Hub
-                </span>
-              </div>
+        <div className="flex items-center gap-2 px-3 pt-4">
+          <div className="relative flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 py-2 hover:bg-paper">
+            <Avatar name={orgName} shape="square" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold leading-tight text-ink">{orgName}</p>
+              <p className="text-xs leading-tight text-text-muted">{userRole === "OWNER" ? "Owner" : "Staff"} workspace</p>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close navigation"
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-white/60 hover:bg-white/10 hover:text-white md:hidden transition-colors cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Organization Switcher if Multi-Tenant */}
-          {organizations.length > 1 && (
-            <div className="mt-3.5 pt-3 border-t border-white/10">
+            {organizations.length > 1 && (
               <form action={(formData) => switchOrganizationAction(String(formData.get("organizationId")))}>
+                <ChevronsUpDown size={15} className="text-text-muted" aria-hidden="true" />
                 <label htmlFor="organization-switch" className="sr-only">
                   Switch organization
                 </label>
-                <div className="relative">
-                  <Building2 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
-                  <select
-                    id="organization-switch"
-                    name="organizationId"
-                    defaultValue={activeOrganizationId}
-                    onChange={(e) => e.target.form?.requestSubmit()}
-                    className="w-full appearance-none rounded-xl border border-white/15 bg-white/5 py-2 pl-9 pr-8 text-xs font-semibold text-white outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                  >
-                    {organizations.map((org) => (
-                      <option key={org.id} value={org.id} className="bg-ink text-paper">
-                        {org.name} ({org.role === "OWNER" ? "Owner" : "Staff"})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
-                </div>
+                {/* The native select covers the whole org card (invisible), so the entire card is
+                    the switcher and the OS picker is used on phones. */}
+                <select
+                  id="organization-switch"
+                  name="organizationId"
+                  defaultValue={activeOrganizationId}
+                  onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                >
+                  {organizations.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} · {o.role === "OWNER" ? "Owner" : "Staff"}
+                    </option>
+                  ))}
+                </select>
               </form>
-            </div>
-          )}
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+            className="rounded-lg p-2 text-text-muted hover:bg-paper md:hidden"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Navigation Menu */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-          {/* Notifications Highlight Link */}
-          <div>
-            <Link
-              href="/notifications"
-              className={`group flex min-h-[44px] items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
-                pathname.startsWith("/notifications")
-                  ? "bg-accent text-white shadow-md shadow-accent/25"
-                  : "text-white/75 hover:bg-white/[0.07] hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Bell className="h-4 w-4 shrink-0 transition-transform group-hover:scale-105" />
-                <span>Notifications</span>
-              </div>
-              {unreadNotifications > 0 ? (
-                <span
-                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 font-tabular text-xs font-bold ${
-                    pathname.startsWith("/notifications")
-                      ? "bg-white text-accent"
-                      : "bg-accent text-white shadow-xs"
-                  }`}
-                >
-                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                </span>
-              ) : (
-                <span className="text-xs text-white/50 font-mono">0</span>
-              )}
-            </Link>
-          </div>
+        <div className="px-3 pt-3">
+          <Link
+            href="/search"
+            className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              pathname.startsWith("/search")
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-line bg-paper/60 text-text-muted hover:border-line-strong hover:text-ink"
+            }`}
+          >
+            <Search size={16} />
+            Search everything
+          </Link>
+        </div>
 
-          {/* Grouped Links */}
-          {navGroups.map((group) => (
-            <div key={group.title} className="space-y-1.5">
-              <span className="px-3 text-xs font-medium text-white/50">
-                {group.title}
-              </span>
-              <ul className="space-y-1">
-                {group.items.map((item) => {
-                  const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className={`group flex min-h-[44px] items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all ${
-                          active
-                            ? "bg-accent text-white shadow-md shadow-accent/25"
-                            : "text-white/75 hover:bg-white/[0.07] hover:text-white"
-                        }`}
-                      >
-                        <Icon
-                          className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-105 ${
-                            active ? "text-white" : "text-white/60 group-hover:text-white"
-                          }`}
-                        />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+        <nav className="flex-1 overflow-y-auto px-3 pb-3 pt-4" aria-label="Sections">
+          <ul className="flex flex-col gap-0.5">
+            <li>
+              <Link href="/notifications" className={itemClass(pathname.startsWith("/notifications"))}>
+                <Bell size={17} strokeWidth={1.9} />
+                <span className="flex-1">Notifications</span>
+                {unreadNotifications > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-accent-ink">
+                    {unreadLabel}
+                  </span>
+                )}
+              </Link>
+            </li>
+          </ul>
+          {NAV_GROUPS.map((group) => {
+            const items = group.items.filter(visible);
+            if (items.length === 0) return null;
+            return (
+              <div key={group.label} className="mt-5">
+                <p className="eyebrow px-3 pb-1.5">{group.label}</p>
+                <ul className="flex flex-col gap-0.5">
+                  {items.map((item) => {
+                    const active = isActive(pathname, item.href);
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.href}>
+                        <Link href={item.href} aria-current={active ? "page" : undefined} className={itemClass(active)}>
+                          <Icon size={17} strokeWidth={1.9} />
+                          {item.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
 
-        {/* User Presence & Sign Out Dock */}
-        <div className="border-t border-white/10 p-3.5 pb-6 md:pb-3.5">
-          <div className="flex items-center justify-between rounded-xl bg-white/[0.04] p-3 border border-white/5">
-            <div className="flex items-center gap-3 min-w-0 pr-1">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white font-display text-xs font-bold shadow-xs">
-                {userName.charAt(0) || "U"}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-white">{userName}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      userRole === "OWNER" ? "bg-gold" : "bg-emerald-400"
-                    }`}
-                  />
-                  <span className="text-xs font-medium text-white/80 tracking-wide uppercase">
-                    {userRole === "OWNER" ? "Owner Account" : "Staff Member"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                title="Sign out of account"
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </form>
+        <div className="flex items-center gap-2.5 border-t border-line px-4 py-3">
+          <Avatar name={userName || "?"} size="sm" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium leading-tight text-ink">{userName}</p>
+            <p className="text-xs leading-tight text-text-muted">{userRole === "OWNER" ? "Owner" : "Staff"}</p>
           </div>
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              aria-label="Sign out"
+              title="Sign out"
+              className="rounded-lg p-2 text-text-muted transition-colors hover:bg-paper hover:text-ink"
+            >
+              <LogOut size={16} />
+            </button>
+          </form>
         </div>
       </aside>
     </>

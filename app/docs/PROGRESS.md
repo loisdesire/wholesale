@@ -1659,3 +1659,16 @@ These are natural follow-ons, flagged here rather than started unprompted:
   conversations with target businesses — concretely, what they currently lose to disorganized
   order-taking and what they'd pay relative to that, not a survey question asked cold. See this
   session's conversation for the full reasoning; update `PLAN_LIMITS` once real data exists.
+
+## Done (2026-11-23 — redesign rebuilt on the `working` line)
+
+The first redesign (2026-11-12, branch `claude/pensive-planck-wmg8t1`) was cut from an older base and
+did not know about Telegram, the AI copilot, the dashboard forecast or the newer migrations, so the
+dashboard and inbox crashed on current data. It was rebuilt on `working`: every page takes the
+redesign layout and shorter copy, while keeping `working`'s behaviour — Telegram-aware inbox and reply
+form, catalogue Active/Inactive filter and photo upload, notifications search/filters/mark-read, the
+platform-admin search/sort table, `/dashboard` routing, the larger text scale, and the dashboard's cash
+briefing, attention queue, stock-risk forecast and payment reminders (restyled). The landing page at `/`
+is the redesign's; `landing-components.tsx` was removed. Verified: lint, typecheck, 391 tests, a
+production build (routes compile) and a 64-check browser sweep at 1366px and 390px signed in as staff.
+Not visually checked: the platform-admin table (needs a platform-admin login).

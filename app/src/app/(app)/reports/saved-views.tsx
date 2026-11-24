@@ -53,12 +53,12 @@ export function SavedViews({
             autoFocus
             placeholder={`e.g. "${rangeLabel}"`}
             maxLength={60}
-            className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input input-sm"
           />
           <button
             type="submit"
             disabled={pending}
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-paper hover:bg-accent-2 disabled:opacity-60"
+            className="btn btn-primary btn-sm"
           >
             {pending ? "Saving…" : "Save"}
           </button>
@@ -75,7 +75,7 @@ export function SavedViews({
         <button
           type="button"
           onClick={() => setShowSave(true)}
-          className="self-start text-xs text-ink underline underline-offset-2"
+          className="btn btn-secondary btn-sm self-start"
         >
           Save this range as a view
         </button>

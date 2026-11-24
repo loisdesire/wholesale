@@ -7,19 +7,18 @@ import { formatDateTime, formatMoney } from "@/lib/format";
 import { EditProductForm } from "./edit-product-form";
 import { StockMovementForm } from "./stock-movement-form";
 import { ProductImages } from "./product-images";
-import { ArrowLeft } from "lucide-react";
 
 const REASON_LABEL: Record<string, string> = {
-  INITIAL_STOCK: "Opening stock balance",
-  PURCHASE_RECEIVED: "Purchase intake received",
-  SALE_RESERVED: "Customer order reserved",
-  SALE_FULFILLED: "Order dispatched & fulfilled",
-  RESERVATION_RELEASED: "Order cancelled / reservation freed",
-  RETURN: "Customer return accepted",
-  RETURN_DAMAGED: "Damaged customer return",
-  DAMAGE: "Stock moved to damaged quarantine",
-  DAMAGE_WRITTEN_OFF: "Damaged goods written off",
-  MANUAL_ADJUSTMENT: "Manual inventory count adjustment",
+  INITIAL_STOCK: "Opening balance",
+  PURCHASE_RECEIVED: "Purchase received",
+  SALE_RESERVED: "Sale reserved",
+  SALE_FULFILLED: "Sale fulfilled",
+  RESERVATION_RELEASED: "Reservation released",
+  RETURN: "Customer return",
+  RETURN_DAMAGED: "Customer return (damaged)",
+  DAMAGE: "Set aside as damaged",
+  DAMAGE_WRITTEN_OFF: "Damaged stock written off",
+  MANUAL_ADJUSTMENT: "Manual adjustment",
 };
 
 export default async function ProductDetailPage({
@@ -54,192 +53,142 @@ export default async function ProductDetailPage({
   const variant = product.variantAttributes as Record<string, string> | null;
 
   return (
-    <div className="flex flex-col gap-6 pb-16">
-      {/* Top Header Card */}
-      <header className="card-base flex flex-col gap-5 p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/catalogue"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-paper/60 text-ink hover:bg-paper transition-colors"
-              title="Return to catalogue ledger"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                  {product.name}
-                </h1>
-                {product.active ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-800 font-medium">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <span>Active</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-stone-500 font-medium">
-                    <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
-                    <span>Archived</span>
-                  </span>
-                )}
-              </div>
-              <p className="mt-0.5 font-tabular text-xs text-text-muted">
-                {product.sku}
-                {variant && <span className="ml-3 font-semibold text-ink/80">{Object.values(variant).join(" / ")}</span>}
-                <span className="ml-3">MOQ: {product.moq} {product.unit}{product.moq === 1 ? "" : "s"}</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <span className="text-xs text-text-muted">Standard list price</span>
-            <p className="font-tabular text-xl font-bold text-ink">
-              {formatMoney(product.priceCents, product.currency)}
-            </p>
-          </div>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-4">
+        <Link href="/catalogue" className="back-link self-start">
+          ← Catalogue
+        </Link>
+        <div className="flex flex-col gap-1">
+          <h1 className="page-title">{product.name}</h1>
+          <p className="text-sm text-text-muted">
+            <span className="font-mono text-xs">{product.sku}</span>
+            {variant ? ` · ${Object.values(variant).join(" / ")}` : ""}
+            {" · "}
+            <span className="font-tabular">{formatMoney(product.priceCents, product.currency)}</span> per {product.unit}
+          </p>
         </div>
 
-        {/* Stock breakdown — one hairline-divided row, not four boxed stat cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-line/70 border border-line">
-          <div className="p-3.5">
-            <span className="text-xs text-text-muted">Available to sell</span>
-            <p className={`mt-0.5 font-tabular text-xl font-bold ${figures.available === 0 ? "text-rose-700" : "text-emerald-700"}`}>
-              {figures.available} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.available === 1 ? "" : "s"}</span>
+        {/* Stock at a glance. "Available" is the only figure a customer can be promised, so it
+            leads; the bar shows how the units on hand split into available / reserved / damaged. */}
+        <div className="grid gap-4 rounded-2xl bg-ink p-5 text-white sm:grid-cols-[auto_1fr] sm:items-center sm:gap-8 sm:p-6">
+          <div>
+            <p className="text-xs font-medium text-white/55">
+              Available {product.unit}
+              {figures.available === 1 ? "" : "s"}
+            </p>
+            <p className={`font-display text-6xl font-bold leading-none ${figures.available <= 0 ? "text-[#ff8a80]" : "text-gold"}`}>
+              {figures.available}
             </p>
           </div>
-          <div className="p-3.5">
-            <span className="text-xs text-text-muted">Physical on hand</span>
-            <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
-              {figures.physical} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.physical === 1 ? "" : "s"}</span>
-            </p>
-          </div>
-          <div className="p-3.5">
-            <span className="text-xs text-text-muted">Allocated to orders</span>
-            <p className="mt-0.5 font-tabular text-xl font-bold text-amber-700">
-              {figures.reserved} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.reserved === 1 ? "" : "s"}</span>
-            </p>
-          </div>
-          <div className="p-3.5">
-            <span className="text-xs text-text-muted">Quarantine / damaged</span>
-            <p className="mt-0.5 font-tabular text-xl font-bold text-ink">
-              {figures.damaged} <span className="text-xs font-normal text-text-muted">{product.unit}{figures.damaged === 1 ? "" : "s"}</span>
-            </p>
+          <div className="min-w-0">
+            <div className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+              {figures.available > 0 && <span className="bg-gold" style={{ flexGrow: figures.available, flexBasis: 0 }} />}
+              {figures.reserved > 0 && <span className="bg-[#7c8cf8]" style={{ flexGrow: figures.reserved, flexBasis: 0 }} />}
+              {figures.damaged > 0 && <span className="bg-[#f2766b]" style={{ flexGrow: figures.damaged, flexBasis: 0 }} />}
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+              {[
+                { label: "On hand", value: figures.physical, dot: "bg-white/40" },
+                { label: "Available", value: figures.available, dot: "bg-gold" },
+                { label: "Reserved", value: figures.reserved, dot: "bg-[#7c8cf8]" },
+                { label: "Damaged", value: figures.damaged, dot: "bg-[#f2766b]" },
+              ].map((f) => (
+                <div key={f.label}>
+                  <dt className="flex items-center gap-1.5 text-xs text-white/55">
+                    <span className={`h-2 w-2 rounded-full ${f.dot}`} />
+                    {f.label}
+                  </dt>
+                  <dd className="mt-0.5 font-tabular text-xl font-semibold">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
       </header>
 
-      {/* Main 2-Column Responsive Layout */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column (2 Cols): Photo Manager, Specs & Movement History */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Photo Gallery Card */}
-          <div className="card-base p-5 space-y-3.5">
-            <div className="border-b border-line/60 pb-2.5">
-              <h2 className="font-display text-sm font-bold text-ink">Product photography &amp; swatches</h2>
-              <p className="text-xs text-text-muted">Visual references sent automatically to buyers over WhatsApp &amp; Telegram inquiries.</p>
-            </div>
-            <ProductImages productId={product.id} images={product.images} />
-          </div>
+      <div className="rail-layout">
+        <div>
+      <section>
+        <h2 className="section-title mb-3">Add or remove stock</h2>
+        <StockMovementForm productId={product.id} />
+      </section>
 
-          {/* Edit Product Specifications Form Card */}
-          <div className="card-base p-5 space-y-3.5">
-            <div className="border-b border-line/60 pb-2.5">
-              <h2 className="font-display text-sm font-bold text-ink">Product specifications &amp; quantity tiers</h2>
-              <p className="text-xs text-text-muted">Base unit costs, list pricing, minimum order quantities, and wholesale volume bands.</p>
-            </div>
-            <EditProductForm
-              productId={product.id}
-              defaultValues={{
-                sku: product.sku,
-                name: product.name,
-                attributes: variant ?? undefined,
-                priceNaira: product.priceCents / 100,
-                costNaira: product.costCents ? product.costCents / 100 : undefined,
-                moq: product.moq,
-                unit: product.unit,
-                active: product.active,
-                priceTiers: product.priceTiers.map((t) => ({
-                  minQuantity: t.minQuantity,
-                  priceNaira: t.priceCents / 100,
-                })),
-              }}
-            />
-          </div>
-
-          {/* Stock Movement History Table */}
-          <div className="card-base overflow-hidden">
-            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-              <h2 className="font-display text-sm font-bold text-ink">Stock movement audit trail</h2>
-              <span className="font-tabular text-xs font-semibold text-text-muted">
-                Last {movements.length} ledger entries
-              </span>
-            </div>
-
-            {movements.length === 0 ? (
-              <p className="p-8 text-center text-xs text-text-muted">No stock movements recorded yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm table-fixed">
-                  <thead>
-                    <tr className="border-b border-line text-xs font-medium text-text-muted">
-                      <th className="py-3 pl-5 pr-4 w-[160px]">Timestamp</th>
-                      <th className="py-3 pr-4 w-[170px]">Ledger reason</th>
-                      <th className="py-3 pr-4 w-[120px]">Reference</th>
-                      <th className="py-3 pr-4 w-[150px]">Note</th>
-                      <th className="py-3 pr-4 w-[110px]">Actor</th>
-                      <th className="py-3 pr-4 text-right w-[80px]">Physical</th>
-                      <th className="py-3 pr-4 text-right w-[80px]">Reserved</th>
-                      <th className="py-3 pr-5 text-right w-[80px]">Damaged</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line/60 text-xs">
-                    {movements.map((m) => (
-                      <tr key={m.id} className="transition-colors hover:bg-paper/20">
-                        <td className="py-3 pl-5 pr-4 font-tabular text-text-muted">
-                          {formatDateTime(m.createdAt)}
-                        </td>
-                        <td className="py-3 pr-4 font-semibold text-ink">
-                          {REASON_LABEL[m.reason] ?? m.reason}
-                        </td>
-                        <td className="py-3 pr-4 font-mono text-text-muted">
-                          {m.reference ?? "—"}
-                        </td>
-                        <td className="py-3 pr-4 truncate text-text-muted">
-                          {m.note ?? "—"}
-                        </td>
-                        <td className="py-3 pr-4 text-text-muted">
-                          {m.createdBy?.name ?? "System"}
-                        </td>
-                        <td className={`py-3 pr-4 text-right font-tabular font-semibold ${m.physicalDelta > 0 ? "text-emerald-700" : m.physicalDelta < 0 ? "text-rose-700" : "text-text-muted"}`}>
-                          {m.physicalDelta === 0 ? "—" : `${m.physicalDelta > 0 ? "+" : ""}${m.physicalDelta}`}
-                        </td>
-                        <td className={`py-3 pr-4 text-right font-tabular font-semibold ${m.reservedDelta > 0 ? "text-amber-700" : m.reservedDelta < 0 ? "text-emerald-700" : "text-text-muted"}`}>
-                          {m.reservedDelta === 0 ? "—" : `${m.reservedDelta > 0 ? "+" : ""}${m.reservedDelta}`}
-                        </td>
-                        <td className={`py-3 pr-5 text-right font-tabular font-semibold ${m.damagedDelta > 0 ? "text-rose-700" : "text-text-muted"}`}>
-                          {m.damagedDelta === 0 ? "—" : `${m.damagedDelta > 0 ? "+" : ""}${m.damagedDelta}`}
-                        </td>
-                      </tr>
+      <section>
+        <h2 className="section-title mb-3">Stock history</h2>
+        {movements.length === 0 ? (
+          <p className="empty">
+            No movements recorded yet.
+          </p>
+        ) : (
+          <div className="card overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr className="thead-row">
+                  <th className="py-2 pr-4">When</th>
+                  <th className="py-2 pr-4">Reason</th>
+                  <th className="py-2 pr-4">Reference</th>
+                  <th className="py-2 pr-4">Note</th>
+                  <th className="py-2 pr-4">By</th>
+                  <th className="py-2 pr-4 text-right">On hand</th>
+                  <th className="py-2 pr-4 text-right">Reserved</th>
+                  <th className="py-2 pr-4 text-right">Damaged</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((m) => (
+                  <tr key={m.id} className="trow">
+                    <td className="py-3 pr-4 text-xs text-text-muted">{formatDateTime(m.createdAt)}</td>
+                    <td className="whitespace-nowrap py-3 pr-4 font-medium text-ink">{REASON_LABEL[m.reason] ?? m.reason}</td>
+                    <td className="py-3 pr-4 font-tabular text-text-muted">{m.reference ?? "—"}</td>
+                    <td className="py-3 pr-4 max-w-xs truncate text-text-muted">{m.note ?? "—"}</td>
+                    <td className="py-3 pr-4 text-text-muted">{m.createdBy?.name ?? "—"}</td>
+                    {[m.physicalDelta, m.reservedDelta, m.damagedDelta].map((delta, i) => (
+                      <td
+                        key={i}
+                        className={`py-3 pr-4 text-right font-tabular ${
+                          delta === 0 ? "text-text-muted/50" : delta > 0 ? "font-medium text-status-success-fg" : "font-medium text-status-attention-fg"
+                        }`}
+                      >
+                        {delta === 0 ? "—" : `${delta > 0 ? "+" : ""}${delta}`}
+                      </td>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        )}
+      </section>
+      <details className="disclosure">
+        <summary className="rounded-2xl border border-line bg-surface px-5 py-4 shadow-card">Edit product details</summary>
+        <EditProductForm
+          productId={product.id}
+          defaultValues={{
+            sku: product.sku,
+            name: product.name,
+            attributes: variant ?? undefined,
+            priceNaira: product.priceCents / 100,
+            costNaira: product.costCents ? product.costCents / 100 : undefined,
+            moq: product.moq,
+            unit: product.unit,
+            active: product.active,
+            priceTiers: product.priceTiers.map((t) => ({
+              minQuantity: t.minQuantity,
+              priceNaira: t.priceCents / 100,
+            })),
+          }}
+        />
+      </details>
+
         </div>
 
-        {/* Right Column (1 Col): Stock Movement Ledger Intake */}
-        <div className="space-y-6">
-          <div className="card-base p-5 space-y-3.5 sticky top-4">
-            <div className="border-b border-line/60 pb-2.5">
-              <h3 className="font-display text-sm font-bold text-ink">Post stock movement</h3>
-              <p className="text-xs text-text-muted">
-                Record intake deliveries, supplier receipts, damaged write-offs, or reconciliation counts.
-              </p>
-            </div>
-            <StockMovementForm productId={product.id} />
-          </div>
-        </div>
+        <aside>
+      <section>
+        <h2 className="section-title mb-3">Photos</h2>
+        <ProductImages productId={product.id} images={product.images} />
+      </section>
+
+        </aside>
       </div>
     </div>
   );
