@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
+import { Figtree, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 // UI/body face. Tabular figures (see .font-tabular) keep money columns aligned.
-const sans = Geist({ variable: "--font-sans", subsets: ["latin"] });
+const sans = Figtree({ variable: "--font-sans", subsets: ["latin"] });
 
 // SKUs and order references only — where telling 0 from O matters.
 const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
-// Display face: page titles, headline figures and marketing headlines (see globals.css).
-const display = Bricolage_Grotesque({ variable: "--font-display", subsets: ["latin"] });
+// Headings use the same family as the body (see .font-display in globals.css) so the app reads as one voice.
 
 export const metadata: Metadata = {
   title: "Adaeze Wholesale",
@@ -20,7 +19,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${sans.variable} ${mono.variable} ${display.variable} h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

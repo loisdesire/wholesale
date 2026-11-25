@@ -312,8 +312,8 @@ semantic status tones (neutral/progress/success/attention, `src/components/statu
 a separate family from the brand colour on purpose, so "needs attention" and "primary action" never
 look alike — cobalt was chosen partly because it collides with none of them.
 
-Type: Bricolage Grotesque (`.font-display`, `.page-title`) for page titles, headline figures and
-marketing headlines; Geist for everything else; Geist Mono (`font-mono`) only for SKUs and
+Type: Figtree for everything (`.font-display` / `.page-title` add the heavier, tighter heading look) for page titles, headline figures and
+marketing headlines; Geist Mono (`font-mono`) only for SKUs and
 order/return references. `.font-tabular` is the UI sans with tabular figures (money, quantities,
 times) — it is no longer a monospace face. Never combine `.font-tabular` with `.font-display`.
 

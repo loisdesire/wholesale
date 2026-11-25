@@ -73,7 +73,7 @@
   --color-status-attention-bg: var(--status-attention-bg);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-display: var(--font-display);
+  --font-display: var(--font-sans);
   /* Controls are 10px, cards 16px — one step friendlier than the default scale. */
   --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
@@ -97,7 +97,6 @@ body {
   background: var(--paper);
   color: var(--text);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "ss01", "cv11";
 }
 
 input[type="checkbox"],
@@ -120,10 +119,11 @@ input[type="radio"] {
   font-feature-settings: "tnum";
 }
 
-/* Display face (Bricolage Grotesque): page titles, headline figures, marketing headlines. */
+/* Display face (Figtree, tighter and heavier): page titles, headline figures, marketing headlines. */
 .font-display {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 /* Scrollbars and focus, themed from the palette rather than left at browser defaults. */
