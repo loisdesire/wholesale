@@ -170,7 +170,7 @@ describe("WhatsApp webhook route", () => {
         "fetch",
         vi
           .fn()
-          .mockResolvedValueOnce(new Response(JSON.stringify({ url: "https://lookaside.example/x", mime_type: "image/jpeg", file_size: 4 }), { status: 200 }))
+          .mockResolvedValueOnce(new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/x", mime_type: "image/jpeg", file_size: 4 }), { status: 200 }))
           .mockResolvedValueOnce(new Response(bytes, { status: 200 }))
       );
 
