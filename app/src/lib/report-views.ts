@@ -46,6 +46,9 @@ export async function saveReportView(params: {
   if (name.length > MAX_NAME_LENGTH) {
     throw new ReportViewError(`Keep the name under ${MAX_NAME_LENGTH} characters.`);
   }
+  if (Number.isNaN(params.from.getTime()) || Number.isNaN(params.to.getTime())) {
+    throw new ReportViewError("Choose a valid start and end date.");
+  }
   if (params.from > params.to) {
     throw new ReportViewError("The start date must be on or before the end date.");
   }

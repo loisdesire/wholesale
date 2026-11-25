@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { tenantDb, transaction } from "@/lib/db";
 import { recordStockMovement, InsufficientStockError, StockInvariantError } from "@/lib/stock";
 import { recordAudit } from "@/lib/audit";
+import { isAllowedImageType } from "@/lib/images";
 import { parseProductsCsv, commitProductsImport, type ImportRowResult } from "@/lib/csv";
 import { embedImage, isVisualSearchConfigured } from "@/lib/ai/voyage";
 import { describeProductImage } from "@/lib/ai/product-description";
@@ -179,7 +180,7 @@ export async function createProductAction(
   // shouldn't fail the whole submission — the photo can always be added from the product
   // page afterward, same as uploadProductImageAction below.
   const imageFile = formData.get("image");
-  if (imageFile instanceof File && imageFile.size > 0 && imageFile.type.startsWith("image/") && imageFile.size <= MAX_IMAGE_BYTES) {
+  if (imageFile instanceof File && imageFile.size > 0 && isAllowedImageType(imageFile.type) && imageFile.size <= MAX_IMAGE_BYTES) {
     const data = new Uint8Array(await imageFile.arrayBuffer());
     const base64 = Buffer.from(data).toString("base64");
     const [embedding, visualDescription] = await Promise.all([
@@ -187,7 +188,7 @@ export async function createProductAction(
       tryDescribeImage(imageFile.type, base64),
     ]);
     await tenantDb(session.user.organizationId).productImage.create({
-      data: { productId, mimeType: imageFile.type, data, sizeBytes: data.byteLength, position: 0, embedding },
+      data: { productId, mimeType: imageFile.type.toLowerCase(), data, sizeBytes: data.byteLength, position: 0, embedding },
     });
     if (visualDescription) {
       await tenantDb(session.user.organizationId).product.update({
@@ -355,8 +356,8 @@ export async function uploadProductImageAction(
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose an image file." };
   }
-  if (!file.type.startsWith("image/")) {
-    return { error: "That file isn't an image." };
+  if (!isAllowedImageType(file.type)) {
+    return { error: "Use a JPEG, PNG, WebP or GIF image." };
   }
   if (file.size > MAX_IMAGE_BYTES) {
     return { error: `Image is too large (max ${MAX_IMAGE_BYTES / (1024 * 1024)}MB).` };
@@ -381,7 +382,7 @@ export async function uploadProductImageAction(
   await db.productImage.create({
     data: {
       productId,
-      mimeType: file.type,
+      mimeType: file.type.toLowerCase(),
       data,
       sizeBytes: data.byteLength,
       position: (maxPosition._max.position ?? -1) + 1,

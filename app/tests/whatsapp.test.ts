@@ -278,7 +278,7 @@ describe("fetchMediaBytes", () => {
     const bytes = new Uint8Array([1, 2, 3, 4]);
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ url: "https://lookaside.example/media-1", mime_type: "image/jpeg", file_size: 4 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/media-1", mime_type: "image/jpeg", file_size: 4 }), { status: 200 }))
       .mockResolvedValueOnce(new Response(bytes, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -287,12 +287,12 @@ describe("fetchMediaBytes", () => {
     expect(Buffer.from(result.data)).toEqual(Buffer.from(bytes));
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, "https://graph.facebook.com/v21.0/media-1", expect.objectContaining({ headers: { Authorization: "Bearer media-test-token" } }));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, "https://lookaside.example/media-1", expect.objectContaining({ headers: { Authorization: "Bearer media-test-token" } }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "https://lookaside.fbsbx.com/media-1", expect.objectContaining({ headers: { Authorization: "Bearer media-test-token" } }));
   });
 
   it("refuses a file Meta itself reports as too large, without downloading it", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
-      new Response(JSON.stringify({ url: "https://lookaside.example/big", mime_type: "image/jpeg", file_size: 50 * 1024 * 1024 }), { status: 200 })
+      new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/big", mime_type: "image/jpeg", file_size: 50 * 1024 * 1024 }), { status: 200 })
     );
     vi.stubGlobal("fetch", fetchMock);
 
