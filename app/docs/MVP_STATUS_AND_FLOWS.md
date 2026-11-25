@@ -24,7 +24,7 @@ Written 2026-11-25. Plain language first, technical terms explained.
 | Sign-up for new businesses | **None.** A business is added by hand (see `PILOT_ONBOARDING.md`). |
 | Delivery tracking | Staff type a carrier and tracking number. **No live tracking.** |
 | Automatic push/SMS/email alerts | **Not built.** Alerts are inside the app only. |
-| AI accuracy score | First real run scored 75% (bar is 80%). Needs tuning before you trust it unattended. |
+| AI accuracy score | First real run: 10 of 13 test cases passed (77%; the bar is 80%). One run, 13 made-up cases. Needs tuning before you trust it unattended. |
 
 **Honest label: "feature-complete pilot build".** Good enough to run with one or two friendly real businesses once hosting, real WhatsApp and real Paystack are connected. Not ready to sell openly.
 
