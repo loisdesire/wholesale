@@ -5,17 +5,6 @@ import { useSubmitAction } from "@/lib/use-submit-action";
 import { createOrderAction } from "../actions";
 import { formatMoney } from "@/lib/format";
 import { resolveUnitPriceCents } from "@/lib/pricing";
-import { 
-  User, 
-  Package, 
-  Truck, 
-  Plus, 
-  Trash2, 
-  Loader2, 
-  CheckCircle2, 
-  AlertCircle,
-  Tag
-} from "lucide-react";
 
 type Customer = { id: string; name: string | null; phone: string };
 type ProductOption = {
@@ -42,6 +31,7 @@ export function NewOrderForm({
   products: ProductOption[];
   defaultCustomerId?: string;
   conversationId?: string;
+  /** customerId -> productId -> agreed price in cents (sparse; only customers who have any). */
   agreedPrices: Record<string, Record<string, number>>;
 }) {
   const { state, pending, formProps } = useSubmitAction(createOrderAction, { error: null });
@@ -55,15 +45,13 @@ export function NewOrderForm({
   const [addError, setAddError] = useState<string | null>(null);
 
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
-
+  // The server decides the real price; this only previews it, using the same
+  // function — including any price agreed with the selected customer.
   const agreedFor = (productId: string) =>
     customerMode === "existing" ? agreedPrices[selectedCustomerId]?.[productId] : undefined;
-
   const unitPriceFor = (product: ProductOption, qty: number) =>
     resolveUnitPriceCents(product.priceCents, product.priceTiers, qty, agreedFor(product.id));
-
   const lineTotal = (product: ProductOption, qty: number) => unitPriceFor(product, qty) * qty;
-
   const total = cart.reduce((sum, line) => {
     const product = productMap.get(line.productId);
     return sum + (product ? lineTotal(product, line.quantity) : 0);
@@ -77,7 +65,7 @@ export function NewOrderForm({
     const existingQty = cart.find((l) => l.productId === selectedProductId)?.quantity ?? 0;
     const newQty = existingQty + quantity;
     if (newQty < product.moq) {
-      setAddError(`${product.name} has a minimum order quantity of ${product.moq} ${product.unit}${product.moq === 1 ? "" : "s"}.`);
+      setAddError(`${product.name} has a minimum order quantity of ${product.moq} ${product.unit}s.`);
       return;
     }
 
@@ -98,353 +86,252 @@ export function NewOrderForm({
   }
 
   return (
-    <form {...formProps} className="flex flex-col gap-6">
+    <form {...formProps} className="flex max-w-3xl flex-col gap-5">
       <input type="hidden" name="itemsJson" value={JSON.stringify(cart)} />
-      <input type="hidden" name="customerMode" value={customerMode} />
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
 
-      {/* 1. Customer Section */}
-      <section className="card-base overflow-hidden">
-        <div className="border-b border-line bg-paper/50 px-5 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-ink" />
-            <h2 className="text-xs font-semibold text-ink">Customer Identity</h2>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => setCustomerMode("existing")}
-              className={`rounded-md px-2.5 py-1 font-medium transition-all ${
-                customerMode === "existing"
-                  ? "bg-ink text-paper"
-                  : "text-text-muted hover:text-ink"
-              }`}
-            >
-              Existing Customer
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerMode("new")}
-              className={`rounded-md px-2.5 py-1 font-medium transition-all ${
-                customerMode === "new"
-                  ? "bg-ink text-paper"
-                  : "text-text-muted hover:text-ink"
-              }`}
-            >
-              + New Customer
-            </button>
-          </div>
+      <section className="card flex flex-col gap-4 p-5 sm:p-6">
+        <h2 className="section-title flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs font-bold text-gold">1</span>
+          Customer
+        </h2>
+
+        <div className="flex w-fit gap-1 rounded-xl bg-paper p-1 text-sm">
+          <label
+            className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 font-medium transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
+              customerMode === "existing" ? "bg-surface text-ink shadow-card" : "text-text-muted hover:text-ink"
+            }`}
+          >
+            <input
+              type="radio"
+              name="customerMode"
+              className="sr-only"
+              value="existing"
+              checked={customerMode === "existing"}
+              onChange={() => setCustomerMode("existing")}
+            />
+            Existing customer
+          </label>
+          <label
+            className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 font-medium transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
+              customerMode === "new" ? "bg-surface text-ink shadow-card" : "text-text-muted hover:text-ink"
+            }`}
+          >
+            <input
+              type="radio"
+              name="customerMode"
+              className="sr-only"
+              value="new"
+              checked={customerMode === "new"}
+              onChange={() => setCustomerMode("new")}
+            />
+            New customer
+          </label>
         </div>
 
-        <div className="p-5">
-          {customerMode === "existing" ? (
+        {customerMode === "existing" ? (
+          <select
+            name="customerId"
+            value={selectedCustomerId}
+            onChange={(e) => setSelectedCustomerId(e.target.value)}
+            required
+            className="input"
+          >
+            <option value="">Select a customer…</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name ?? "Unnamed"} · {c.phone}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="customerId" className="text-xs font-medium text-text-muted">
-                Select Customer from Directory
-              </label>
-              <select
-                id="customerId"
-                name="customerId"
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(e.target.value)}
-                required
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
-              >
-                <option value="">Choose customer…</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name ?? "Unnamed Customer"} · {c.phone}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="customerName" className="text-xs font-medium text-text-muted">
-                  Customer Name
-                </label>
-                <input
-                  id="customerName"
-                  name="customerName"
-                  type="text"
-                  placeholder="e.g. Hajia Fatima Bello"
-                  className="rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="customerPhone" className="text-xs font-medium text-text-muted">
-                  Phone (WhatsApp &amp; Telegram)
-                </label>
-                <input
-                  id="customerPhone"
-                  name="customerPhone"
-                  type="text"
-                  required
-                  placeholder="e.g. 0803 123 4567"
-                  className="rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 2. Order Line Items Cart */}
-      <section className="card-base overflow-hidden">
-        <div className="border-b border-line bg-paper/50 px-5 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-ink" />
-            <h2 className="text-xs font-semibold text-ink">Order Items &amp; Pricing</h2>
-          </div>
-          <span className="text-xs text-text-muted font-tabular">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
-        </div>
-
-        <div className="p-5 flex flex-col gap-4">
-          {/* Add Item Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 bg-paper/30 p-3 rounded-lg border border-line">
-            <div className="flex-1 flex flex-col gap-1.5">
-              <label htmlFor="product" className="text-xs font-medium text-text-muted">
-                Product SKU / Name
-              </label>
-              <select
-                id="product"
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
-              >
-                {products.map((p) => {
-                  const agreed = agreedFor(p.id);
-                  return (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                      {p.variantLabel ? ` (${p.variantLabel})` : ""} — {agreed ? `${formatMoney(agreed)} [Agreed]` : formatMoney(p.priceCents)}
-                      {" "}· {p.stock} in stock{p.moq > 1 ? ` · MOQ ${p.moq}` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <div className="w-full sm:w-28 flex flex-col gap-1.5">
-              <label htmlFor="quantity" className="text-xs font-medium text-text-muted">
-                Quantity
+              <label htmlFor="customerName" className="field-label">
+                Name
               </label>
               <input
-                id="quantity"
-                type="number"
-                min="1"
-                step="1"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink font-tabular outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+                id="customerName"
+                name="customerName"
+                type="text"
+                className="input"
               />
             </div>
-
-            <button
-              type="button"
-              onClick={addToCart}
-              className="inline-flex min-h-[44px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-all hover:bg-ink/90 active:scale-95 shadow-sm cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add</span>
-            </button>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="customerPhone" className="field-label">
+                Phone
+              </label>
+              <input
+                id="customerPhone"
+                name="customerPhone"
+                type="text"
+                required
+                className="input"
+              />
+            </div>
           </div>
-
-          {addError && (
-            <div className="flex items-center gap-2 text-xs font-medium text-status-attention-fg bg-status-attention-bg p-2.5 rounded-md border border-status-attention-fg/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{addError}</span>
-            </div>
-          )}
-
-          {/* Cart Section */}
-          {cart.length === 0 ? (
-            <div className="border border-dashed border-line rounded-lg p-8 text-center text-xs text-text-muted">
-              Cart is currently empty. Select a product and quantity above to build this draft order.
-            </div>
-          ) : (
-            <div className="rounded-lg border border-line overflow-hidden">
-              {/* Mobile Cart Card List */}
-              <div className="block sm:hidden divide-y divide-line">
-                {cart.map((line) => {
-                  const product = productMap.get(line.productId);
-                  if (!product) return null;
-                  const unitPrice = unitPriceFor(product, line.quantity);
-                  const isAgreed = agreedFor(product.id) != null;
-                  const lineSubtotal = unitPrice * line.quantity;
-
-                  return (
-                    <div key={line.productId} className="p-3.5 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-ink text-sm truncate">{product.name}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-text-muted mt-0.5">
-                            <span className="font-mono text-xs font-bold">{product.sku}</span>
-                            {product.variantLabel && <span>· {product.variantLabel}</span>}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(line.productId)}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-text-muted hover:text-status-attention-fg transition-colors"
-                          title="Remove item"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs pt-1 border-t border-line/50">
-                        <span className="font-tabular text-text-muted">
-                          {line.quantity} {product.unit}{line.quantity === 1 ? "" : "s"} × {formatMoney(unitPrice)}
-                          {isAgreed && <span className="text-accent ml-1 font-medium">(agreed)</span>}
-                        </span>
-                        <span className="font-tabular font-bold text-sm text-ink">
-                          {formatMoney(lineSubtotal)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop Cart Table */}
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full table-fixed border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left text-xs text-text-muted">
-                      <th className="w-1/2 px-4 py-2.5">Item</th>
-                      <th className="w-24 px-4 py-2.5 text-right">Qty</th>
-                      <th className="w-32 px-4 py-2.5 text-right">Unit price</th>
-                      <th className="w-32 px-4 py-2.5 text-right">Line total</th>
-                      <th className="w-16 px-4 py-2.5 text-right" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
-                    {cart.map((line) => {
-                      const product = productMap.get(line.productId);
-                      if (!product) return null;
-                      const unitPrice = unitPriceFor(product, line.quantity);
-                      const isAgreed = agreedFor(product.id) != null;
-                      const lineSubtotal = unitPrice * line.quantity;
-
-                      return (
-                        <tr key={line.productId} className="hover:bg-paper/20">
-                          <td className="px-4 py-3 align-middle">
-                            <div className="flex flex-col">
-                              <span className="font-medium text-ink">{product.name}</span>
-                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                                <span className="font-mono text-xs">{product.sku}</span>
-                                {product.variantLabel && (
-                                  <span>· {product.variantLabel}</span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right font-tabular text-ink align-middle">
-                            {line.quantity} <span className="text-text-muted text-xs">{product.unit}{line.quantity === 1 ? "" : "s"}</span>
-                          </td>
-                          <td className="px-4 py-3 text-right font-tabular text-ink align-middle">
-                            <div>{formatMoney(unitPrice)}</div>
-                            {isAgreed && (
-                              <span className="inline-flex items-center gap-0.5 text-xs text-accent font-semibold">
-                                <Tag className="h-3 w-3" /> contract
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right font-tabular font-medium text-ink align-middle">
-                            {formatMoney(lineSubtotal)}
-                          </td>
-                          <td className="px-4 py-3 text-right align-middle">
-                            <button
-                              type="button"
-                              onClick={() => removeFromCart(line.productId)}
-                              className="rounded p-1 text-text-muted hover:text-status-attention-fg transition-colors"
-                              title="Remove item"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Cart Footer */}
-              <div className="flex items-center justify-between border-t border-line bg-paper/40 px-5 py-3">
-                <span className="text-xs font-semibold text-ink">Estimated Draft Total</span>
-                <span className="font-display text-xl font-bold text-ink font-tabular">
-                  {formatMoney(total)}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </section>
 
-      {/* 3. Delivery & Fulfillment Notes */}
-      <section className="card-base overflow-hidden">
-        <div className="border-b border-line bg-paper/50 px-5 py-3 flex items-center gap-2">
-          <Truck className="h-4 w-4 text-ink" />
-          <h2 className="text-xs font-semibold text-ink">
-            Delivery &amp; Fulfillment Instructions
-          </h2>
-        </div>
+      <section className="card flex flex-col gap-4 p-5 sm:p-6">
+        <h2 className="section-title flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs font-bold text-gold">2</span>
+          Items
+        </h2>
 
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="deliveryAddress" className="text-xs font-medium text-text-muted">
-              Delivery Address
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
+            <label htmlFor="product" className="field-label">
+              Product
             </label>
-            <textarea
-              id="deliveryAddress"
-              name="deliveryAddress"
-              rows={2}
-              placeholder="Leave blank to use customer's verified default address"
-              className="rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
+            <select
+              id="product"
+              value={selectedProductId}
+              onChange={(e) => setSelectedProductId(e.target.value)}
+              className="input"
+            >
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.variantLabel ? ` (${p.variantLabel})` : ""} — {formatMoney(p.priceCents)}
+                  {p.priceTiers.length > 0
+                    ? ` (from ${formatMoney(Math.min(...p.priceTiers.map((t) => t.priceCents)))} at ${Math.max(...p.priceTiers.map((t) => t.minQuantity))}+)`
+                    : ""}{" "}
+                  · {p.stock} in stock{p.moq > 1 ? ` · MOQ ${p.moq}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex w-24 flex-col gap-1.5">
+            <label htmlFor="quantity" className="field-label">
+              Qty
+            </label>
+            <input
+              id="quantity"
+              type="number"
+              min="1"
+              step="1"
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              className="input"
             />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="notes" className="text-xs font-medium text-text-muted">
-              Internal Staff Notes
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              rows={2}
-              placeholder="Packaging requirements, delivery timeline, or driver instructions"
-              className="rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink"
-            />
+          <button
+            type="button"
+            onClick={addToCart}
+            className="btn btn-dark"
+          >
+            Add item
+          </button>
+        </div>
+        {addError && <p className="text-sm text-status-attention-fg">{addError}</p>}
+
+        {cart.length === 0 ? (
+          <p className="empty">
+            No items added yet.
+          </p>
+        ) : (
+          <div className="card">
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr className="thead-row">
+                    <th className="px-4 py-2">Product</th>
+                    <th className="px-4 py-2 text-right">Qty</th>
+                    <th className="px-4 py-2 text-right">Unit price</th>
+                    <th className="px-4 py-2 text-right">Line total</th>
+                    <th className="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.map((line) => {
+                    const product = productMap.get(line.productId);
+                    if (!product) return null;
+                    const unitPrice = unitPriceFor(product, line.quantity);
+                    const isAgreed = agreedFor(product.id) != null;
+                    return (
+                      <tr key={line.productId} className="trow">
+                        <td className="px-4 py-3 text-ink">
+                          {product.name}
+                          {product.variantLabel ? ` (${product.variantLabel})` : ""}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-ink">
+                          {line.quantity} {product.unit}
+                          {line.quantity === 1 ? "" : "s"}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-text-muted">
+                          {formatMoney(unitPrice)}
+                          {isAgreed && <span className="ml-1.5 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">agreed</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-tabular text-ink">
+                          {formatMoney(unitPrice * line.quantity)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(line.productId)}
+                            className="text-xs text-status-attention-fg hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between border-t border-line bg-paper/60 px-[1.125rem] py-3.5">
+              <span className="text-sm font-semibold text-ink">Total</span>
+              <span className="font-display text-2xl font-bold tracking-tight text-ink">{formatMoney(total)}</span>
+            </div>
           </div>
+        )}
+      </section>
+
+      <section className="card flex flex-col gap-4 p-5 sm:p-6">
+        <h2 className="section-title flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs font-bold text-gold">3</span>
+          Delivery &amp; notes (optional)
+        </h2>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="deliveryAddress" className="field-label">
+            Delivery address
+          </label>
+          <textarea
+            id="deliveryAddress"
+            name="deliveryAddress"
+            rows={2}
+            placeholder="Leave blank to use the customer's default address, if they have one"
+            className="input"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="notes" className="field-label">
+            Notes
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows={2}
+            className="input"
+          />
         </div>
       </section>
 
       {state.error && (
-        <div className="rounded-md border border-status-attention-fg/30 bg-status-attention-bg p-3 text-xs text-status-attention-fg">
+        <p role="alert" className="text-sm text-status-attention-fg">
           {state.error}
-        </div>
+        </p>
       )}
 
-      {/* Submit Footer */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-line pt-4">
-        <span className="text-xs text-text-muted">
-          Draft orders can be amended or cancelled prior to payment confirmation.
-        </span>
-
+      <div>
         <button
           type="submit"
           disabled={pending || cart.length === 0}
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-accent-2 active:scale-95 disabled:opacity-60 shadow-sm cursor-pointer"
+          className="btn btn-primary btn-lg"
         >
-          {pending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCircle2 className="h-4 w-4" />
-          )}
-          <span>{pending ? "Creating Draft Order…" : "Create Draft Order"}</span>
+          {pending ? "Creating…" : "Create draft order"}
         </button>
       </div>
     </form>

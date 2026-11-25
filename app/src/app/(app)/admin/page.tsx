@@ -2,16 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getPlatformOverview } from "@/lib/platform-admin";
 import { AdminTable } from "./admin-table";
-import { 
-  ShieldCheck, 
-  ShieldAlert, 
-  Building2, 
-  ShoppingBag, 
-  Users, 
-  Sparkles, 
-  ArrowLeft, 
-  Lock
-} from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 
 export default async function PlatformAdminPage() {
   const session = await auth();
@@ -19,22 +10,13 @@ export default async function PlatformAdminPage() {
   // Security guard for non-platform operators
   if (!session?.user?.isPlatformAdmin) {
     return (
-      <div className="mx-auto my-12 max-w-lg card-base p-8 text-center flex flex-col items-center gap-4">
-        <ShieldAlert className="h-7 w-7 text-status-attention-fg" />
-        <div>
-          <h2 className="font-display text-xl font-semibold text-ink">Restricted operator surface</h2>
-          <p className="mt-2 text-sm text-text-muted leading-relaxed">
-            This workspace is reserved for platform administrators and system operators. Your account does not possess operator clearance.
-          </p>
-        </div>
-        <div className="mt-2 flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="inline-flex h-10 items-center gap-2 bg-ink px-4 text-sm font-medium text-paper transition-colors hover:bg-ink-2"
-          >
-            <ArrowLeft className="h-4 w-4" /> Return to dashboard
-          </Link>
-        </div>
+      <div className="card mx-auto my-12 flex max-w-md flex-col items-center gap-3 p-8 text-center">
+        <ShieldAlert size={26} className="text-status-attention-fg" />
+        <h1 className="font-display text-xl font-bold text-ink">Platform admins only</h1>
+        <p className="text-sm text-text-muted">Your account doesn&apos;t have operator access.</p>
+        <Link href="/dashboard" className="btn btn-dark mt-1">
+          Back to dashboard
+        </Link>
       </div>
     );
   }
@@ -51,116 +33,36 @@ export default async function PlatformAdminPage() {
   const totalStaffSeats = overview.reduce((acc, o) => acc + o.staffSeats, 0);
   const totalAiReplies = overview.reduce((acc, o) => acc + o.aiRepliesThisPeriod, 0);
 
+  const stats = [
+    { label: "Tenants", value: String(totalTenants), note: `${activeTenants} active · ${trialingTenants} trialing${pastDueTenants > 0 ? ` · ${pastDueTenants} past due` : ""}`, alert: pastDueTenants > 0 },
+    { label: "Orders this month", value: totalMonthlyOrders.toLocaleString(), note: "All tenants" },
+    { label: "Staff seats", value: String(totalStaffSeats), note: "With system access" },
+    { label: "AI replies", value: totalAiReplies.toLocaleString(), note: "WhatsApp and Telegram" },
+  ];
+
   return (
-    <div className="flex flex-col gap-8 pb-12">
-      {/* Top Header */}
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Platform operator control plane — restricted access</span>
-        </div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
-          Platform Administration
-        </h1>
-        <p className="max-w-3xl text-sm text-text-muted leading-relaxed">
-          Cross-tenant oversight and emergency operational support. Tenant usage is queried strictly through standard
-          isolated boundaries. Support actions (extending a trial or unsticking a past-due subscription) are directly
-          committed to that tenant&apos;s immutable audit ledger.
-        </p>
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="page-title">Platform admin</h1>
+        <p className="mt-0.5 text-sm text-text-muted">Every organization. Support actions are logged in that tenant&apos;s audit trail.</p>
       </header>
 
-      {/* Platform metrics — one hairline-divided row instead of four identical cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-line border border-line">
-        <div className="p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs">Total tenants</span>
-            <Building2 className="h-4 w-4 text-ink" />
+      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((st) => (
+          <div key={st.label} className="card p-4 sm:p-5">
+            <dt className="text-xs font-medium text-text-muted">{st.label}</dt>
+            <dd className="mt-1.5 font-display text-3xl font-bold leading-none tracking-tight text-ink">{st.value}</dd>
+            <p className={`mt-2 text-xs ${st.alert ? "font-medium text-status-attention-fg" : "text-text-muted"}`}>{st.note}</p>
           </div>
-          <div className="mt-3">
-            <span className="font-display text-3xl font-semibold text-ink">{totalTenants}</span>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-text-muted">
-              <span className="font-medium text-status-success-fg">{activeTenants} active</span>
-              <span>·</span>
-              <span className="font-medium text-status-progress-fg">{trialingTenants} trialing</span>
-              {pastDueTenants > 0 && (
-                <>
-                  <span>·</span>
-                  <span className="font-medium text-status-attention-fg">{pastDueTenants} past due</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        ))}
+      </dl>
 
-        <div className="p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs">Orders (this period)</span>
-            <ShoppingBag className="h-4 w-4 text-accent" />
-          </div>
-          <div className="mt-3">
-            <span className="font-display text-3xl font-semibold text-ink">
-              {totalMonthlyOrders.toLocaleString()}
-            </span>
-            <p className="mt-1 text-xs text-text-muted">
-              Wholesale volume across all tenants
-            </p>
-          </div>
-        </div>
-
-        <div className="p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs">Active staff seats</span>
-            <Users className="h-4 w-4 text-ink" />
-          </div>
-          <div className="mt-3">
-            <span className="font-display text-3xl font-semibold text-ink">{totalStaffSeats}</span>
-            <p className="mt-1 text-xs text-text-muted">
-              Operators with system access
-            </p>
-          </div>
-        </div>
-
-        <div className="p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-text-muted">
-            <span className="text-xs">AI automated replies</span>
-            <Sparkles className="h-4 w-4 text-gold" />
-          </div>
-          <div className="mt-3">
-            <span className="font-display text-3xl font-semibold text-ink">
-              {totalAiReplies.toLocaleString()}
-            </span>
-            <p className="mt-1 text-xs text-text-muted">
-              Customer inquiries handled (WhatsApp &amp; Telegram)
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Tenants Table Workspace */}
       <section className="flex flex-col gap-3">
-        <div className="flex items-baseline gap-2.5">
-          <h2 className="font-display text-lg font-semibold text-ink">Organizations &amp; subscriptions</h2>
-          <span className="text-xs text-text-muted font-tabular">{totalTenants} total tenants</span>
-        </div>
+        <h2 className="section-title">Organizations</h2>
         <AdminTable overview={overview} />
       </section>
 
-      {/* Operator Safety & Governance Callout */}
-      <section className="border border-line bg-paper/40 p-5">
-        <div className="flex items-start gap-4">
-          <Lock className="h-5 w-5 shrink-0 text-ink" />
-          <div className="flex flex-col gap-1 text-xs text-text-muted leading-relaxed">
-            <span className="font-medium text-ink text-sm">Tenant isolation &amp; audit trail guarantees</span>
-            <p>
-              Platform operators cannot view raw customer records, inventory ledgers, or messages from this screen.
-              The platform overview executes through scoped <code className="text-xs text-ink font-semibold">getUsage()</code> calls
-              per tenant. Any support intervention (extending trial runway or restoring past-due subscriptions) executes
-              inside the target tenant&apos;s transaction and appends an immutable <code className="text-xs text-ink font-semibold">AuditLog</code> event
-              attributed to your operator identity.
-            </p>
-          </div>
-        </div>
-      </section>
+      <p className="text-xs text-text-muted">Operators can&apos;t see customer records, stock or messages from here.</p>
     </div>
   );
 }

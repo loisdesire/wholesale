@@ -1,131 +1,81 @@
+import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { LoginForm } from "./login-form";
-import { ShieldCheck, Sparkles, Zap } from "lucide-react";
 
 export default async function LoginPage({
   searchParams,
 }: PageProps<"/login">) {
   const params = await searchParams;
   const callbackUrlRaw = params.callbackUrl;
-  const callbackUrl =
-    typeof callbackUrlRaw === "string" && callbackUrlRaw !== "/"
-      ? callbackUrlRaw
-      : "/dashboard";
+  const callbackUrl = typeof callbackUrlRaw === "string" ? callbackUrlRaw : "/";
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col md:flex-row bg-paper selection:bg-accent selection:text-white">
-      {/* Visual / Brand Hero Section */}
-      <div className="relative hidden w-[48%] flex-col justify-between overflow-hidden bg-ink p-12 text-paper lg:flex xl:p-16">
-        {/* Subtle geometric dot grid pattern */}
-        <div 
-          className="pointer-events-none absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)`,
-            backgroundSize: "28px 28px",
-          }}
-        />
-
-        {/* Top brand header */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
-            <span className="font-display text-xl font-bold text-white">A</span>
-          </div>
-          <div>
-            <span className="font-display text-lg font-semibold tracking-tight text-white">
-              Adaeze Wholesale
-            </span>
-            <span className="block text-xs font-medium text-white/70 tracking-wide">
-              Operations Platform
-            </span>
-          </div>
-        </div>
-
-        {/* Hero Value Prop */}
-        <div className="relative z-10 my-auto max-w-lg space-y-8 py-10">
-          <div className="space-y-4">
-            <span className="flex items-center gap-2 text-xs font-medium text-gold">
-              <Sparkles className="h-3.5 w-3.5" />
-              WhatsApp-to-fulfillment hub
-            </span>
-            <h2 className="font-display text-3xl xl:text-4xl leading-[1.2] font-semibold text-white">
-              Every customer chat turned into a verified, trackable wholesale order.
-            </h2>
-            <p className="text-base text-white/75 leading-relaxed font-normal">
-              Eliminate double-entry and overselling with real-time stock reservations, automated payment reconciliations, and instant staff handoffs.
-            </p>
-          </div>
-
-          {/* Key pillars */}
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-              <div className="flex items-center gap-2 text-gold">
-                <Zap className="h-4 w-4" />
-                <span className="font-tabular text-sm font-semibold text-white">Zero Overselling</span>
-              </div>
-              <p className="mt-1 text-xs text-white/70 leading-normal">
-                Pessimistic row-locking keeps stock figures true even during high-volume drops.
-              </p>
+    <div className="flex min-h-screen w-full bg-paper">
+      <div className="flex flex-1 flex-col px-6 py-6 sm:px-10">
+        <Link href="/" aria-label="Adaeze Wholesale home" className="self-start">
+          <Logo />
+        </Link>
+        <div className="flex flex-1 items-center justify-center py-10">
+          <div className="w-full max-w-sm">
+            <h1 className="font-display text-4xl font-extrabold tracking-[-0.03em] text-ink">Welcome back</h1>
+            <p className="mt-2 text-[15px] text-text-muted">Sign in with your staff account to pick up where the team left off.</p>
+            <div className="card mt-7 p-5 sm:p-6">
+              <LoginForm callbackUrl={callbackUrl} />
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-              <div className="flex items-center gap-2 text-emerald-400">
-                <ShieldCheck className="h-4 w-4" />
-                <span className="font-tabular text-sm font-semibold text-white">Row-Level Security</span>
-              </div>
-              <p className="mt-1 text-xs text-white/70 leading-normal">
-                Strict tenant isolation protecting customer prices, margins, and inventory data.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer info */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-6 text-xs text-white/70">
-          <span>Enterprise Wholesale Portal</span>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span className="text-white/75">System Operational</span>
           </div>
         </div>
       </div>
 
-      {/* Login Card Form Section */}
-      <div className="relative flex flex-1 items-center justify-center px-6 py-12 md:px-12 lg:px-16">
-        <div className="w-full max-w-md">
-          {/* Mobile brand header */}
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
-              <span className="font-display text-xl font-bold text-white">A</span>
+      {/* The right panel shows what's waiting inside rather than a slogan: one order, mid-journey. */}
+      <div className="relative hidden w-[46%] overflow-hidden bg-accent p-10 lg:flex lg:flex-col lg:justify-between">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-25"
+          style={{
+            backgroundImage: "radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.9) 1px, transparent 0)",
+            backgroundSize: "22px 22px",
+          }}
+        />
+        <p className="relative max-w-md font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] text-white xl:text-5xl">
+          Every enquiry becomes an order with a status, an owner and a{" "}
+          <span className="rounded-md bg-gold px-1.5 text-gold-ink">record</span>.
+        </p>
+
+        <div className="relative mx-auto w-full max-w-md">
+          <div className="rounded-2xl bg-surface p-5 shadow-pop">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-xs text-text-muted">ORD-1003</p>
+                <p className="mt-0.5 font-display text-3xl font-bold tracking-tight text-ink">₦159,000</p>
+                <p className="text-sm text-text-muted">Blessing Nwachukwu</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-status-progress-bg px-2 py-0.5 text-xs font-semibold text-status-progress-fg">
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                Confirmed
+              </span>
             </div>
-            <div>
-              <span className="font-display text-lg font-semibold tracking-tight text-ink">
-                Adaeze Wholesale
-              </span>
-              <span className="block text-xs font-medium text-text-muted tracking-wide">
-                Operations Platform
-              </span>
+            <div className="mt-4 grid grid-cols-4 gap-1.5">
+              {["Draft", "Confirmed", "Paid", "Fulfilled"].map((s, i) => (
+                <div key={s} className="flex flex-col gap-1.5">
+                  <span className={`h-1.5 rounded-full ${i === 0 ? "bg-status-success-fg" : i === 1 ? "bg-accent" : "bg-line"}`} />
+                  <span className={`text-xs ${i === 1 ? "font-semibold text-ink" : "text-text-muted"}`}>{s}</span>
+                </div>
+              ))}
             </div>
           </div>
-
-          {/* Form card wrapper with subtle shadow and border */}
-          <div className="rounded-2xl border border-line bg-surface p-8 shadow-sm transition-all sm:p-10">
-            <div className="space-y-2">
-              <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                Welcome back
-              </h1>
-              <p className="text-sm text-text-muted">
-                Enter your staff credentials to access your organization dashboard.
-              </p>
-            </div>
-
-            <LoginForm callbackUrl={callbackUrl} />
-
-            <div className="mt-8 border-t border-line/80 pt-6 text-center">
-              <p className="text-xs text-text-muted">
-                Need access or password assistance?{" "}
-                <span className="font-medium text-ink">Contact your administrator</span>
-              </p>
+          <div className="anim-pop -mt-3 ml-auto flex w-fit items-center gap-2.5 rounded-2xl bg-ink px-4 py-3 text-white shadow-pop" style={{ animationDelay: "0.4s" }}>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold text-gold-ink">
+              <BadgeCheck size={17} />
+            </span>
+            <div className="text-sm leading-tight">
+              <p className="font-semibold">Stock reserved</p>
+              <p className="text-xs text-white/60">6 pairs held for this order</p>
             </div>
           </div>
         </div>
+
+        <p className="relative text-sm font-medium text-white/70">Inbox · Orders · Stock · Payments · Reports</p>
       </div>
     </div>
   );

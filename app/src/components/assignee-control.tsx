@@ -5,7 +5,7 @@ import { assignAction, type FormState } from "@/app/(app)/operations/actions";
 import type { AssignableKind } from "@/lib/assignment";
 
 const selectClass =
-  "rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10";
+  "input input-sm text-xs";
 
 /**
  * Who this piece of work is assigned to, with a picker to change it. Owners can

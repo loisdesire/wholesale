@@ -1,35 +1,26 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 
-// Unified Modern Grotesque: generous x-height, refined optical curves, soft bold weights
-const hankenGrotesk = Hanken_Grotesk({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
+// UI/body face. Tabular figures (see .font-tabular) keep money columns aligned.
+const sans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
+// SKUs and order references only — where telling 0 from O matters.
+const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
+
+// Display face: page titles, headline figures and marketing headlines (see globals.css).
+const display = Bricolage_Grotesque({ variable: "--font-display", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Adaeze Wholesale",
-  description: "Order operations for Adaeze Fashion Wholesale",
+  description: "Turn WhatsApp enquiries into tracked wholesale orders — inbox, orders, stock, payments and reports in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
-      style={
-        {
-          "--font-display": "var(--font-sans)",
-        } as React.CSSProperties
-      }
+      className={`${sans.variable} ${mono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

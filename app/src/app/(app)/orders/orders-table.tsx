@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/status-badge";
+import { Avatar } from "@/components/avatar";
 import { applyBulkAssignAction, previewBulkAssignAction, type BulkAssignOutcome } from "../operations/actions";
-import { Loader2, Inbox, ChevronRight } from "lucide-react";
 
 export type OrderRow = {
   id: string;
@@ -21,7 +21,7 @@ export type OrderRow = {
   assignedToName: string | null;
 };
 
-/** Order list with responsive mobile card stack and desktop ledger table. */
+/** Order list with row selection and a bulk-assign bar, for owners only (staff get a plain list). */
 export function OrdersTable({
   orders,
   members,
@@ -65,253 +65,138 @@ export function OrdersTable({
     });
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Bulk Action Bar if items selected */}
+    <div className="flex flex-col gap-3">
       {canBulkAssign && selected.size > 0 && (
-        <div className="flex flex-col gap-3 bg-ink p-4 text-paper border border-white/10 animate-in fade-in">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-2 text-xs font-bold text-white shadow-xs">
-                {selected.size}
-              </span>
-              <span className="font-semibold text-paper">orders selected</span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-paper/60">Assign to:</span>
-                <select
-                  aria-label="Assign selected orders to"
-                  value={assigneeId}
-                  onChange={(e) => {
-                    setAssigneeId(e.target.value);
-                    setPreview(null);
-                  }}
-                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-white outline-none focus:border-accent"
-                >
-                  <option value="" className="text-ink">Unassigned</option>
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id} className="text-ink">
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+        <div className="card flex flex-col gap-3 border-accent/40 bg-accent-soft p-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-ink">{selected.size} selected</span>
+            <select
+              aria-label="Assign selected orders to"
+              value={assigneeId}
+              onChange={(e) => {
+                setAssigneeId(e.target.value);
+                setPreview(null);
+              }}
+              className="input input-sm"
+            >
+              <option value="">Unassign</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={runPreview}
+              disabled={pending}
+              className="btn btn-secondary btn-sm"
+            >
+              Preview
+            </button>
+            {preview && (
               <button
                 type="button"
-                onClick={runPreview}
+                onClick={apply}
                 disabled={pending}
-                className="rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition-colors disabled:opacity-60 cursor-pointer"
+                className="btn btn-primary btn-sm"
               >
-                Preview
+                {pending ? "Applying…" : `Apply to ${okCount} order${okCount === 1 ? "" : "s"}`}
               </button>
-
-              {preview && (
-                <button
-                  type="button"
-                  onClick={apply}
-                  disabled={pending}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-accent-2 transition-colors disabled:opacity-60 cursor-pointer"
-                >
-                  {pending ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>Applying…</span>
-                    </>
-                  ) : (
-                    <span>Confirm ({okCount})</span>
-                  )}
-                </button>
-              )}
-            </div>
+            )}
           </div>
-
           {preview && (
-            <div className="border-t border-white/10 pt-2 text-xs">
-              <ul className="flex flex-wrap gap-x-4 gap-y-1">
-                {preview.map((r) => (
-                  <li key={r.orderId} className={r.ok ? "text-paper/70 font-tabular" : "text-rose-300 font-semibold"}>
-                    {r.reference ?? r.orderId}: {r.outcome}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ul className="flex flex-col gap-1 text-xs">
+              {preview.map((r) => (
+                <li key={r.orderId} className={r.ok ? "text-text-muted" : "text-status-attention-fg"}>
+                  {r.reference ?? r.orderId}:{" "}
+                  {r.outcome === "assigned"
+                    ? "will be assigned"
+                    : r.outcome === "unassigned"
+                      ? "will be unassigned"
+                      : r.outcome === "unchanged"
+                        ? "no change needed"
+                        : `refused — ${r.reason}`}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       )}
 
-      {/* Main Order View */}
-      {orders.length === 0 ? (
-        <div className="border border-line flex flex-col items-center justify-center p-10 text-center">
-          <Inbox className="h-6 w-6 text-text-muted" />
-          <h2 className="mt-3 font-display text-base font-semibold text-ink">No matching orders found</h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Try adjusting your search query, status filters, or date range.
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Mobile Card Stack (sm:hidden) */}
-          <div className="flex flex-col gap-3 sm:hidden">
+      {/* Phone: one tappable row per order. The table (with bulk-assign) is the desk view. */}
+      <ul className="card divide-y divide-line overflow-hidden md:hidden">
+        {orders.map((o) => (
+          <li key={o.id}>
+            <Link href={`/orders/${o.id}`} className="mrow">
+              <Avatar name={o.customerName ?? o.customerPhone} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-ink">{o.customerName ?? "Unnamed"}</span>
+                <span className="block truncate text-xs text-text-muted">
+                  <span className="font-mono">{o.reference}</span> · {o.units} units
+                </span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className="font-tabular font-semibold text-ink">{formatMoney(o.totalCents, o.currency)}</span>
+                <OrderStatusBadge status={o.status} />
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <div className="card hidden overflow-x-auto md:block">
+        <table className="table">
+          <thead>
+            <tr className="thead-row">
+              {canBulkAssign && (
+                <th className="w-10 py-2 pr-3">
+                  <input type="checkbox" checked={selected.size === orders.length && orders.length > 0} onChange={toggleAll} aria-label="Select all" />
+                </th>
+              )}
+              <th className="py-2 pr-4">Reference</th>
+              <th className="py-2 pr-4">Customer</th>
+              <th className="py-2 pr-4">Items</th>
+              <th className="py-2 pr-4">Status</th>
+              <th className="py-2 pr-4">Assigned to</th>
+              <th className="py-2 pr-4">Created</th>
+              <th className="py-2 pr-4 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
             {orders.map((o) => (
-              <div
-                key={o.id}
-                className="card-base p-4 hover:border-line transition-all active:scale-[0.99]"
-              >
-                <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    {canBulkAssign && (
-                      <input
-                        type="checkbox"
-                        checked={selected.has(o.id)}
-                        onChange={() => toggle(o.id)}
-                        aria-label={`Select ${o.reference}`}
-                        className="h-4 w-4 rounded-md border-line text-accent focus:ring-accent"
-                      />
-                    )}
-                    <Link
-                      href={`/orders/${o.id}`}
-                      className="inline-flex items-center rounded-md bg-paper/80 px-2 py-0.5 font-mono text-xs font-bold text-ink"
-                    >
-                      {o.reference}
-                    </Link>
-                  </div>
-                  <OrderStatusBadge status={o.status} />
-                </div>
-
-                <Link href={`/orders/${o.id}`} className="block py-2.5 space-y-1">
-                  <p className="font-semibold text-sm text-ink">{o.customerName ?? "Unnamed Customer"}</p>
-                  <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
-                </Link>
-
-                <div className="flex items-center justify-between border-t border-line/60 pt-2.5 text-xs">
-                  <div className="flex items-center gap-2 text-text-muted">
-                    <span className="font-tabular font-medium">{o.units} {o.units === 1 ? "unit" : "units"}</span>
-                    <span>·</span>
-                    <span className="font-tabular">{formatDateTime(o.createdAt)}</span>
-                  </div>
-
-                  <Link
-                    href={`/orders/${o.id}`}
-                    className="inline-flex items-center gap-1 font-tabular text-sm font-bold text-ink"
-                  >
-                    <span>{formatMoney(o.totalCents, o.currency)}</span>
-                    <ChevronRight className="h-4 w-4 text-text-muted" />
+              <tr key={o.id} className="trow">
+                {canBulkAssign && (
+                  <td className="py-3 pr-3">
+                    <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} aria-label={`Select ${o.reference}`} />
+                  </td>
+                )}
+                <td className="py-3 pr-4 font-mono text-[13px] font-medium">
+                  <Link href={`/orders/${o.id}`} className="text-ink underline-offset-4 hover:text-accent hover:underline">
+                    {o.reference}
                   </Link>
-                </div>
-              </div>
+                </td>
+                <td className="py-3 pr-4">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={o.customerName ?? o.customerPhone} size="sm" />
+                    <div>
+                      <p className="whitespace-nowrap font-medium text-ink">{o.customerName ?? "Unnamed"}</p>
+                      <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="whitespace-nowrap py-3 pr-4 text-text-muted">{o.units} units</td>
+                <td className="py-3 pr-4">
+                  <OrderStatusBadge status={o.status} />
+                </td>
+                <td className="whitespace-nowrap py-3 pr-4 text-text-muted">{o.assignedToName ?? "—"}</td>
+                <td className="whitespace-nowrap py-3 pr-4 text-xs text-text-muted">{formatDateTime(o.createdAt)}</td>
+                <td className="whitespace-nowrap py-3 pr-4 text-right font-tabular font-semibold text-ink">{formatMoney(o.totalCents, o.currency)}</td>
+              </tr>
             ))}
-          </div>
-
-          {/* Desktop Table View (hidden sm:block) */}
-          <div className="card-base overflow-hidden hidden sm:block">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line text-xs font-medium text-text-muted">
-                    {canBulkAssign && (
-                      <th className="w-10 py-3.5 pl-5 pr-2">
-                        <input
-                          type="checkbox"
-                          checked={selected.size === orders.length && orders.length > 0}
-                          onChange={toggleAll}
-                          aria-label="Select all"
-                          className="h-4 w-4 rounded-md border-line text-accent focus:ring-accent"
-                        />
-                      </th>
-                    )}
-                    <th className={`py-3.5 pr-4 ${!canBulkAssign ? "pl-5" : ""}`}>Order</th>
-                    <th className="py-3.5 pr-4">Customer</th>
-                    <th className="py-3.5 pr-4">Items</th>
-                    <th className="py-3.5 pr-4">Status</th>
-                    <th className="py-3.5 pr-4">Assigned</th>
-                    <th className="py-3.5 pr-4">Date</th>
-                    <th className="py-3.5 pl-4 pr-5 text-right">Settlement</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {orders.map((o) => (
-                    <tr
-                      key={o.id}
-                      className="group transition-colors hover:bg-paper/40 cursor-pointer"
-                    >
-                      {canBulkAssign && (
-                        <td className="py-3.5 pl-5 pr-2">
-                          <input
-                            type="checkbox"
-                            checked={selected.has(o.id)}
-                            onChange={() => toggle(o.id)}
-                            aria-label={`Select ${o.reference}`}
-                            className="h-4 w-4 rounded-md border-line text-accent focus:ring-accent"
-                          />
-                        </td>
-                      )}
-
-                      {/* Order Reference */}
-                      <td className={`py-3.5 pr-4 ${!canBulkAssign ? "pl-5" : ""}`}>
-                        <Link
-                          href={`/orders/${o.id}`}
-                          className="inline-flex items-center rounded-md bg-paper/80 px-2 py-1 font-mono text-xs font-bold text-ink group-hover:bg-accent/10 group-hover:text-accent transition-colors"
-                        >
-                          {o.reference}
-                        </Link>
-                      </td>
-
-                      {/* Customer */}
-                      <td className="py-3.5 pr-4">
-                        <Link href={`/orders/${o.id}`} className="block">
-                          <p className="font-semibold text-ink group-hover:text-accent transition-colors">
-                            {o.customerName ?? "Unnamed Customer"}
-                          </p>
-                          <p className="font-tabular text-xs text-text-muted">{o.customerPhone}</p>
-                        </Link>
-                      </td>
-
-                      {/* Units */}
-                      <td className="py-3.5 pr-4 font-tabular text-xs font-medium text-text-muted">
-                        {o.units} {o.units === 1 ? "unit" : "units"}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3.5 pr-4">
-                        <OrderStatusBadge status={o.status} />
-                      </td>
-
-                      {/* Assigned */}
-                      <td className="py-3.5 pr-4 text-xs font-medium">
-                        {o.assignedToName ? (
-                          <span className="inline-flex items-center gap-1.5 text-ink">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            <span>{o.assignedToName}</span>
-                          </span>
-                        ) : (
-                          <span className="text-text-muted italic">Unassigned</span>
-                        )}
-                      </td>
-
-                      {/* Date */}
-                      <td className="py-3.5 pr-4 font-tabular text-xs text-text-muted">
-                        {formatDateTime(o.createdAt)}
-                      </td>
-
-                      {/* Total Amount */}
-                      <td className="py-3.5 pl-4 pr-5 text-right">
-                        <Link
-                          href={`/orders/${o.id}`}
-                          className="inline-flex items-center font-tabular text-sm font-bold text-ink group-hover:text-accent transition-colors"
-                        >
-                          {formatMoney(o.totalCents, o.currency)}
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

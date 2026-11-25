@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useActionState } from "react";
 import { useSubmitAction } from "@/lib/use-submit-action";
 import {
@@ -11,25 +12,15 @@ import {
   type FormState,
   type RequestProviderRefundState,
 } from "../returns-actions";
-import { 
-  RotateCcw, 
-  CheckCircle2, 
-  XCircle, 
-  DollarSign, 
-  Loader2, 
-  PackageCheck, 
-  CreditCard, 
-  AlertCircle 
-} from "lucide-react";
 
 const inputClass =
-  "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-ink focus:ring-1 focus:ring-ink";
+  "input";
 const primaryButton =
-  "inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-accent-2 disabled:opacity-60";
+  "btn btn-primary";
 const secondaryButton =
-  "inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink transition-all hover:bg-paper disabled:opacity-60";
+  "btn btn-secondary";
 const dangerButton =
-  "inline-flex items-center gap-1.5 rounded-md border border-status-attention-fg/30 bg-status-attention-bg px-3.5 py-2 text-sm font-medium text-status-attention-fg transition-all hover:bg-status-attention-fg hover:text-white disabled:opacity-60";
+  "btn btn-danger";
 
 export type ReturnableLine = {
   orderItemId: string;
@@ -40,94 +31,71 @@ export type ReturnableLine = {
 };
 
 export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: ReturnableLine[] }) {
-  const { state, pending, formProps } = useSubmitAction(
-    requestReturnAction.bind(null, orderId), 
-    { error: null } as FormState, 
-    { resetOnSuccess: true }
-  );
+  const { state, pending, formProps } = useSubmitAction(requestReturnAction.bind(null, orderId), {
+    error: null,
+  } as FormState, { resetOnSuccess: true });
 
   return (
-    <form {...formProps} className="card-base p-5 flex flex-col gap-5">
-      <div className="flex items-center gap-2 border-b border-line pb-3">
-        <RotateCcw className="h-4 w-4 text-ink" />
-        <h3 className="text-xs font-semibold text-ink">Initiate customer return</h3>
-      </div>
-
-      <div className="overflow-x-auto border border-line">
-        <table className="w-full table-fixed border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs font-medium text-text-muted">
-              <th className="py-2.5 px-3">Item</th>
-              <th className="py-2.5 px-3 text-right w-32">Returnable</th>
-              <th className="py-2.5 px-3 w-32">Qty to return</th>
-              <th className="py-2.5 px-3 w-36">Condition</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {lines.map((line) => (
-              <tr key={line.orderItemId} className="hover:bg-paper/20">
-                <td className="py-3 px-3 text-ink">
-                  <div className="font-medium">{line.label}</div>
-                  <span className="font-mono text-xs text-text-muted">{line.sku}</span>
-                </td>
-                <td className="py-3 px-3 text-right font-tabular text-text-muted">
-                  {line.returnable} {line.unit}{line.returnable === 1 ? "" : "s"}
-                </td>
-                <td className="py-3 px-3">
-                  <input
-                    type="number"
-                    name={`qty_${line.orderItemId}`}
-                    min={0}
-                    max={line.returnable}
-                    step={1}
-                    disabled={line.returnable === 0}
-                    aria-label={`Quantity of ${line.label} to return`}
-                    placeholder="0"
-                    className={`${inputClass} w-24 font-tabular text-center`}
-                  />
-                </td>
-                <td className="py-3 px-3">
-                  <select
-                    name={`condition_${line.orderItemId}`}
-                    disabled={line.returnable === 0}
-                    aria-label={`Condition of ${line.label}`}
-                    className={`${inputClass} text-xs`}
-                  >
-                    <option value="RESELLABLE">Resellable</option>
-                    <option value="DAMAGED">Damaged</option>
-                  </select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <form {...formProps} className="flex flex-col gap-4">
+      {/* One block per line rather than a four-column table: it reads the same at any width. */}
+      <ul className="flex flex-col divide-y divide-line">
+        {lines.map((line) => (
+          <li key={line.orderItemId} className="flex flex-col gap-2 py-3 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">{line.label}</p>
+              <p className="text-xs text-text-muted">
+                Up to {line.returnable} {line.unit}
+                {line.returnable === 1 ? "" : "s"}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <input
+                type="number"
+                name={`qty_${line.orderItemId}`}
+                min={0}
+                max={line.returnable}
+                step={1}
+                disabled={line.returnable === 0}
+                aria-label={`Quantity of ${line.label} to return`}
+                placeholder="Qty"
+                className={`${inputClass} w-20`}
+              />
+              <select
+                name={`condition_${line.orderItemId}`}
+                disabled={line.returnable === 0}
+                aria-label={`Condition of ${line.label}`}
+                className={inputClass}
+              >
+                <option value="RESELLABLE">Resellable</option>
+                <option value="DAMAGED">Damaged</option>
+              </select>
+            </div>
+          </li>
+        ))}
+      </ul>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="reason" className="text-xs font-semibold text-ink">
-          Reason for return <span className="text-accent">*</span>
+        <label htmlFor="reason" className="field-label">
+          Reason
         </label>
         <input
           id="reason"
           name="reason"
           type="text"
           required
-          placeholder="e.g. Defective zipper, size discrepancy, customer change of mind"
+          placeholder="e.g. wrong size, faulty zip"
           className={inputClass}
         />
       </div>
 
       {state.error && (
-        <div className="flex items-center gap-2 rounded-md border border-status-attention-fg/30 bg-status-attention-bg p-3 text-xs text-status-attention-fg">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{state.error}</span>
-        </div>
+        <p role="alert" className="text-sm text-status-attention-fg">
+          {state.error}
+        </p>
       )}
-
-      <div className="flex justify-end pt-2">
+      <div>
         <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-          <span>{pending ? "Submitting…" : "Request Return"}</span>
+          {pending ? "Submitting…" : "Request return"}
         </button>
       </div>
     </form>
@@ -136,10 +104,9 @@ export function RequestReturnForm({ orderId, lines }: { orderId: string; lines: 
 
 function ErrorLine({ error }: { error: string | null }) {
   return error ? (
-    <div className="flex items-center gap-1.5 text-xs text-status-attention-fg font-medium mt-1">
-      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-      <span>{error}</span>
-    </div>
+    <p role="alert" className="text-sm text-status-attention-fg">
+      {error}
+    </p>
   ) : null;
 }
 
@@ -149,39 +116,24 @@ function NoteAction({
   pendingLabel,
   placeholder,
   variant = "primary",
-  icon: Icon,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   label: string;
   pendingLabel: string;
   placeholder: string;
   variant?: "primary" | "danger" | "secondary";
-  icon?: React.ComponentType<{ className?: string }>;
 }) {
   const { state, pending, formProps } = useSubmitAction(action, { error: null } as FormState);
   return (
-    <form {...formProps} className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <input 
-          name="note" 
-          type="text" 
-          placeholder={placeholder} 
-          aria-label={placeholder} 
-          className={`${inputClass} flex-1 min-w-[200px] text-xs`} 
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className={variant === "primary" ? primaryButton : variant === "danger" ? dangerButton : secondaryButton}
-        >
-          {pending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : Icon ? (
-            <Icon className="h-3.5 w-3.5" />
-          ) : null}
-          <span>{pending ? pendingLabel : label}</span>
-        </button>
-      </div>
+    <form {...formProps} className="flex flex-wrap items-center gap-2">
+      <input name="note" type="text" placeholder={placeholder} aria-label={placeholder} className={`${inputClass} w-64`} />
+      <button
+        type="submit"
+        disabled={pending}
+        className={variant === "primary" ? primaryButton : variant === "danger" ? dangerButton : secondaryButton}
+      >
+        {pending ? pendingLabel : label}
+      </button>
       <ErrorLine error={state.error} />
     </form>
   );
@@ -193,13 +145,10 @@ function ReceiveGoodsButton({ returnId }: { returnId: string }) {
     { error: null } as FormState
   );
   return (
-    <form {...formProps} className="flex flex-col gap-1">
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className={secondaryButton}>
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4 text-emerald-600" />}
-          <span>{pending ? "Recording Intake…" : "Goods Received — Update Inventory"}</span>
-        </button>
-      </div>
+    <form {...formProps} className="flex items-center gap-3">
+      <button type="submit" disabled={pending} className={secondaryButton}>
+        {pending ? "Recording…" : "Goods received — update stock"}
+      </button>
       <ErrorLine error={state.error} />
     </form>
   );
@@ -211,58 +160,47 @@ function RequestProviderRefundButton({ returnId }: { returnId: string }) {
     { error: null }
   );
   return (
-    <form action={formAction} className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-3">
+    <form action={formAction} className="flex flex-col gap-1">
+      <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className={secondaryButton}>
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4 text-accent" />}
-          <span>{pending ? "Requesting…" : "Automate Paystack Refund"}</span>
+          {pending ? "Requesting…" : "Request Paystack refund"}
         </button>
         {state.paystackStatus && !state.error && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-status-success-fg bg-status-success-bg px-2 py-1 rounded">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Paystack: {state.paystackStatus}
-          </span>
+          <span className="text-sm text-status-success-fg">Requested — Paystack says “{state.paystackStatus}.”</span>
         )}
+        <ErrorLine error={state.error} />
       </div>
       <p className="text-xs text-text-muted">
-        Triggers an automated payout via Paystack. Once settlement confirms, record as paid below.
+        Only works if this order was paid through Paystack. Paystack accepting the request isn’t
+        the same as the money landing — once it has, confirm with “Mark refund as paid” below.
       </p>
-      <ErrorLine error={state.error} />
     </form>
   );
 }
 
+/** The next step(s) available on a return, depending on its state and who is looking. */
 function ApproveReturnForm({ returnId, valueNaira }: { returnId: string; valueNaira: number }) {
   const { state, pending, formProps } = useSubmitAction(decideReturnAction.bind(null, returnId, true), {
     error: null,
   } as FormState);
   return (
-    <form {...formProps} className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs text-text-muted">
-          <span>Refund (₦) <span className="font-normal">— leave blank for full ₦{valueNaira.toLocaleString("en-NG")}</span></span>
-          <input
-            name="refundNaira"
-            type="number"
-            min="1"
-            step="any"
-            max={valueNaira}
-            placeholder={String(valueNaira)}
-            className={`${inputClass} w-36 font-tabular text-right`}
-          />
-        </label>
-        <input 
-          name="note" 
-          type="text" 
-          placeholder="Approval note (required if refunding partial amount)" 
-          aria-label="Note" 
-          className={`${inputClass} flex-1 min-w-[200px] text-xs`} 
+    <form {...formProps} className="flex flex-wrap items-end gap-2">
+      <label className="flex flex-col gap-1 text-xs text-text-muted">
+        Refund (₦) — leave blank for the full {valueNaira.toLocaleString("en-NG")}
+        <input
+          name="refundNaira"
+          type="number"
+          min="1"
+          step="any"
+          max={valueNaira}
+          placeholder={String(valueNaira)}
+          className={`${inputClass} w-44`}
         />
-        <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          <span>{pending ? "Approving…" : "Approve Return"}</span>
-        </button>
-      </div>
+      </label>
+      <input name="note" type="text" placeholder="Note (required if refunding less)" aria-label="Note" className={`${inputClass} w-64`} />
+      <button type="submit" disabled={pending} className={primaryButton}>
+        {pending ? "Approving…" : "Approve return"}
+      </button>
       <ErrorLine error={state.error} />
     </form>
   );
@@ -282,48 +220,42 @@ export function ReturnActions({
   valueNaira: number;
 }) {
   const nothingForStaff = (what: string) => (
-    <p className="text-xs text-text-muted italic">{what} — requires Owner clearance.</p>
+    <p className="text-sm text-text-muted">{what} — only an owner can do this.</p>
   );
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg bg-paper/40 p-3.5 border border-line">
+    <div className="flex flex-col gap-3">
       {status === "REQUESTED" &&
         (isOwner ? (
           <div className="flex flex-col gap-3">
             <ApproveReturnForm returnId={returnId} valueNaira={valueNaira} />
-            <div className="border-t border-line/60 pt-2">
-              <NoteAction
-                action={decideReturnAction.bind(null, returnId, false)}
-                label="Reject Return"
-                pendingLabel="Rejecting…"
-                placeholder="Reason for return rejection…"
-                variant="danger"
-                icon={XCircle}
-              />
-            </div>
+            <NoteAction
+              action={decideReturnAction.bind(null, returnId, false)}
+              label="Reject return"
+              pendingLabel="Rejecting…"
+              placeholder="Why it's being rejected (optional)"
+              variant="danger"
+            />
           </div>
         ) : (
-          nothingForStaff("Awaiting Owner authorization to approve or reject")
+          nothingForStaff("Waiting for the owner to approve or reject this return")
         ))}
 
       {status === "APPROVED" && <ReceiveGoodsButton returnId={returnId} />}
 
       {refundStatus === "PENDING" &&
         (isOwner ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <RequestProviderRefundButton returnId={returnId} />
-            <div className="border-t border-line/60 pt-2">
-              <NoteAction
-                action={markRefundedAction.bind(null, returnId)}
-                label="Mark Refund Paid"
-                pendingLabel="Recording…"
-                placeholder="Payment reference (e.g. Bank transfer ref / receipt)"
-                icon={DollarSign}
-              />
-            </div>
+            <NoteAction
+              action={markRefundedAction.bind(null, returnId)}
+              label="Mark refund as paid"
+              pendingLabel="Saving…"
+              placeholder="How it was paid (e.g. bank transfer ref)"
+            />
           </div>
         ) : (
-          nothingForStaff("Refund liability is pending payout by Owner")
+          nothingForStaff("This refund is waiting to be paid out")
         ))}
     </div>
   );

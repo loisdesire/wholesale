@@ -20,16 +20,16 @@ export function AddItemForm({ orderId, products }: { orderId: string; products: 
   }, { resetOnSuccess: true });
 
   return (
-    <form {...formProps} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4">
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-        <div className="flex flex-1 flex-col gap-1.5">
-          <label htmlFor="productId" className="text-sm font-medium text-ink">
+    <form {...formProps} className="flex flex-col gap-3 card p-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex min-w-0 basis-full flex-col gap-1.5 sm:flex-1 sm:basis-0">
+          <label htmlFor="productId" className="field-label">
             Product
           </label>
           <select
             id="productId"
             name="productId"
-            className="rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input w-full"
           >
             {products.map((p) => (
               <option key={p.id} value={p.id}>
@@ -40,8 +40,8 @@ export function AddItemForm({ orderId, products }: { orderId: string; products: 
             ))}
           </select>
         </div>
-        <div className="flex w-full sm:w-24 flex-col gap-1.5">
-          <label htmlFor="quantity" className="text-sm font-medium text-ink">
+        <div className="flex w-24 flex-col gap-1.5">
+          <label htmlFor="quantity" className="field-label">
             Qty
           </label>
           <input
@@ -51,15 +51,15 @@ export function AddItemForm({ orderId, products }: { orderId: string; products: 
             min="1"
             step="1"
             defaultValue={1}
-            className="rounded-md border border-line bg-surface px-3 py-2 text-base sm:text-sm text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+            className="input"
           />
         </div>
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex min-h-[44px] sm:min-h-[38px] items-center justify-center rounded-md border border-line bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-line/40 disabled:opacity-60 cursor-pointer"
+          className="btn btn-dark"
         >
-          {pending ? "Adding…" : "Add item"}
+          {pending ? "Adding…" : "Add"}
         </button>
       </div>
       {state.error && <p className="text-sm text-status-attention-fg">{state.error}</p>}

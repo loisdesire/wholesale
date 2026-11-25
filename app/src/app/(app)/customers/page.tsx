@@ -1,22 +1,17 @@
 import Link from "next/link";
+import { Plus, Search } from "lucide-react";
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { getCustomerBalances } from "@/lib/balances";
 import { customerMatch } from "@/lib/search";
 import { formatMoney } from "@/lib/format";
-import {
-  Users,
-  Search,
-  Plus,
-  ChevronRight,
-  X,
-} from "lucide-react";
 
 const PAGE_SIZE = 50;
 const FILTERS = [
-  { value: undefined, label: "All Accounts" },
-  { value: "owes", label: "Owes Us (Receivables)" },
-  { value: "owed", label: "Refund Due (Payables)" },
+  { value: undefined, label: "All" },
+  { value: "owes", label: "Owes us" },
+  { value: "owed", label: "We owe them" },
 ] as const;
 
 export default async function CustomersPage({
@@ -33,7 +28,8 @@ export default async function CustomersPage({
   const filter = params.filter === "owes" || params.filter === "owed" ? params.filter : undefined;
   const page = Math.max(1, Number(params.page) || 1);
 
-  // Balances are derived from actual order and refund records
+  // Balances are summed from orders and refunds, so a balance filter first asks
+  // which customers have the balance, then loads just those.
   const balances = await getCustomerBalances(organizationId);
   const idsForFilter =
     filter === "owes"
@@ -48,7 +44,6 @@ export default async function CustomersPage({
     ...(idsForFilter ? { id: { in: idsForFilter } } : {}),
     ...(q ? customerMatch(q) : {}),
   };
-
   const [customers, totalCount] = await Promise.all([
     db.customer.findMany({
       where,
@@ -59,7 +54,6 @@ export default async function CustomersPage({
     }),
     db.customer.count({ where }),
   ]);
-
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const link = (overrides: Record<string, string | undefined>) => {
     const next = new URLSearchParams();
@@ -69,282 +63,163 @@ export default async function CustomersPage({
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-16">
-      {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-baseline gap-2.5">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Customer Directory</h1>
-            <span className="font-tabular text-sm text-text-muted">{totalCount} accounts</span>
-          </div>
-          <p className="mt-1 text-sm text-text-muted">
-            Trade counterparties, credit ledgers, and bespoke wholesale pricing tiers.
-          </p>
-        </div>
-
-        <Link
-          href="/customers/new"
-          className="inline-flex h-10 items-center gap-2 self-start bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-2 sm:self-auto cursor-pointer"
-        >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span>New Customer</span>
+    <div className="flex flex-col gap-5">
+      <header className="page-head">
+        <h1 className="page-title">Customers</h1>
+        <Link href="/customers/new" className="btn btn-primary">
+          <Plus size={16} strokeWidth={2.4} />
+          New customer
         </Link>
       </header>
 
-      {/* Search & Financial Balance Filter */}
-      <div className="border border-line flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-        <form action="/customers" className="relative min-w-[260px] flex-1">
+      <div className="flex flex-col gap-3">
+        <form action="/customers" className="relative max-w-md">
           {filter && <input type="hidden" name="filter" value={filter} />}
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             name="q"
             type="search"
             defaultValue={q}
-            placeholder="Search by customer name, phone number, or notes…"
-            className="w-full border border-line bg-paper/50 py-2.5 pl-10 pr-4 text-base sm:text-sm text-ink outline-none transition-all placeholder:text-text-muted focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10"
+            placeholder="Search customers"
+            aria-label="Search customers by name, phone, email or notes"
+            className="input w-full pl-9"
           />
         </form>
-
-        {/* Quick Balance Filter Tabs — plain underline, not filled pills */}
-        <div className="flex flex-wrap items-center gap-4">
-          <nav aria-label="Filter by balance" className="flex flex-wrap items-center gap-5 text-xs font-semibold">
-            {FILTERS.map((f) => {
-              const active = filter === f.value;
-              return (
-                <Link
-                  key={f.label}
-                  href={link({ filter: f.value, page: undefined })}
-                  aria-current={active ? "true" : undefined}
-                  className={`border-b-2 pb-0.5 transition-colors ${
-                    active ? "border-accent text-ink" : "border-transparent text-text-muted hover:text-ink"
-                  }`}
-                >
-                  {f.label}
-                </Link>
-              );
-            })}
-          </nav>
-
+        <nav aria-label="Filter by balance" className="chip-row">
+          {FILTERS.map((f) => {
+            const active = filter === f.value;
+            return (
+              <Link
+                key={f.label}
+                href={link({ filter: f.value, page: undefined })}
+                aria-current={active ? "true" : undefined}
+                className={`chip ${active ? "chip-active" : ""}`}
+              >
+                {f.label}
+              </Link>
+            );
+          })}
           {(q || filter) && (
-            <Link
-              href="/customers"
-              className="inline-flex items-center gap-1 border border-line px-3 py-2 text-xs font-medium text-text-muted hover:text-ink hover:bg-paper transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-              <span>Reset</span>
+            <Link href="/customers" className="link self-center pl-1 text-xs">
+              Clear
             </Link>
           )}
-        </div>
+        </nav>
       </div>
 
-      {/* Customers Table & Mobile Cards */}
       {customers.length === 0 ? (
-        <div className="border border-line flex flex-col items-center justify-center p-12 text-center">
-          <Users className="h-6 w-6 text-text-muted" />
-          <h2 className="mt-3 font-display text-base font-bold text-ink">
-            {q || filter ? "No customers match this filter" : "No customer accounts yet"}
-          </h2>
-          <p className="mt-1 max-w-sm text-xs text-text-muted">
-            {q || filter
-              ? "Try adjusting search terms or clearing the active balance filter."
-              : "Customers are created automatically when they message your WhatsApp number, or you can register one manually."}
-          </p>
-          {!q && !filter && (
-            <Link
-              href="/customers/new"
-              className="mt-4 inline-flex h-10 items-center gap-1.5 bg-accent px-4 text-xs font-semibold text-white"
-            >
-              <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-              <span>Add First Customer</span>
-            </Link>
-          )}
-        </div>
+        <p className="empty">
+          {q || filter ? "No customers match." : "No customers yet."}
+        </p>
       ) : (
-        <div className="space-y-4">
-          {/* Mobile Card Stack (< 640px) */}
-          <div className="block sm:hidden space-y-3">
-            {customers.map((c) => {
-              const b = balances.get(c.id);
-              const owes = b?.outstandingCents ?? 0;
-              const owed = b?.refundDueCents ?? 0;
-
-              return (
-                <Link
-                  key={c.id}
-                  href={`/customers/${c.id}`}
-                  className="card-base block p-4 transition-colors active:bg-paper/80"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-ink text-base truncate">
-                        {c.name ?? "Unnamed Customer"}
-                      </p>
-                      <p className="font-tabular text-xs text-text-muted mt-0.5">{c.phone}</p>
-                    </div>
-
-                    <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
-                  </div>
-
-                  {c.notes && (
-                    <p className="mt-2 text-xs text-text-muted line-clamp-2 bg-paper/60 px-3 py-1.5">
-                      {c.notes}
-                    </p>
-                  )}
-
-                  {/* Badges & Balances */}
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-2.5 text-xs">
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                      <span className="font-tabular font-medium text-ink">
-                        {c._count.orders} {c._count.orders === 1 ? "order" : "orders"}
+        <>
+        {/* Phone: who they are, and money only when there is some. */}
+        <ul className="card divide-y divide-line overflow-hidden md:hidden">
+          {customers.map((c) => {
+            const owes = balances.get(c.id)?.outstandingCents ?? 0;
+            const weOwe = balances.get(c.id)?.refundDueCents ?? 0;
+            return (
+              <li key={c.id}>
+                <Link href={`/customers/${c.id}`} className="mrow">
+                  <Avatar name={c.name ?? c.phone} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-ink">{c.name ?? "Unnamed"}</span>
+                    <span className="block truncate font-tabular text-xs text-text-muted">{c.phone}</span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-0.5 text-xs">
+                    {owes > 0 && (
+                      <span className="text-text-muted">
+                        Owes <span className="font-tabular text-sm font-semibold text-ink">{formatMoney(owes)}</span>
                       </span>
-                      <span>·</span>
-                      <span className="font-tabular font-medium">
-                        {c._count.conversations} {c._count.conversations === 1 ? "thread" : "threads"}
+                    )}
+                    {weOwe > 0 && (
+                      <span className="text-status-attention-fg">
+                        You owe <span className="font-tabular text-sm font-semibold">{formatMoney(weOwe)}</span>
                       </span>
-                    </div>
-
-                    <div className="text-right">
-                      {owes > 0 ? (
-                        <span className="rounded-md bg-amber-500/10 px-2 py-0.5 font-tabular text-xs font-bold text-amber-800">
-                          Owes {formatMoney(owes)}
-                        </span>
-                      ) : owed > 0 ? (
-                        <span className="rounded-md bg-rose-500/10 px-2 py-0.5 font-tabular text-xs font-bold text-rose-700">
-                          Refund {formatMoney(owed)}
-                        </span>
-                      ) : (
-                        <span className="font-tabular text-xs text-text-muted">
-                          Settled
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    )}
+                    {owes <= 0 && weOwe <= 0 && (
+                      <span className="text-text-muted">
+                        {c._count.orders} order{c._count.orders === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </span>
                 </Link>
-              );
-            })}
-          </div>
-
-          {/* Desktop Table View (>= 640px) */}
-          <div className="hidden sm:block card-base overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm table-fixed">
-                <thead>
-                  <tr className="border-b border-line text-xs font-medium text-text-muted">
-                    <th className="py-3.5 pl-5 pr-4 w-[220px]">Account name</th>
-                    <th className="py-3.5 pr-4 w-[160px]">Phone number</th>
-                    <th className="py-3.5 pr-4 min-w-[200px]">Notes</th>
-                    <th className="py-3.5 pr-4 text-center w-[110px]">Threads</th>
-                    <th className="py-3.5 pr-4 text-center w-[100px]">Orders</th>
-                    <th className="py-3.5 pr-4 text-right w-[140px]">Owes us</th>
-                    <th className="py-3.5 pl-4 pr-5 text-right w-[140px]">We owe</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {customers.map((c) => {
-                    const b = balances.get(c.id);
-                    const owes = b?.outstandingCents ?? 0;
-                    const owed = b?.refundDueCents ?? 0;
-
-                    return (
-                      <tr
-                        key={c.id}
-                        className="group transition-colors hover:bg-paper/40 cursor-pointer"
-                      >
-                        {/* Customer Name */}
-                        <td className="py-3.5 pl-5 pr-4 align-middle">
-                          <Link href={`/customers/${c.id}`} className="block">
-                            <p className="font-semibold text-ink group-hover:text-accent transition-colors">
-                              {c.name ?? "Unnamed Customer"}
-                            </p>
-                            {c.email && (
-                              <p className="truncate text-xs text-text-muted">{c.email}</p>
-                            )}
-                          </Link>
-                        </td>
-
-                        {/* Phone */}
-                        <td className="py-3.5 pr-4 align-middle font-tabular text-xs font-medium text-ink">
-                          <Link href={`/customers/${c.id}`} className="group-hover:text-accent transition-colors">
-                            {c.phone}
-                          </Link>
-                        </td>
-
-                        {/* Notes snippet */}
-                        <td className="py-3.5 pr-4 align-middle">
-                          <p className="truncate text-xs text-text-muted">
-                            {c.notes ?? "—"}
-                          </p>
-                        </td>
-
-                        {/* Discussions Count */}
-                        <td className="py-3.5 pr-4 text-center align-middle font-tabular text-xs font-medium text-text-muted">
-                          {c._count.conversations}
-                        </td>
-
-                        {/* Orders Count */}
-                        <td className="py-3.5 pr-4 text-center align-middle font-tabular text-xs font-semibold text-ink">
-                          {c._count.orders}
-                        </td>
-
-                        {/* Owes Us */}
-                        <td className="py-3.5 pr-4 text-right align-middle">
-                          <span
-                            className={`font-tabular text-sm font-bold ${
-                              owes > 0 ? "text-amber-800" : "text-text-muted"
-                            }`}
-                          >
-                            {formatMoney(owes)}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="card hidden overflow-x-auto md:block">
+          <table className="table">
+            <thead>
+              <tr className="thead-row">
+                <th className="py-2 pr-4">Customer</th>
+                <th className="py-2 pr-4">Notes</th>
+                <th className="py-2 pr-4 text-right">Chats</th>
+                <th className="py-2 pr-4 text-right">Orders</th>
+                <th className="py-2 pr-4 text-right">Owes us</th>
+                <th className="py-2 pr-4 text-right">We owe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customers.map((c) => {
+                const owes = balances.get(c.id)?.outstandingCents ?? 0;
+                const weOwe = balances.get(c.id)?.refundDueCents ?? 0;
+                return (
+                  <tr key={c.id} className="trow">
+                    <td className="py-2.5 pr-4">
+                      <Link href={`/customers/${c.id}`} className="group flex items-center gap-3">
+                        <Avatar name={c.name ?? c.phone} />
+                        <span className="min-w-0">
+                          <span className="block whitespace-nowrap font-medium text-ink underline-offset-4 group-hover:text-accent group-hover:underline">
+                            {c.name ?? "Unnamed"}
                           </span>
-                        </td>
-
-                        {/* We Owe */}
-                        <td className="py-3.5 pl-4 pr-5 text-right align-middle">
-                          <Link
-                            href={`/customers/${c.id}`}
-                            className="inline-flex items-center justify-end font-tabular text-sm font-bold group-hover:text-accent transition-colors"
-                          >
-                            <span
-                              className={owed > 0 ? "text-rose-700 font-bold" : "text-text-muted"}
-                            >
-                              {formatMoney(owed)}
-                            </span>
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                          <span className="block whitespace-nowrap font-tabular text-xs text-text-muted">{c.phone}</span>
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="max-w-xs truncate py-2.5 pr-4 text-text-muted">{c.notes ?? "—"}</td>
+                    <td className="py-2.5 pr-4 text-right font-tabular text-text-muted">{c._count.conversations}</td>
+                    <td className="py-2.5 pr-4 text-right font-tabular text-text-muted">{c._count.orders}</td>
+                    {/* A zero balance is the normal case, so it recedes; only real money gets weight. */}
+                    <td className={`whitespace-nowrap py-2.5 pr-4 text-right font-tabular ${owes > 0 ? "font-semibold text-ink" : "text-text-muted/60"}`}>
+                      {owes > 0 ? formatMoney(owes) : "—"}
+                    </td>
+                    <td
+                      className={`whitespace-nowrap py-2.5 pr-4 text-right font-tabular ${
+                        weOwe > 0 ? "font-semibold text-status-attention-fg" : "text-text-muted/60"
+                      }`}
+                    >
+                      {weOwe > 0 ? formatMoney(weOwe) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
+        </>
       )}
 
-      {/* Pagination Footer */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-2 pt-2 text-xs text-text-muted">
-          <span>
-            Page <strong className="text-ink">{page}</strong> of {totalPages} ({totalCount} accounts)
+        <nav aria-label="Pagination" className="flex items-center justify-between text-sm">
+          {page > 1 ? (
+            <Link href={link({ page: String(page - 1) })} className="text-ink underline-offset-2 hover:underline">
+              ← Previous
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-xs text-text-muted">
+            Page {page} of {totalPages}
           </span>
-          <div className="flex items-center gap-2">
-            {page > 1 && (
-              <Link
-                href={link({ page: String(page - 1) })}
-                className="rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:bg-paper transition-colors"
-              >
-                ← Previous
-              </Link>
-            )}
-            {page < totalPages && (
-              <Link
-                href={link({ page: String(page + 1) })}
-                className="rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:bg-paper transition-colors"
-              >
-                Next →
-              </Link>
-            )}
-          </div>
-        </div>
+          {page < totalPages ? (
+            <Link href={link({ page: String(page + 1) })} className="text-ink underline-offset-2 hover:underline">
+              Next →
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
       )}
     </div>
   );
