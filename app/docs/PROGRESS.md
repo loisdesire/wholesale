@@ -1672,3 +1672,11 @@ briefing, attention queue, stock-risk forecast and payment reminders (restyled).
 is the redesign's; `landing-components.tsx` was removed. Verified: lint, typecheck, 391 tests, a
 production build (routes compile) and a 64-check browser sweep at 1366px and 390px signed in as staff.
 Not visually checked: the platform-admin table (needs a platform-admin login).
+
+## Done (2026-11-25 — redesign merged into `working`, security fixes, hardening)
+
+- The "Dispatch" redesign branch (`redesign/on-working`) was merged into `working` (merge commit `0f500ea`) and deleted. The pre-redesign state is kept as tag `pre-redesign` (`a04fbe2`). Only `main` and `working` remain.
+- Next.js 16.4.2 → 16.4.6, `@sentry/nextjs` 11.17.0, and npm `overrides` under `@prisma/config` (`effect`, `deepmerge-ts`) so `npm audit` reports 0.
+- Hardening from `ccr-1b9cabd9-u26ptr` merged: image type allowlist + sandboxed headers (`src/lib/images.ts`, applied to both upload paths), timing-safe WhatsApp verify token, WhatsApp media host check, HSTS header, report-view date validation. Telegram media does not yet have the host check.
+- Verified before merge on the combined result: typecheck, lint, 395 unit tests, production build, and browser suites on a throwaway database (20 webhook, 14 hardening, 47 click-through, 64 layout checks). Not verified: live Meta/Telegram/Paystack traffic, HSTS on a real domain.
+- Added `docs/PLAIN_ENGLISH_GUIDE.md` — a non-technical summary and how to get the old design back.
