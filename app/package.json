@@ -20,11 +20,11 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
-    "@sentry/nextjs": "11.9.0",
+    "@sentry/nextjs": "11.17.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.61.0",
-    "next": "16.4.2",
+    "next": "16.4.6",
     "next-auth": "^5.0.0-beta.32",
     "openai": "7.43.0",
     "papaparse": "^5.7.0",
@@ -42,10 +42,16 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "effect": "3.22.5",
+      "deepmerge-ts": "8.0.2"
+    }
   }
 }
