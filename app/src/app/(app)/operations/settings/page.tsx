@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getSlaSettings } from "@/lib/sla-settings";
+import { prisma } from "@/lib/prisma";
 import { SlaSettingsForm } from "./settings-form";
+import { CustomerMessagesForm } from "./customer-messages-form";
 
 export default async function OperationsSettingsPage() {
   const session = await auth();
@@ -23,14 +25,16 @@ export default async function OperationsSettingsPage() {
   }
 
   const { overrides, defaults } = await getSlaSettings(organizationId);
+  const { notifyCustomerOnShip } = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { notifyCustomerOnShip: true } });
 
   return (
     <div className="flex flex-col gap-6">
       {back}
       <header>
-        <h1 className="page-title">Attention thresholds</h1>
-        <p className="mt-1 text-sm text-text-muted">Hours something may wait before it is flagged.</p>
+        <h1 className="page-title">Settings</h1>
+        <p className="mt-1 text-sm text-text-muted">Customer messages, and how long things may wait before they are flagged.</p>
       </header>
+      <CustomerMessagesForm notifyOnShip={notifyCustomerOnShip} />
       <SlaSettingsForm overrides={overrides} defaults={defaults} />
     </div>
   );

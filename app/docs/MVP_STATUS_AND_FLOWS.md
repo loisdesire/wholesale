@@ -22,8 +22,9 @@ Written 2026-11-25. Plain language first, technical terms explained.
 | Error tracking (Sentry) | Wired in, **no real project yet.** |
 | Pricing and plan limits | **Placeholders.** Real numbers need conversations with real traders. |
 | Sign-up for new businesses | **None.** A business is added by hand (see `PILOT_ONBOARDING.md`). |
-| Delivery tracking | Staff type a carrier and tracking number. **No live tracking.** |
-| Automatic push/SMS/email alerts | **Not built.** Alerts are inside the app only. |
+| Delivery tracking | Staff type a carrier and tracking number. **No live courier tracking.** Customers get a status page link. |
+| Alerts | Staff alerts are inside the app only. Customers get an automatic "shipped" message in their chat. **No push/SMS/email.** |
+| Backups | **Running daily** on this PC (see section 6). Not an off-site or hosted backup yet. |
 | AI accuracy score | First real run: 10 of 13 test cases passed (77%; the bar is 80%). One run, 13 made-up cases. Needs tuning before you trust it unattended. |
 
 **Honest label: "feature-complete pilot build".** Good enough to run with one or two friendly real businesses once hosting, real WhatsApp and real Paystack are connected. Not ready to sell openly.
@@ -80,6 +81,7 @@ Tick these off when testing. "Staff" can do most daily steps; the owner also con
 **G. Delivering**
 - [ ] Ship everything, or ship part and close the rest short
 - [ ] Record carrier and tracking number
+- [ ] Customer is messaged automatically (owner can switch this off in Operations → Settings); if it fails, copy the link from the order page
 - [ ] Stock leaves the shelf; order becomes fulfilled
 
 **H. When things go wrong**
@@ -109,12 +111,15 @@ Tick these off when testing. "Staff" can do most daily steps; the owner also con
 - [ ] Business confirms the order; customer is told the total and reference (e.g. ORD-1004)
 - [ ] Customer receives a Paystack payment link, or pays by bank transfer
 - [ ] Payment is confirmed by the business (or automatically by Paystack)
-- [ ] Goods are packed and shipped; customer is told carrier and tracking number
+- [ ] Goods are shipped; customer is messaged automatically with carrier, tracking number and a status link
+- [ ] Customer opens the status link any time to see progress
 - [ ] Customer receives the goods
 - [ ] If something is wrong: customer messages; business raises a return; refund follows
 - [ ] Customer messages again later; history is already there
 
-**Gaps from the customer's side:** no way to check order status themselves; no automatic "your order shipped" message (staff send it); no customer login or reorder button.
+**Added 2026-11-25:** when an order ships, the customer gets a message in their chat with the item count, carrier, tracking number and a private status link. The link opens a simple page showing progress (confirmed, paid, shipped) and each shipment.
+
+**Gaps from the customer's side:** no customer login or reorder button; no automatic message for other steps (confirmed, paid, delivered); status updates only when staff mark an order shipped.
 
 ---
 
@@ -171,6 +176,11 @@ Tick these off when testing. "Staff" can do most daily steps; the owner also con
 - FR8.2 Returned stock goes back to the shelf or is written off.
 - FR8.3 Full and partial refunds; refund can be started through Paystack.
 
+**FR8b Customer updates**
+- FR8b.1 When a shipment is recorded, message the customer on their original channel with items, carrier, tracking and a private link. A failed message must never undo the shipment.
+- FR8b.2 A private status page per order, reachable only by an unguessable link, showing no phone, address or prices.
+- FR8b.3 The owner can switch the automatic message off.
+
 **FR9 Oversight**
 - FR9.1 Dashboard: cash briefing, needs-attention queue, pipeline, stock risk, payment reminders.
 - FR9.2 Late and stuck orders flagged against response-time targets the business sets.
@@ -201,8 +211,19 @@ Tick these off when testing. "Staff" can do most daily steps; the owner also con
 | **Accessibility** | Keyboard use, visible focus, readable contrast | Partly: not formally audited |
 | **Maintainability** | Automatic tests, type checks and lint on every change | 395 tests, CI configured |
 | **Scalability** | Target about 20 to 150+ orders a day per business | Designed for it; not load-tested |
-| **Availability** | Backups and monitoring plan | **Written, not yet set up** (`MONITORING_AND_BACKUPS.md`) |
+| **Availability** | Backups and monitoring | Daily local backup **running** and restore **tested**. Off-site backup, monitoring and uptime alerts **not set up** (`MONITORING_AND_BACKUPS.md`) |
 | **Deployability** | Repeatable deploy to a real host | **Not done**; no host chosen |
 | **Compliance** | Handling of customer personal data (Nigeria's data-protection rules) | **Not reviewed** |
 
-**Biggest non-functional gaps:** no hosting or backups, no load testing, no formal accessibility or data-protection review.
+**Biggest non-functional gaps:** no hosting or off-site backups, no load testing, no formal accessibility or data-protection review.
+
+---
+
+## 6. Backups (running since 2026-11-25)
+
+- **What:** a full copy of the database, once a day at 9pm, to `app/backups/` (newest 14 kept). Windows task name: `WholesaleDbBackup`.
+- **Needs:** Docker Desktop open and the database container started. If the laptop is off at 9pm, it runs when the laptop next wakes.
+- **Run one now:** `powershell -ExecutionPolicy Bypass -File scripts\backup-db.ps1` (from the `app` folder).
+- **Restore safely (into a new database):** `powershell -ExecutionPolicy Bypass -File scripts\restore-db.ps1 -File backups\<file>.dump -Into wholesale_restored`
+- **Limits:** the backups sit on the same laptop. If the laptop is lost, so are they. Copy the `backups` folder to cloud storage now and then until hosting has real backups.
+- **Stop it:** `Unregister-ScheduledTask -TaskName WholesaleDbBackup -Confirm:$false`

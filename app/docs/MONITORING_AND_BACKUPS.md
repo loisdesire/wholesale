@@ -39,9 +39,13 @@ gaps" for the standing caveat that this app has only ever run against a local Po
 - **No APM / request tracing.** `tracesSampleRate: 0` in `sentry.server.config.ts` — no latency or
   throughput metrics beyond whatever the hosting platform captures for you. Turning this on is a
   one-line change once that's actually wanted.
-- **No backup job of any kind.** Local development's Postgres (`docker-compose.yml`) has a plain
-  Docker volume with no backup; nothing has been set up against a managed database either, because
-  none has been chosen yet.
+- **Local backups (added 2026-11-25).** `scripts/backup-db.ps1` takes a verified `pg_dump` of the
+  local Docker Postgres into `app/backups/` (git-ignored; newest 14 kept) and a Windows scheduled
+  task `WholesaleDbBackup` runs it daily at 9pm. `scripts/restore-db.ps1` restores into a new
+  database (refuses to overwrite without `-Replace`). A restore was tested: row counts matched the
+  live database. These sit on the same machine, so they protect against mistakes, not against losing
+  the laptop. **Nothing has been set up against a managed database**, because none has been chosen
+  yet — that is where continuous backup / point-in-time recovery (below) still applies.
 
 ## Why the data model matters for backup strategy
 

@@ -120,6 +120,9 @@ model Organization {
   // Per-organization overrides of the default SLA thresholds in src/lib/ops-config.ts
   // (a partial Record<keyof typeof SLA, number>; an absent key uses the default).
   slaOverrides          Json?
+  // Message the customer on their original channel when a shipment goes out. On by default;
+  // the owner can switch it off in Operations > Settings.
+  notifyCustomerOnShip  Boolean  @default(true)
   createdAt             DateTime @default(now())
 
   // Subscription/billing status — foundations only, not final pricing (see
@@ -521,6 +524,9 @@ model Order {
   assignedToId    String?
   assignedTo      User?         @relation("OrderAssignee", fields: [assignedToId], references: [id])
   dueAt           DateTime?
+  // Unguessable token for the customer-facing status page (/track/<org>/<token>). Created the
+  // first time a link is needed; never derived from the order reference.
+  publicToken     String?       @unique
   createdById     String?
   createdBy       User?         @relation(fields: [createdById], references: [id])
   confirmedAt     DateTime?

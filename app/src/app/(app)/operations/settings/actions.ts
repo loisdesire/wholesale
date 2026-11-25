@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { SlaSettingsError, updateSlaOverrides } from "@/lib/sla-settings";
+import { prisma } from "@/lib/prisma";
 import { SLA_FIELDS, type SlaKey } from "@/lib/ops-config";
 
 export type FormState = { error: string | null; saved?: boolean };
@@ -25,6 +26,20 @@ export async function updateSlaSettingsAction(_prev: FormState, formData: FormDa
   }
 
   revalidatePath("/operations");
+  revalidatePath("/operations/settings");
+  return { error: null, saved: true };
+}
+
+export async function updateCustomerMessagesAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const session = await auth();
+  if (!session) throw new Error("Not signed in.");
+  if (session.user.role !== "OWNER") return { error: "Only an owner can change this." };
+
+  await prisma.organization.update({
+    where: { id: session.user.organizationId },
+    data: { notifyCustomerOnShip: formData.get("notifyOnShip") === "on" },
+  });
+
   revalidatePath("/operations/settings");
   return { error: null, saved: true };
 }

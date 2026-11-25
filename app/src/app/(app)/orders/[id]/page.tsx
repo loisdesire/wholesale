@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ensurePublicToken } from "@/lib/order-tracking";
+import { TrackingLink } from "./tracking-link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
@@ -87,6 +89,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     include: { items: { include: { orderItem: { include: { product: true } } } } },
     orderBy: { createdAt: "asc" },
   });
+  const trackingPath =
+    order.status !== "DRAFT" && order.status !== "CANCELLED"
+      ? `/track/${organizationId}/${await ensurePublicToken(organizationId, order.id)}`
+      : null;
   const shippedByItem = new Map<string, number>();
   for (const sh of shipments) for (const it of sh.items) shippedByItem.set(it.orderItemId, (shippedByItem.get(it.orderItemId) ?? 0) + it.quantity);
   const shipLines = order.items.map((item) => ({
@@ -306,6 +312,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <h2 className="section-title">Shipping</h2>
 
           {canShip && <ShipForm orderId={order.id} lines={shipLines} />}
+          {trackingPath && <TrackingLink path={trackingPath} />}
 
           {order.status === "PARTIALLY_FULFILLED" &&
             (isOwner ? (

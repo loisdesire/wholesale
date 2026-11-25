@@ -1680,3 +1680,14 @@ Not visually checked: the platform-admin table (needs a platform-admin login).
 - Hardening from `ccr-1b9cabd9-u26ptr` merged: image type allowlist + sandboxed headers (`src/lib/images.ts`, applied to both upload paths), timing-safe WhatsApp verify token, WhatsApp media host check, HSTS header, report-view date validation. Telegram media does not yet have the host check.
 - Verified before merge on the combined result: typecheck, lint, 395 unit tests, production build, and browser suites on a throwaway database (20 webhook, 14 hardening, 47 click-through, 64 layout checks). Not verified: live Meta/Telegram/Paystack traffic, HSTS on a real domain.
 - Added `docs/PLAIN_ENGLISH_GUIDE.md` — a non-technical summary and how to get the old design back.
+
+## Done (2026-11-25 — shipping messages, customer status page, local backups)
+
+- `Order.publicToken` (unique, 144 random bits, created lazily) and `Organization.notifyCustomerOnShip` (default true) — migration `20261125120000_order_tracking_and_ship_notice`.
+- `src/lib/order-tracking.ts`: token creation, `trackingUrl()` (absolute when `APP_URL` is set), `getTrackingView()` — returns only customer-safe fields, null for any bad id/token, and relies on RLS so a token from one business cannot open another's order.
+- Public page `/track/[org]/[token]` (`/track` added to proxy `PUBLIC_PREFIXES`; `noindex`, `no-referrer`, `force-dynamic`).
+- `src/lib/order-notify.ts` `notifyOrderShipped()`: called after the shipment commits in `shipItemsAction` and `markFulfilledAction`; sends through `sendStaffReply` on the order's (or the customer's latest) conversation; best-effort — failure never undoes the shipment and is written to the audit log (`SHIP_NOTICE_SENT` / `_FAILED` / `_SKIPPED`).
+- Order page: "Customer status link" card (copy / preview). Operations → Settings: owner switch for the shipping message.
+- Backups: `scripts/backup-db.ps1`, `scripts/restore-db.ps1`, `backups/` git-ignored, Windows task `WholesaleDbBackup` daily 9pm. Restore tested (row counts equal).
+- Tests: `tests/order-tracking.test.ts` (10). Not verified: a real WhatsApp/Telegram send of the shipping message; the status page on a real domain.
+

@@ -11,7 +11,6 @@ import {
   removeOrderItem,
   confirmOrder,
   markOrderPaid,
-  markOrderFulfilled,
   cancelOrder,
   updateOrderItemQuantity,
   updateOrderDetails,
@@ -25,6 +24,7 @@ import { CustomerError, DuplicateCustomerError, createCustomer } from "@/lib/cus
 import { ReturnPermissionError } from "@/lib/returns";
 import { initializePayment, PaymentError, PaystackError, getPaidCents } from "@/lib/payments";
 import { transaction } from "@/lib/db";
+import { notifyOrderShipped } from "@/lib/order-notify";
 
 export type FormState = { error: string | null };
 
@@ -244,11 +244,14 @@ export async function getPaymentLinkAction(orderId: string): Promise<PaymentLink
 
 export async function markFulfilledAction(orderId: string): Promise<FormState> {
   const session = await requireSession();
+  let shipmentId: string;
   try {
-    await markOrderFulfilled({ organizationId: session.user.organizationId, orderId, actorId: session.user.id });
+    ({ shipment: { id: shipmentId } } = await shipOrderItems({ organizationId: session.user.organizationId, orderId, actorId: session.user.id }));
   } catch (err) {
     return { error: friendlyError(err) };
   }
+  // Best-effort: the shipment is saved either way (see order-notify.ts).
+  await notifyOrderShipped({ organizationId: session.user.organizationId, orderId, shipmentId, actorId: session.user.id });
   revalidatePath(`/orders/${orderId}`);
   revalidatePath("/orders");
   revalidatePath("/");
@@ -336,18 +339,21 @@ export async function shipItemsAction(orderId: string, _prevState: FormState, fo
     if (!key.startsWith("qty_") || !value || Number(value) === 0) continue;
     items.push({ orderItemId: key.slice(4), quantity: Number(value) });
   }
+  let shipmentId: string;
   try {
-    await shipOrderItems({
+    ({ shipment: { id: shipmentId } } = await shipOrderItems({
       organizationId: session.user.organizationId,
       orderId,
       actorId: session.user.id,
       items,
       carrier: String(formData.get("carrier") ?? ""),
       trackingReference: String(formData.get("trackingReference") ?? ""),
-    });
+    }));
   } catch (err) {
     return { error: friendlyError(err) };
   }
+  // Best-effort: the shipment is saved either way (see order-notify.ts).
+  await notifyOrderShipped({ organizationId: session.user.organizationId, orderId, shipmentId, actorId: session.user.id });
   revalidatePath(`/orders/${orderId}`);
   revalidatePath("/orders");
   revalidatePath("/catalogue");

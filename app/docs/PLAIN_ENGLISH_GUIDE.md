@@ -56,6 +56,13 @@ Not checked (needs the real thing): live traffic from Meta, Telegram or Paystack
 
 If the page looks broken or old after a change, stop the app, delete the `.next` folder inside `app`, and start again.
 
+## 6b. New on 2026-11-25
+
+- **"Your order shipped" message.** When staff ship an order, the customer is messaged in the same chat (WhatsApp or Telegram) with how many items, the carrier, the tracking number and a link. If the message can't be sent (for example WhatsApp isn't connected yet), the shipment still goes through and the order page has a **Copy link** button so you can send it by hand. The owner can switch the message off in **Operations → Settings**.
+- **Customer status page.** The link in that message opens a simple page that shows progress (confirmed, paid, shipped) and each shipment. It has no phone number, address or prices. Only someone with the link can open it.
+- **Daily backup.** The database is copied every evening at 9pm into the `app/backups` folder. See section 6 of `MVP_STATUS_AND_FLOWS.md` for how to run, restore or stop it. The copies are on this laptop only.
+- **Fonts.** The whole app now uses the Figtree font.
+
 ## 7. Known small things (not bugs in the new work)
 
 - The OpenAI key in your `.env` file has expired, so AI replies and AI photo descriptions fail until you put in a new key.
