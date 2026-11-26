@@ -22,10 +22,10 @@ Written 2026-11-25. Plain language first, technical terms explained.
 | Error tracking (Sentry) | Wired in, **no real project yet.** |
 | Pricing and plan limits | **Placeholders.** Real numbers need conversations with real traders. |
 | Sign-up for new businesses | **None.** A business is added by hand (see `PILOT_ONBOARDING.md`). |
-| Delivery tracking | Staff type a carrier and tracking number. **No live courier tracking.** Customers get a status page link. |
+| Delivery tracking | Staff type a carrier and tracking number. **No live courier tracking.** Customers get a status page link, and the AI can look up and report a customer's own order. |
 | Alerts | Staff alerts are inside the app only. Customers get an automatic "shipped" message in their chat. **No push/SMS/email.** |
 | Backups | **Running daily** on this PC (see section 6). Not an off-site or hosted backup yet. |
-| AI accuracy score | First real run: 10 of 13 test cases passed (77%; the bar is 80%). One run, 13 made-up cases. Needs tuning before you trust it unattended. |
+| AI accuracy score | 17 test cases, four runs scored 88%, 88%, 100% and 94% (the bar is 80%). Results vary a little between runs. Still only tested on made-up messages. |
 
 **Honest label: "feature-complete pilot build".** Good enough to run with one or two friendly real businesses once hosting, real WhatsApp and real Paystack are connected. Not ready to sell openly.
 
@@ -119,7 +119,7 @@ Tick these off when testing. "Staff" can do most daily steps; the owner also con
 
 **Added 2026-11-25:** when an order ships, the customer gets a message in their chat with the item count, carrier, tracking number and a private status link. The link opens a simple page showing progress (confirmed, paid, shipped) and each shipment.
 
-**Gaps from the customer's side:** no customer login or reorder button; no automatic message for other steps (confirmed, paid, delivered); status updates only when staff mark an order shipped.
+**Gaps from the customer's side:** no customer login or reorder button; no automatic message for other steps (confirmed, paid, delivered); status updates only when staff mark an order shipped. A customer can ask the AI "where is my order?" and it answers from their own orders.
 
 ---
 

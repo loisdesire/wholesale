@@ -557,3 +557,14 @@ npm run dev
   flex row itself — the grid item is what needs it). Same family of bug as the table-overflow one
   above, but one layer different: that one needed a scroll wrapper, this one needed the grid item
   to be allowed to shrink at all.
+
+## Conventions added 2026-11-26
+- **Product name** lives in `src/lib/brand.ts` (`BRAND_NAME`, placeholder "Dispatch"). Never hardcode a customer's business name in product UI or in AI prompts — a business's own name is `Organization.name`.
+- **Page titles**: every page exports `metadata = { title: "…" }`; the root layout's template adds the product name.
+- **Money shown to the AI** is text ("₦3,500"), never raw kobo (`catalogueEntryForModel`). The AI never does price arithmetic; totals come from the system.
+- **AI tools that read customer data** take the customer from the conversation, never from model input (`get_my_orders`).
+- **Lists must be paginated or searched.** No page may load every row of a growing table (inbox, customers, orders, returns are paginated; the New order customer picker searches on demand).
+- **Sessions**: sign-out records the token id in `RevokedSession` (`src/lib/session-revocation.ts`); the JWT callback refuses revoked ids.
+- **SKUs are case-insensitive** everywhere they are created, edited or imported.
+- Tests that call the AI engine mock `openai`; `npm run ai:eval` uses the real model and cleans up after itself.
+

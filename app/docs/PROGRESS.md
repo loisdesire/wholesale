@@ -1691,3 +1691,18 @@ Not visually checked: the platform-admin table (needs a platform-admin login).
 - Backups: `scripts/backup-db.ps1`, `scripts/restore-db.ps1`, `backups/` git-ignored, Windows task `WholesaleDbBackup` daily 9pm. Restore tested (row counts equal).
 - Tests: `tests/order-tracking.test.ts` (10). Not verified: a real WhatsApp/Telegram send of the shipping message; the status page on a real domain.
 
+## Done (2026-11-26 — every finding from the QA review fixed)
+
+See `docs/QA_REPORT_2026-11-25.md` ("Resolution") for the finding-by-finding table. Technical summary:
+
+- **AI engine** (`src/lib/ai/engine.ts`, new `src/lib/ai/order-context.ts`): catalogue entries reach the model as text prices (`price`, tier `price`), not `priceCents`; prompt forbids converting or computing prices; `create_draft_order` reuses an identical open draft, updates a quantity-only change, and refuses quantities above stock; open drafts are shown to the model each turn; new `get_my_orders` tool (customer id always from the conversation, never from model input; status link only when `APP_URL` is set); no-guessing rule for delivery/returns/payment; "draft straight away when the request is complete"; the system prompt uses the real business name.
+- **Inbox**: paginated (40), search, "Needs reply" filter, per-business empty-state guidance (`src/lib/channels.ts`).
+- **WhatsApp auto-reply** (parity with Telegram) behind `Organization.aiAutoReply` (Operations → Settings); `dispatchAIAssistReply({ auto: true })` honours it.
+- **Sessions**: `RevokedSession` table + `src/lib/session-revocation.ts`; the JWT carries a `sid`, checked on every request; sign-out records it; session lifetime 7 days (`SESSION_MAX_AGE_SECONDS`). Migration `20261126100000_revoked_sessions`; added to the isolation check's non-tenant list.
+- **Returns page** (`/returns`), plain stock-shortfall message, case-insensitive SKUs (create/edit/CSV), product name constant (`src/lib/brand.ts`), per-page titles via a title template, skip link, valid list markup, contrast fix.
+- **Dashboard**: stock-risk uses real sales only (no invented velocity), shows variants; plain-language alerts and reminder drafts; shorter on phones; "Get started" card (`src/components/getting-started.tsx`); coloured initials tiles for photo-less products.
+- **New order page**: customer picker loads 30 recent customers and searches on demand (`src/lib/customer-picker.ts`, `/api/customers/search`).
+- **AI evaluation**: 17 cases, new `duplicate-draft` metric (`maxDrafts`/`minDrafts`), cleans up its own test business (`cleanupFixture`).
+- **Tests**: 437 pass (405 before this round); new files `ai-order-context.test.ts`, `qa-fixes.test.ts`.
+- **Verified** on a production build against a throwaway database: 20 webhook, 14 hardening, 47 click-through, 64 layout checks, accessibility scan (0 violations), 34 re-check items, live WhatsApp auto-reply on/off, 3,000-conversation inbox, real-model AI checks. Not verified: live Meta/Telegram/Paystack traffic.
+

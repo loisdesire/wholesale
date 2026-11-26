@@ -63,9 +63,30 @@ If the page looks broken or old after a change, stop the app, delete the `.next`
 - **Daily backup.** The database is copied every evening at 9pm into the `app/backups` folder. See section 6 of `MVP_STATUS_AND_FLOWS.md` for how to run, restore or stop it. The copies are on this laptop only.
 - **Fonts.** The whole app now uses the Figtree font.
 
+## 6c. Fixes after the testing review (2026-11-26)
+
+A tester went through the whole app and found problems. All of them are fixed. In plain words:
+
+- **The AI quoted some prices ten times too high** (₦3,500 became ₦35,000). It now gets ready-written prices and no longer does its own sums.
+- **The AI could create the same order twice.** It now checks first and reuses or updates the one that exists. It also can never draft more than you have in stock.
+- **The AI can now answer "where is my order?"** It looks up only that customer's own orders and replies with the status, carrier, tracking number and link. It cannot see anyone else's.
+- **The AI no longer guesses about delivery, returns or payment.** It says it will check with your team.
+- **WhatsApp now gets automatic AI replies**, like Telegram. If you would rather review every chat yourself, switch it off in **Operations → Settings**.
+- **The inbox is fast with thousands of chats.** It shows 40 at a time, with search and a "Needs reply" filter.
+- **The New order page** shows your 30 most recent customers and searches for the rest, instead of one huge list.
+- **A new Returns page**, so the link from Operations works.
+- **Signing out now really ends the session**, even if someone copied your login. Sessions last 7 days.
+- **Every page has its own tab title**, and the product has its own name (**Dispatch**, a placeholder you can change in one place: `src/lib/brand.ts`). The AI now uses each business's real name instead of always saying "Adaeze".
+- **A new business sees a "Get started" checklist** instead of "All caught up".
+- **Plainer wording** on the dashboard and in the payment reminder drafts; the "Running low" list no longer invents a sales speed; a "Skip to main content" link for keyboard users; two products can no longer share a SKU that differs only by capital letters.
+- **The dashboard is shorter on a phone**, and products without photos get a coloured tile with their initials.
+- **The AI test no longer leaves junk businesses behind** in your database.
+
+How it was checked: all automatic tests pass, a robot clicked through every area on a copy of your data, and the real AI was asked the same questions again. See `QA_REPORT_2026-11-25.md` for the full list.
+
 ## 7. Known small things (not bugs in the new work)
 
-- The OpenAI key in your `.env` file has expired, so AI replies and AI photo descriptions fail until you put in a new key.
+- The AI key is now working. If it ever fails again, check the key in `.env` and make sure no old `OPENAI_API_KEY` is set in Windows, because Windows settings override the file.
 - The `main` branch on GitHub is older than the `main` on your computer. It does not affect the app.
 - A harmless warning from Sentry (the error-tracking tool) shows when the app starts. It can be ignored.
 
