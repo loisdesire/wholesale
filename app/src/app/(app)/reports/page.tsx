@@ -14,6 +14,8 @@ import {
 import { listReportViews } from "@/lib/report-views";
 import { SavedViews } from "./saved-views";
 
+export const metadata = { title: "Reports" };
+
 export default async function ReportsPage({
   searchParams,
 }: {
@@ -64,14 +66,14 @@ export default async function ReportsPage({
             CSV
           </a>
         </div>
-        <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             { label: "Order value", value: formatMoney(sales.orderValueCents), hint: `${sales.orderCount} order${sales.orderCount === 1 ? "" : "s"} confirmed` },
             { label: "Average order value", value: sales.averageOrderValueCents === null ? "—" : formatMoney(sales.averageOrderValueCents), hint: "Per confirmed order" },
             { label: "Cash received", value: formatMoney(sales.cashReceivedCents), hint: "Orders marked paid in period" },
             { label: "Refunds paid", value: formatMoney(sales.refundsPaidCents), hint: "Paid out in period" },
             { label: "Net cash", value: formatMoney(sales.netCashCents), hint: "Cash received less refunds paid" },
-            { label: "Receivables (now)", value: formatMoney(sales.receivablesCents), hint: "Confirmed, not yet paid" },
+            { label: "Owed to you (now)", value: formatMoney(sales.receivablesCents), hint: "Confirmed orders not yet paid" },
             { label: "Refunds owed (now)", value: formatMoney(sales.refundsOwedCents), hint: "Approved, not yet paid out", attention: sales.refundsOwedCents > 0 },
             {
               label: "Gross margin",
@@ -83,18 +85,18 @@ export default async function ReportsPage({
           ].map((f, i) => (
             // The first figure (order value) is the headline, so it alone gets the dark tile.
             <div key={f.label} className={i === 0 ? "rounded-2xl bg-ink p-4 text-white shadow-card sm:p-5" : "card p-4 sm:p-5"}>
-              <dt className={`text-xs font-medium ${i === 0 ? "text-white/70" : "text-text-muted"}`}>{f.label}</dt>
-              <dd
+              <p className={`text-xs font-medium ${i === 0 ? "text-white/70" : "text-text-muted"}`}>{f.label}</p>
+              <p
                 className={`mt-1.5 break-words font-display text-xl font-bold leading-tight tracking-tight sm:text-3xl ${
                   i === 0 ? "text-gold" : f.attention ? "text-status-attention-fg" : "text-ink"
                 }`}
               >
                 {f.value}
-              </dd>
+              </p>
               <p className={`mt-1.5 hidden text-xs leading-relaxed sm:block ${i === 0 ? "text-white/70" : "text-text-muted"}`}>{f.hint}</p>
             </div>
           ))}
-        </dl>
+        </div>
       </section>
 
       <section>

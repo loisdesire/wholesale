@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/format";
 import { SeverityBadge } from "@/components/status-badge";
 import { AssigneeControl } from "@/components/assignee-control";
 
+export const metadata = { title: "Operations" };
+
 export default async function OperationsPage({
   searchParams,
 }: {
@@ -153,11 +155,11 @@ export default async function OperationsPage({
           </details>
         </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
           {metrics.map((m) => (
             <div key={m.key} className="card flex flex-col p-4 sm:p-5">
-              <dt className="text-xs font-medium text-text-muted">{m.label}</dt>
-              <dd className="mt-1.5 font-display text-3xl font-bold leading-none tracking-tight text-ink sm:text-4xl">{m.value}</dd>
+              <p className="text-xs font-medium text-text-muted">{m.label}</p>
+              <p className="mt-1.5 font-display text-3xl font-bold leading-none tracking-tight text-ink sm:text-4xl">{m.value}</p>
               <p className="mt-2.5 hidden text-xs leading-relaxed text-text-muted sm:block">{m.detail}</p>
               {m.href && (
                 <Link href={m.href} className="link mt-auto inline-block pt-3 text-xs">
@@ -166,7 +168,7 @@ export default async function OperationsPage({
               )}
             </div>
           ))}
-        </dl>
+        </div>
       </section>
 
       <section>

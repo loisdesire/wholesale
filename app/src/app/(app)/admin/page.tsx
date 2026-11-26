@@ -4,6 +4,8 @@ import { getPlatformOverview } from "@/lib/platform-admin";
 import { AdminTable } from "./admin-table";
 import { ShieldAlert } from "lucide-react";
 
+export const metadata = { title: "Platform admin" };
+
 export default async function PlatformAdminPage() {
   const session = await auth();
 
@@ -47,15 +49,15 @@ export default async function PlatformAdminPage() {
         <p className="mt-0.5 text-sm text-text-muted">Every organization. Support actions are logged in that tenant&apos;s audit trail.</p>
       </header>
 
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((st) => (
           <div key={st.label} className="card p-4 sm:p-5">
-            <dt className="text-xs font-medium text-text-muted">{st.label}</dt>
-            <dd className="mt-1.5 font-display text-3xl font-bold leading-none tracking-tight text-ink">{st.value}</dd>
+            <p className="text-xs font-medium text-text-muted">{st.label}</p>
+            <p className="mt-1.5 font-display text-3xl font-bold leading-none tracking-tight text-ink">{st.value}</p>
             <p className={`mt-2 text-xs ${st.alert ? "font-medium text-status-attention-fg" : "text-text-muted"}`}>{st.note}</p>
           </div>
         ))}
-      </dl>
+      </div>
 
       <section className="flex flex-col gap-3">
         <h2 className="section-title">Organizations</h2>

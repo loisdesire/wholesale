@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { listNotifications } from "@/lib/notifications";
 import { NotificationsView, type SerializedNotification } from "./notifications-view";
 
+export const metadata = { title: "Notifications" };
+
 export default async function NotificationsPage() {
   const session = await auth();
   const organizationId = session!.user.organizationId;

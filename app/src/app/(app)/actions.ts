@@ -2,10 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth, signOut, unstable_update } from "@/lib/auth";
+import { auth, signOut, unstable_update, SESSION_MAX_AGE_SECONDS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revokeSession } from "@/lib/session-revocation";
 
 export async function signOutAction() {
+  // End this sign-in on the server, not just in the browser: a copied session token stops working too.
+  const session = await auth();
+  if (session?.sid) await revokeSession(session.sid, SESSION_MAX_AGE_SECONDS);
   await signOut({ redirectTo: "/login" });
 }
 

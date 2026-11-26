@@ -8,6 +8,8 @@ import { SubscriptionStatusBadge } from "@/components/status-badge";
 import { SubscriptionPaymentButton } from "./subscription-payment-button";
 import { ReconciliationPanel } from "./reconciliation-panel";
 
+export const metadata = { title: "Billing" };
+
 export default async function BillingPage() {
   const session = await auth();
   const organizationId = session!.user.organizationId;

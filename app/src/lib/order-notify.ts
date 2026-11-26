@@ -56,7 +56,8 @@ export async function notifyOrderShipped(params: {
     const body = [
       `${first ? `Hi ${first}, ` : ""}${units} item${units === 1 ? "" : "s"} from your order ${order.reference} ${units === 1 ? "has" : "have"} shipped.`,
       carrierLine,
-      `Follow your order here: ${trackingUrl(organizationId, token)}`,
+      // A bare path is no use inside a chat, so the link is only included once APP_URL is configured.
+      (process.env.APP_URL ?? "").trim() ? `Follow your order here: ${trackingUrl(organizationId, token)}` : "",
     ]
       .filter(Boolean)
       .join("\n");

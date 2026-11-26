@@ -50,14 +50,22 @@ function DebtorRow({ debtor }: { debtor: DebtReminderDraft }) {
 export function DebtReminderDrafts({ debtors }: { debtors: DebtReminderDraft[] }) {
   if (debtors.length === 0) return null;
   return (
-    <section>
-      <h2 className="section-title">Payment reminders</h2>
+    // Closed until wanted: the drafts are tall, and most days the owner only needs to know who owes.
+    <details className="disclosure card p-4">
+      <summary>
+        <span>
+          Payment reminders
+          <span className="ml-2 text-xs font-normal text-text-muted">
+            {debtors.length} customer{debtors.length === 1 ? "" : "s"} owing
+          </span>
+        </span>
+      </summary>
       <p className="mb-3 text-xs text-text-muted">Draft messages. Pick a tone, copy, send yourself.</p>
-      <div className="card divide-y divide-line overflow-hidden">
+      <div className="-mx-4 -mb-4 divide-y divide-line overflow-hidden border-t border-line">
         {debtors.map((d) => (
           <DebtorRow key={d.customerId} debtor={d} />
         ))}
       </div>
-    </section>
+    </details>
   );
 }

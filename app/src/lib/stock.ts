@@ -11,9 +11,8 @@ export class InsufficientStockError extends Error {
     public readonly productName?: string
   ) {
     super(
-      productName
-        ? `Only ${available} of "${productName}" available, cannot remove ${requested}.`
-        : `Only ${available} available, cannot remove ${requested}.`
+      // Used for reserving, shipping and manual removals alike, so it says what is short rather than which action hit it.
+      `Not enough stock${productName ? ` of "${productName}"` : ""}: ${available} available, ${requested} needed.`
     );
     this.name = "InsufficientStockError";
   }

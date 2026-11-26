@@ -1,8 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { resolveActiveMembership } from "@/lib/membership";
+import { isSessionRevoked } from "@/lib/session-revocation";
 
 /**
  * Sessions are JWTs, but *what a user may do* is not trusted from the token: on
@@ -10,8 +12,12 @@ import { resolveActiveMembership } from "@/lib/membership";
  * Removing someone from an organization, or changing their role, therefore takes
  * effect on their very next request rather than whenever their token expires.
  */
+export const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
-  session: { strategy: "jwt" },
+  // A week, renewed daily while in use: a lost or copied login stops working on its own sooner than the
+  // library default of 30 days. Signing out ends it immediately (see RevokedSession).
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS, updateAge: 24 * 60 * 60 },
   pages: { signIn: "/login" },
   providers: [
     Credentials({
@@ -56,9 +62,12 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         token.role = user.role;
         token.organizationId = user.organizationId;
         token.isPlatformAdmin = user.isPlatformAdmin;
+        token.sid = randomUUID();
         return token;
       }
       if (!token.sub) return null;
+      // A sign-in that was ended by signing out is refused from then on, even if the token is copied.
+      if (await isSessionRevoked(token.sid as string | undefined)) return null;
 
       // Which organization is wanted: the one in the token, or — on an explicit
       // switch — the requested one. Either way it must be a membership the user holds.
@@ -86,6 +95,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         session.user.organizationId = token.organizationId as string;
         session.user.isPlatformAdmin = (token.isPlatformAdmin as boolean | undefined) ?? false;
       }
+      session.sid = token.sid as string | undefined;
       return session;
     },
   },

@@ -83,12 +83,13 @@ export async function parseProductsCsv(
     where: { organizationId },
     select: { sku: true },
   });
-  const existingSkus = new Set(existingProducts.map((p) => p.sku));
+  // Keyed by lower-case so "ank-1" in a file updates the existing "ANK-1" instead of creating a look-alike.
+  const existingSkus = new Map(existingProducts.map((p) => [p.sku.toLowerCase(), p.sku]));
 
   const skuCounts = new Map<string, number>();
   for (const raw of parsed.data) {
     const sku = raw.sku?.trim();
-    if (sku) skuCounts.set(sku, (skuCounts.get(sku) ?? 0) + 1);
+    if (sku) skuCounts.set(sku.toLowerCase(), (skuCounts.get(sku.toLowerCase()) ?? 0) + 1);
   }
 
   const rows: ImportRowResult[] = parsed.data.map((raw, i) => {
@@ -107,7 +108,7 @@ export async function parseProductsCsv(
     const data = parsedRow.data;
     const errors: string[] = [];
 
-    if ((skuCounts.get(data.sku) ?? 0) > 1) {
+    if ((skuCounts.get(data.sku.toLowerCase()) ?? 0) > 1) {
       errors.push(`SKU "${data.sku}" appears more than once in this file.`);
     }
 
@@ -130,7 +131,8 @@ export async function parseProductsCsv(
       }
     }
 
-    const isUpdate = existingSkus.has(data.sku);
+    const existingSku = existingSkus.get(data.sku.toLowerCase());
+    const isUpdate = existingSku !== undefined;
 
     if (errors.length > 0) {
       return { rowNumber, sku: data.sku, action: "error", errors };
@@ -138,7 +140,7 @@ export async function parseProductsCsv(
 
     return {
       rowNumber,
-      sku: data.sku,
+      sku: existingSku ?? data.sku,
       action: isUpdate ? "update" : "create",
       name: data.name,
       priceCents: Math.round(data.price * 100),

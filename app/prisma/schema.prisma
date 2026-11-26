@@ -123,6 +123,9 @@ model Organization {
   // Message the customer on their original channel when a shipment goes out. On by default;
   // the owner can switch it off in Operations > Settings.
   notifyCustomerOnShip  Boolean  @default(true)
+  // Reply to new customer messages automatically with an AI-drafted answer (Telegram and WhatsApp).
+  // When off, staff press "Let AI respond" on a chat instead. Orders are still only ever drafted.
+  aiAutoReply           Boolean  @default(true)
   createdAt             DateTime @default(now())
 
   // Subscription/billing status — foundations only, not final pricing (see
@@ -223,6 +226,17 @@ model Membership {
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+}
+
+// A sign-in that has been ended. Sessions are stateless tokens, so "sign out" alone would leave a copied
+// token usable until it expired; recording its id here makes the server refuse it from then on.
+// Not tenant data (no organizationId); rows are deleted once the token would have expired anyway.
+model RevokedSession {
+  sid       String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 model User {

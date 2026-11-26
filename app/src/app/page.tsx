@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BRAND_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -34,8 +35,9 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <a href="#main" className="skip-link">Skip to main content</a>
       <SiteHeader />
-      <main>
+      <main id="main" tabIndex={-1} className="outline-none">
         <Hero />
         <LifecycleTicker />
         <HowItWorks />
@@ -54,7 +56,7 @@ function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/85 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5">
-        <Link href="/" aria-label="Adaeze Wholesale home">
+        <Link href="/" aria-label={`${BRAND_NAME} home`}>
           <Logo />
         </Link>
         <nav aria-label="Page sections" className="hidden items-center gap-8 text-sm font-medium text-text-muted md:flex">

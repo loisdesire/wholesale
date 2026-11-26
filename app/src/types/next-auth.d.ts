@@ -8,6 +8,8 @@ declare module "next-auth" {
       organizationId: string;
       isPlatformAdmin: boolean;
     } & DefaultSession["user"];
+    /** Id of this sign-in, used to end it on sign-out. */
+    sid?: string;
   }
 
   interface User {
@@ -22,5 +24,6 @@ declare module "next-auth/jwt" {
     role?: "OWNER" | "STAFF";
     organizationId?: string;
     isPlatformAdmin?: boolean;
+    sid?: string;
   }
 }

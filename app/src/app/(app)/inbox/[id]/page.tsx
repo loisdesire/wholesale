@@ -29,6 +29,8 @@ const DELIVERY_LABEL: Record<string, string> = {
   FAILED: "Not delivered",
 };
 
+export const metadata = { title: "Conversation" };
+
 export default async function ConversationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();

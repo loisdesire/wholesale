@@ -37,7 +37,7 @@ export async function updateCustomerMessagesAction(_prev: FormState, formData: F
 
   await prisma.organization.update({
     where: { id: session.user.organizationId },
-    data: { notifyCustomerOnShip: formData.get("notifyOnShip") === "on" },
+    data: { notifyCustomerOnShip: formData.get("notifyOnShip") === "on", aiAutoReply: formData.get("aiAutoReply") === "on" },
   });
 
   revalidatePath("/operations/settings");

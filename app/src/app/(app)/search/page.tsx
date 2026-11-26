@@ -5,6 +5,8 @@ import { searchEverything } from "@/lib/search";
 import { formatMoney } from "@/lib/format";
 import { OrderStatusBadge, ReturnStatusBadge } from "@/components/status-badge";
 
+export const metadata = { title: "Search" };
+
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;
   const session = await auth();

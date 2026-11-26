@@ -9,12 +9,16 @@ import { getOwnerAIBriefing } from "@/lib/owner-ai";
 import { OwnerAIBriefingCard } from "@/components/owner-ai-briefing";
 import { DashboardAttentionConsole } from "@/components/dashboard-attention-console";
 import { DebtReminderDrafts } from "@/components/debt-reminder-drafts";
+import { GettingStarted } from "@/components/getting-started";
+import { getChannelStatus } from "@/lib/channels";
 
 const URGENCY_STYLE: Record<string, string> = {
   CRITICAL: "bg-status-attention-bg text-status-attention-fg",
   WARNING: "bg-status-progress-bg text-status-progress-fg",
   WATCH: "bg-status-neutral-bg text-status-neutral-fg",
 };
+
+export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -30,6 +34,8 @@ export default async function DashboardPage() {
     recentMessages,
     organization,
     ownerBriefing,
+    productCount,
+    channels,
   ] = await Promise.all([
     db.conversation.findMany({
       where: { organizationId, status: { in: ["AWAITING_STAFF", "NEW"] } },
@@ -75,7 +81,11 @@ export default async function DashboardPage() {
       select: { name: true },
     }),
     getOwnerAIBriefing(organizationId),
+    db.product.count({ where: { organizationId } }),
+    getChannelStatus(organizationId),
   ]);
+  // Nothing has happened yet: show what to do next instead of "All caught up".
+  const isBrandNew = recentOrders.length === 0 && recentMessages.length === 0;
 
   const pipelineOrder = ["DRAFT", "CONFIRMED", "PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const;
   const countByStatus = Object.fromEntries(pipelineCounts.map((row) => [row.status, row._count._all]));
@@ -109,11 +119,15 @@ export default async function DashboardPage() {
       <div className="rail-layout">
         <div>
           <OwnerAIBriefingCard briefing={ownerBriefing} />
-          <DashboardAttentionConsole
-            conversations={attentionConversations}
-            orders={attentionOrders}
-            returns={attentionReturns}
-          />
+          {isBrandNew ? (
+            <GettingStarted productCount={productCount} isOwner={session!.user.role === "OWNER"} channelConnected={channels.whatsapp || channels.telegram} />
+          ) : (
+            <DashboardAttentionConsole
+              conversations={attentionConversations}
+              orders={attentionOrders}
+              returns={attentionReturns}
+            />
+          )}
 
           <section>
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -126,8 +140,8 @@ export default async function DashboardPage() {
               <div className="empty">No orders yet.</div>
             ) : (
               <div className="card divide-y divide-line overflow-hidden">
-                {recentOrders.map((o) => (
-                  <Link key={o.id} href={`/orders/${o.id}`} className="mrow transition-colors hover:bg-paper/70">
+                {recentOrders.map((o, i) => (
+                  <Link key={o.id} href={`/orders/${o.id}`} className={`mrow transition-colors hover:bg-paper/70 ${i >= 3 ? "hidden lg:flex" : ""}`}>
                     <Avatar name={o.customer.name ?? o.customer.phone} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-ink">{o.customer.name ?? o.customer.phone}</p>
@@ -173,23 +187,29 @@ export default async function DashboardPage() {
           {ownerBriefing.stockoutRisks.length > 0 && (
             <section>
               <h2 className="section-title">Running low</h2>
-              <p className="mb-3 text-xs text-text-muted">Based on the last 7 days of sales.</p>
+              <p className="mb-3 text-xs text-text-muted">Out of stock, or about to be, based on the last 7 days of sales.</p>
               <div className="card divide-y divide-line overflow-hidden">
-                {ownerBriefing.stockoutRisks.map((risk) => (
-                  <Link key={risk.productId} href={`/catalogue/${risk.productId}`} className="block px-4 py-3 transition-colors hover:bg-paper/70">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="truncate text-sm font-medium text-ink">{risk.name}</p>
+                {ownerBriefing.stockoutRisks.map((risk, i) => (
+                  <Link key={risk.productId} href={`/catalogue/${risk.productId}`} className={`block px-4 py-3 transition-colors hover:bg-paper/70 ${i >= 3 ? "hidden lg:block" : ""}`}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 text-sm font-medium text-ink">
+                        {risk.name}
+                        {risk.variant ? <span className="text-text-muted"> · {risk.variant}</span> : null}
+                      </p>
                       <span className="shrink-0 font-tabular text-sm font-semibold text-ink">{risk.available} left</span>
                     </div>
-                    <p className="mt-1 flex items-center gap-2 text-xs text-text-muted">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${URGENCY_STYLE[risk.urgency] ?? URGENCY_STYLE.WATCH}`}>
+                    <p className="mt-1.5 flex items-start gap-2 text-xs text-text-muted">
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${URGENCY_STYLE[risk.urgency] ?? URGENCY_STYLE.WATCH}`}>
                         {risk.urgency.charAt(0) + risk.urgency.slice(1).toLowerCase()}
                       </span>
-                      <span className="truncate">{risk.recommendation}</span>
+                      <span className="min-w-0">{risk.recommendation}</span>
                     </p>
                   </Link>
                 ))}
               </div>
+              <Link href="/catalogue" className="link mt-2 inline-flex items-center gap-1 text-sm">
+                All stock <ArrowRight size={14} />
+              </Link>
             </section>
           )}
 
@@ -206,8 +226,8 @@ export default async function DashboardPage() {
               <div className="empty">No messages yet.</div>
             ) : (
               <div className="card divide-y divide-line overflow-hidden">
-                {recentMessages.map((m) => (
-                  <Link key={m.id} href={`/inbox/${m.conversationId}`} className="flex items-start gap-3 px-4 py-3 text-sm transition-colors hover:bg-paper/70">
+                {recentMessages.map((m, i) => (
+                  <Link key={m.id} href={`/inbox/${m.conversationId}`} className={`items-start gap-3 px-4 py-3 text-sm transition-colors hover:bg-paper/70 ${i >= 3 ? "hidden lg:flex" : "flex"}`}>
                     <Avatar name={m.conversation.customer.name ?? m.conversation.customer.phone} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">

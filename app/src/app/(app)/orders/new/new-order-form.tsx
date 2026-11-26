@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSubmitAction } from "@/lib/use-submit-action";
 import { createOrderAction } from "../actions";
 import { formatMoney } from "@/lib/format";
 import { resolveUnitPriceCents } from "@/lib/pricing";
+import type { PickerCustomer } from "@/lib/customer-picker";
 
-type Customer = { id: string; name: string | null; phone: string };
 type ProductOption = {
   id: string;
   sku: string;
@@ -25,20 +25,52 @@ export function NewOrderForm({
   products,
   defaultCustomerId,
   conversationId,
-  agreedPrices,
 }: {
-  customers: Customer[];
+  /** The most recently active customers, each with the prices agreed with them. More are found by searching. */
+  customers: PickerCustomer[];
   products: ProductOption[];
   defaultCustomerId?: string;
   conversationId?: string;
-  /** customerId -> productId -> agreed price in cents (sparse; only customers who have any). */
-  agreedPrices: Record<string, Record<string, number>>;
 }) {
   const { state, pending, formProps } = useSubmitAction(createOrderAction, { error: null });
   const [customerMode, setCustomerMode] = useState<"existing" | "new">(
     defaultCustomerId ? "existing" : customers.length > 0 ? "existing" : "new"
   );
   const [selectedCustomerId, setSelectedCustomerId] = useState(defaultCustomerId ?? "");
+  // Customers shown in the picker: the recent few, replaced by search results as the user types.
+  // Everyone we have ever shown stays known, so the selected customer's agreed prices are never lost.
+  const [options, setOptions] = useState<PickerCustomer[]>(customers);
+  const [known, setKnown] = useState<Map<string, PickerCustomer>>(() => new Map(customers.map((c) => [c.id, c])));
+  const [search, setSearch] = useState("");
+  const [searching, setSearching] = useState(false);
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    const text = search.trim();
+    const mine = ++requestId.current;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/customers/search?q=${encodeURIComponent(text)}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { customers: PickerCustomer[] };
+        if (mine !== requestId.current) return; // a newer search has started; ignore this answer
+        setKnown((prev) => {
+          const next = new Map(prev);
+          for (const c of data.customers) next.set(c.id, c);
+          return next;
+        });
+        setOptions(data.customers);
+      } catch {
+        // Offline or a hiccup: keep showing what we have.
+      } finally {
+        if (mine === requestId.current) setSearching(false);
+      }
+    }, text ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const selectedKnown = selectedCustomerId ? known.get(selectedCustomerId) : undefined;
+  const shownOptions = selectedKnown && !options.some((c) => c.id === selectedKnown.id) ? [selectedKnown, ...options] : options;
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
@@ -48,7 +80,7 @@ export function NewOrderForm({
   // The server decides the real price; this only previews it, using the same
   // function — including any price agreed with the selected customer.
   const agreedFor = (productId: string) =>
-    customerMode === "existing" ? agreedPrices[selectedCustomerId]?.[productId] : undefined;
+    customerMode === "existing" ? known.get(selectedCustomerId)?.agreed[productId] : undefined;
   const unitPriceFor = (product: ProductOption, qty: number) =>
     resolveUnitPriceCents(product.priceCents, product.priceTiers, qty, agreedFor(product.id));
   const lineTotal = (product: ProductOption, qty: number) => unitPriceFor(product, qty) * qty;
@@ -130,20 +162,32 @@ export function NewOrderForm({
         </div>
 
         {customerMode === "existing" ? (
-          <select
-            name="customerId"
-            value={selectedCustomerId}
-            onChange={(e) => setSelectedCustomerId(e.target.value)}
-            required
-            className="input"
-          >
-            <option value="">Select a customer…</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name ?? "Unnamed"} · {c.phone}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-2">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search customers by name or phone"
+              aria-label="Search customers by name or phone"
+              className="input"
+            />
+            <select
+              name="customerId"
+              value={selectedCustomerId}
+              onChange={(e) => setSelectedCustomerId(e.target.value)}
+              required
+              aria-label="Customer"
+              className="input"
+            >
+              <option value="">{searching ? "Searching…" : shownOptions.length === 0 ? "No customers match" : "Select a customer…"}</option>
+              {shownOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name ?? "Unnamed"} · {c.phone}
+                </option>
+              ))}
+            </select>
+            {!search.trim() && <p className="text-xs text-text-muted">Showing your most recent customers. Search to find anyone else.</p>}
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">

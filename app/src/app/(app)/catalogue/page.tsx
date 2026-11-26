@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowDownUp, Package, Plus, Search } from "lucide-react";
+import { Avatar } from "@/components/avatar";
+import { ArrowDownUp, Plus, Search } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
@@ -7,6 +8,8 @@ import { getStockBreakdownByProduct } from "@/lib/stock";
 import { ci } from "@/lib/search";
 
 const PAGE_SIZE = 50;
+
+export const metadata = { title: "Catalogue" };
 
 export default async function CataloguePage({
   searchParams,
@@ -145,9 +148,7 @@ export default async function CataloguePage({
                       // eslint-disable-next-line @next/next/no-img-element -- tenant-private, authenticated route
                       <img src={`/api/product-images/${thumbnail.id}`} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-line object-cover" />
                     ) : (
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-paper text-text-muted/70">
-                        <Package size={18} strokeWidth={1.6} />
-                      </span>
+                      <Avatar name={p.name} size="thumb" shape="tile" />
                     )}
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate font-medium ${p.active ? "text-ink" : "text-text-muted"}`}>{p.name}</span>
@@ -204,9 +205,7 @@ export default async function CataloguePage({
                               className="h-11 w-11 shrink-0 rounded-lg border border-line object-cover"
                             />
                           ) : (
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-paper text-text-muted/70">
-                              <Package size={18} strokeWidth={1.6} />
-                            </span>
+                            <Avatar name={p.name} size="thumb" shape="tile" />
                           )}
                           <span className="min-w-0">
                             <span className="block whitespace-nowrap font-medium text-ink underline-offset-4 group-hover:text-accent group-hover:underline">

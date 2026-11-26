@@ -27,7 +27,7 @@ export async function checkTenantIsolation(): Promise<IsolationStatus> {
     SELECT c.relname AS "table"
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = 'public' AND c.relkind = 'r'
-       AND c.relname NOT IN ('_prisma_migrations', 'User', 'Membership', 'Organization')
+       AND c.relname NOT IN ('_prisma_migrations', 'User', 'Membership', 'Organization', 'RevokedSession')
        AND NOT (c.relrowsecurity AND c.relforcerowsecurity)`;
   if (unprotected.length > 0) problems.push(`no row-level security on: ${unprotected.map((t) => t.table).join(", ")}`);
 

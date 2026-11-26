@@ -16,6 +16,8 @@ const SIZES = {
   md: "h-9 w-9 text-[13px]",
   lg: "h-12 w-12 text-base",
   xl: "h-16 w-16 text-xl",
+  // Product thumbnail stand-in: same footprint as a product photo.
+  thumb: "h-11 w-11 text-sm",
 };
 
 export function initialsOf(name: string) {
@@ -31,7 +33,7 @@ export function Avatar({
 }: {
   name: string;
   size?: keyof typeof SIZES;
-  shape?: "circle" | "square";
+  shape?: "circle" | "square" | "tile";
 }) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
@@ -40,7 +42,7 @@ export function Avatar({
     <span
       aria-hidden="true"
       className={`flex shrink-0 select-none items-center justify-center font-semibold ${SIZES[size]} ${tone} ${
-        shape === "square" ? "rounded-[10px]" : "rounded-full"
+        shape === "square" ? "rounded-[10px]" : shape === "tile" ? "rounded-lg" : "rounded-full"
       }`}
     >
       {shape === "square" ? name.trim()[0]?.toUpperCase() : initialsOf(name)}

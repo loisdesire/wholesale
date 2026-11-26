@@ -24,6 +24,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      <a href="#main" className="skip-link">Skip to main content</a>
       <Nav
         orgName={active?.organization.name ?? "Wholesale"}
         userName={session?.user.name ?? ""}
@@ -33,7 +34,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         unreadNotifications={unread}
         isPlatformAdmin={session?.user.isPlatformAdmin ?? false}
       />
-      <main className="min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-8 lg:px-10">
+      <main id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none overflow-x-hidden px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-8 lg:px-10">
         <div className="mx-auto w-full max-w-[1200px]">{children}</div>
       </main>
     </div>

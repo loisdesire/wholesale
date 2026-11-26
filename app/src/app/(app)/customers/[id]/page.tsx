@@ -23,6 +23,8 @@ const ACTIVITY_LABEL: Record<string, string> = {
   CUSTOMER_MERGE_UNDONE: "Merge undone",
 };
 
+export const metadata = { title: "Customer" };
+
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();

@@ -93,7 +93,8 @@ describe("end-to-end: WhatsApp message -> AI draft -> confirm -> paid -> fulfill
     await prisma.user.deleteMany();
     await prisma.organization.deleteMany();
 
-    const org = await prisma.organization.create({ data: { name: "E2E Flow Test Org" } });
+    // This test models "staff presses Let AI respond", so the automatic reply is off for this business.
+    const org = await prisma.organization.create({ data: { name: "E2E Flow Test Org", aiAutoReply: false } });
     organizationId = org.id;
 
     const user = await prisma.user.create({

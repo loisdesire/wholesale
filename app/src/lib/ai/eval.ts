@@ -39,6 +39,10 @@ export type EvalExpectation = {
   forbiddenPhrases?: string[];
   /** Phrases the reply should contain somewhere, case-insensitive — e.g. the real MOQ or stock count. */
   expectedPhrases?: string[];
+  /** At most this many draft orders may exist for the conversation once every turn has run (1 for "agree, then confirm"). */
+  maxDrafts?: number;
+  /** At least this many draft orders must exist for the conversation once every turn has run. */
+  minDrafts?: number;
 };
 
 export type EvalImage = { mimeType: string; base64: string };
@@ -60,7 +64,7 @@ export type EvalCase = {
 
 export type EvalFinding = {
   /** Groups findings for the aggregate metrics report — see METRIC_LABELS below. */
-  metric: "escalation" | "product-match" | "quantity-match" | "price" | "forbidden-phrase" | "expected-phrase";
+  metric: "escalation" | "product-match" | "quantity-match" | "price" | "forbidden-phrase" | "expected-phrase" | "duplicate-draft";
   ok: boolean;
   detail: string;
 };
@@ -129,12 +133,12 @@ async function setupFixture(): Promise<Fixture> {
 }
 
 /** Runs one case's turns in sequence against a fresh conversation, returning the last turn's outcome. */
-async function runCase(fixture: Fixture, ec: EvalCase): Promise<{ result: AIAssistResult | null; error: string | null }> {
+async function runCase(fixture: Fixture, ec: EvalCase): Promise<{ result: AIAssistResult | null; error: string | null; conversationId: string }> {
   const conversationId = await transaction(fixture.organizationId, (tx) =>
     tx.conversation.create({ data: { organizationId: fixture.organizationId, customerId: fixture.customerId, channel: "WHATSAPP", status: "NEW" } })
   ).then((c) => c.id);
 
-  let last: { result: AIAssistResult | null; error: string | null } = { result: null, error: "no turns" };
+  let last: { result: AIAssistResult | null; error: string | null; conversationId: string } = { result: null, error: "no turns", conversationId };
   for (const [index, body] of ec.turns.entries()) {
     const message = await transaction(fixture.organizationId, (tx) =>
       tx.message.create({ data: { conversationId, direction: "INBOUND", sender: "CUSTOMER", body } })
@@ -158,16 +162,16 @@ async function runCase(fixture: Fixture, ec: EvalCase): Promise<{ result: AIAssi
       // exactly like runAIAssistAction does once a real send succeeds, so the next turn's
       // transcript genuinely includes this reply.
       await transaction(fixture.organizationId, (tx) => tx.message.create({ data: { conversationId, direction: "OUTBOUND", sender: "AI", body: result.replyText } }));
-      last = { result, error: null };
+      last = { result, error: null, conversationId };
     } catch (err) {
-      last = { result: null, error: err instanceof Error ? err.message : String(err) };
+      last = { result: null, error: err instanceof Error ? err.message : String(err), conversationId };
     }
   }
   return last;
 }
 
 /** Exported for tests/ai-eval-harness.test.ts — the grading logic itself needs coverage independent of a real model. */
-export function gradeCase(ec: EvalCase, outcome: { result: AIAssistResult | null; error: string | null }, skuToProductId: Map<string, string>, orderItems: { productId: string; quantity: number }[] | null): EvalFinding[] {
+export function gradeCase(ec: EvalCase, outcome: { result: AIAssistResult | null; error: string | null }, skuToProductId: Map<string, string>, orderItems: { productId: string; quantity: number }[] | null, draftCount?: number): EvalFinding[] {
   const findings: EvalFinding[] = [];
   if (outcome.error || !outcome.result) {
     findings.push({ metric: "escalation", ok: false, detail: `AI assist failed: ${outcome.error ?? "no result"}` });
@@ -234,6 +238,21 @@ export function gradeCase(ec: EvalCase, outcome: { result: AIAssistResult | null
     findings.push({ metric: "price", ok: true, detail: "price is resolved server-side, never from the model — always correct by construction" });
   }
 
+  if (ec.expect.minDrafts !== undefined && draftCount !== undefined) {
+    findings.push({
+      metric: "duplicate-draft",
+      ok: draftCount >= ec.expect.minDrafts,
+      detail: draftCount >= ec.expect.minDrafts ? `${draftCount} draft order(s) exist, as expected` : `only ${draftCount} draft order(s) exist (at least ${ec.expect.minDrafts} expected) — the order was never drafted`,
+    });
+  }
+  if (ec.expect.maxDrafts !== undefined && draftCount !== undefined) {
+    findings.push({
+      metric: "duplicate-draft",
+      ok: draftCount <= ec.expect.maxDrafts,
+      detail: draftCount <= ec.expect.maxDrafts ? `${draftCount} draft order(s) for the chat, within the ${ec.expect.maxDrafts} allowed` : `${draftCount} draft orders were created for one chat (at most ${ec.expect.maxDrafts} expected) — a duplicate`,
+    });
+  }
+
   for (const phrase of ec.expect.forbiddenPhrases ?? []) {
     const hit = result.replyText.toLowerCase().includes(phrase.toLowerCase());
     findings.push({ metric: "forbidden-phrase", ok: !hit, detail: hit ? `reply contains forbidden phrase: "${phrase}"` : `does not contain "${phrase}"` });
@@ -249,6 +268,50 @@ export function gradeCase(ec: EvalCase, outcome: { result: AIAssistResult | null
 /** Runs the whole suite against the real model (OPENAI_API_KEY must be set) and grades it. */
 export async function runEvalSuite(cases: EvalCase[] = EVAL_CASES): Promise<EvalReport> {
   const fixture = await setupFixture();
+  try {
+    return await runSuiteOn(fixture, cases);
+  } finally {
+    // The eval writes into whatever database is configured. Leave nothing behind: a run used to leave
+    // an "AI Eval …" business with draft orders and messages in the developer's own data.
+    await cleanupFixture(fixture).catch((err) => console.warn("AI eval: could not remove its test data:", err));
+  }
+}
+
+/** Removes the eval business and everything the run created for it. Safe to call on any fixture. */
+export async function cleanupFixture(fixture: { organizationId: string; createdById: string }): Promise<void> {
+  const org = fixture.organizationId;
+  // Tenant data goes through the tenant helper (row-level security), like everything else.
+  await transaction(
+    org,
+    async (tx) => {
+      await tx.$executeRaw`DELETE FROM "MessageAttachment" WHERE "messageId" IN (SELECT m.id FROM "Message" m JOIN "Conversation" c ON c.id = m."conversationId" WHERE c."organizationId" = ${org})`;
+      await tx.$executeRaw`DELETE FROM "Message" WHERE "conversationId" IN (SELECT id FROM "Conversation" WHERE "organizationId" = ${org})`;
+      await tx.$executeRaw`DELETE FROM "ReturnItem" WHERE "returnId" IN (SELECT id FROM "OrderReturn" WHERE "organizationId" = ${org})`;
+      await tx.$executeRaw`DELETE FROM "OrderReturn" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "ShipmentItem" WHERE "shipmentId" IN (SELECT id FROM "Shipment" WHERE "organizationId" = ${org})`;
+      await tx.$executeRaw`DELETE FROM "Shipment" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "OrderItem" WHERE "orderId" IN (SELECT id FROM "Order" WHERE "organizationId" = ${org})`;
+      await tx.$executeRaw`DELETE FROM "Payment" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "Order" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "Conversation" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "StockMovement" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "PriceTier" WHERE "productId" IN (SELECT id FROM "Product" WHERE "organizationId" = ${org})`;
+      await tx.$executeRaw`DELETE FROM "ProductImage" WHERE "productId" IN (SELECT id FROM "Product" WHERE "organizationId" = ${org})`;
+      await tx.$executeRaw`DELETE FROM "Product" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "CustomerPrice" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "CustomerAddress" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "Customer" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "Notification" WHERE "organizationId" = ${org}`;
+      await tx.$executeRaw`DELETE FROM "AuditLog" WHERE "organizationId" = ${org}`;
+    }
+  );
+  // Identity records (the business, its user and the link between them) are not tenant data.
+  await prisma.membership.deleteMany({ where: { organizationId: org } });
+  await prisma.user.delete({ where: { id: fixture.createdById } });
+  await prisma.organization.delete({ where: { id: org } });
+}
+
+async function runSuiteOn(fixture: Fixture, cases: EvalCase[]): Promise<EvalReport> {
   const results: EvalCaseResult[] = [];
 
   for (const ec of cases) {
@@ -257,7 +320,8 @@ export async function runEvalSuite(cases: EvalCase[] = EVAL_CASES): Promise<Eval
     if (outcome.result?.draftOrder) {
       orderItems = await transaction(fixture.organizationId, (tx) => tx.orderItem.findMany({ where: { orderId: outcome.result!.draftOrder!.id } }));
     }
-    const findings = gradeCase(ec, outcome, fixture.skuToProductId, orderItems);
+    const draftCount = await transaction(fixture.organizationId, (tx) => tx.order.count({ where: { conversationId: outcome.conversationId } }));
+    const findings = gradeCase(ec, outcome, fixture.skuToProductId, orderItems, draftCount);
     results.push({ case: ec, result: outcome.result, error: outcome.error, findings, passed: findings.every((f) => f.ok) });
   }
 
@@ -265,7 +329,7 @@ export async function runEvalSuite(cases: EvalCase[] = EVAL_CASES): Promise<Eval
   const overallPassRate = results.filter((r) => r.passed).length / results.length;
 
   const metricRates = {} as EvalReport["metricRates"];
-  const metrics: EvalFinding["metric"][] = ["escalation", "product-match", "quantity-match", "price", "forbidden-phrase", "expected-phrase"];
+  const metrics: EvalFinding["metric"][] = ["escalation", "product-match", "quantity-match", "price", "forbidden-phrase", "expected-phrase", "duplicate-draft"];
   for (const metric of metrics) {
     const findings = results.flatMap((r) => r.findings).filter((f) => f.metric === metric);
     const passed = findings.filter((f) => f.ok).length;

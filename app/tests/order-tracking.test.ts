@@ -138,7 +138,9 @@ describe("customer order status page and shipping messages", () => {
       const { ids, orderId, conversationId } = await paidOrder();
       const { shipment } = await shipOrderItems({ ...ids, carrier: "DHL", trackingReference: "DHL999" });
 
+      process.env.APP_URL = "https://shop.example.com";
       const result = await notifyOrderShipped({ organizationId: orgA, orderId, shipmentId: shipment.id, actorId });
+      delete process.env.APP_URL;
       expect(result).toEqual({ sent: true });
 
       expect(sendStaffReply).toHaveBeenCalledTimes(1);
@@ -148,10 +150,20 @@ describe("customer order status page and shipping messages", () => {
       expect(arg.body).toContain("Hi Ada");
       expect(arg.body).toContain("5 items");
       expect(arg.body).toContain("DHL, tracking DHL999");
-      expect(arg.body).toContain(`/track/${orgA}/`);
+      expect(arg.body).toContain(`https://shop.example.com/track/${orgA}/`);
 
       const audit = await prisma.auditLog.findFirst({ where: { entityId: orderId, action: "SHIP_NOTICE_SENT" } });
       expect(audit).not.toBeNull();
+    });
+
+    it("leaves the link out when APP_URL is not set, because a bare path is no use inside a chat", async () => {
+      delete process.env.APP_URL;
+      const { ids, orderId } = await paidOrder();
+      const { shipment } = await shipOrderItems({ ...ids, carrier: "DHL" });
+      await notifyOrderShipped({ organizationId: orgA, orderId, shipmentId: shipment.id, actorId });
+      const arg = sendStaffReply.mock.calls[0][0] as { body: string };
+      expect(arg.body).toContain("DHL");
+      expect(arg.body).not.toContain("/track/");
     });
 
     it("does not message anyone when the owner has switched it off", async () => {

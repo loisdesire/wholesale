@@ -2,7 +2,10 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { tenantDb } from "@/lib/db";
 import { getStockByProduct } from "@/lib/stock";
+import { recentCustomersForPicker } from "@/lib/customer-picker";
 import { NewOrderForm } from "./new-order-form";
+
+export const metadata = { title: "New order" };
 
 export default async function NewOrderPage({
   searchParams,
@@ -14,18 +17,16 @@ export default async function NewOrderPage({
   const organizationId = session!.user.organizationId;
   const db = tenantDb(organizationId);
 
-  const [customers, products, stockMap, agreedRows] = await Promise.all([
-    db.customer.findMany({ where: { organizationId, mergedIntoId: null }, orderBy: { name: "asc" } }),
+  const [customers, products, stockMap] = await Promise.all([
+    // Only the most recently active customers (plus the one this order is for); the rest are found by searching.
+    recentCustomersForPicker(organizationId, customerId),
     db.product.findMany({
       where: { organizationId, active: true },
       include: { priceTiers: { orderBy: { minQuantity: "asc" } } },
       orderBy: { name: "asc" },
     }),
     getStockByProduct(organizationId, db),
-    db.customerPrice.findMany({ where: { organizationId } }),
   ]);
-  const agreedPrices: Record<string, Record<string, number>> = {};
-  for (const row of agreedRows) (agreedPrices[row.customerId] ??= {})[row.productId] = row.priceCents;
 
   const productOptions = products.map((p) => {
     const variant = p.variantAttributes as Record<string, string> | null;
@@ -52,11 +53,10 @@ export default async function NewOrderPage({
       </header>
 
       <NewOrderForm
-        customers={customers.map((c) => ({ id: c.id, name: c.name, phone: c.phone }))}
+        customers={customers}
         products={productOptions}
         defaultCustomerId={customerId}
         conversationId={conversationId}
-        agreedPrices={agreedPrices}
       />
     </div>
   );

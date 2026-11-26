@@ -87,7 +87,7 @@ describe("tenant isolation (row-level security)", () => {
        WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname <> '_prisma_migrations'`;
 
     // Identity / tenant registry: read before any tenant is known, carries no tenant data.
-    const registry = new Set(["User", "Membership", "Organization"]);
+    const registry = new Set(["User", "Membership", "Organization", "RevokedSession"]);
     // Child tables with no organizationId of their own, protected through their parent.
     const children = new Set(["Message", "MessageAttachment", "OrderItem", "PriceTier", "ProductImage", "ReturnItem", "ShipmentItem"]);
 
@@ -359,7 +359,7 @@ describe("source-level guard: tenant data is reached only through the tenant cli
   // The database enforces isolation, but a query through the unscoped root client simply
   // returns nothing — a silent bug. So application code may use `prisma.<tenant model>`
   // nowhere; it must use tenantDb()/transaction(). Identity models are the exception.
-  const IDENTITY = new Set(["user", "membership", "organization"]);
+  const IDENTITY = new Set(["user", "membership", "organization", "revokedSession"]);
   const ALLOWED_FILES = new Set(["lib/prisma.ts", "lib/db.ts"]);
 
   function sourceFiles(dir: string): string[] {

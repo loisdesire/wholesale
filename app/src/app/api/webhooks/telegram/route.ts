@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
     dispatchAIAssistReply({
       organizationId: organization.id,
       conversationId: created.conversationId,
+      auto: true,
     })
       .catch((err) => console.warn("Telegram webhook AI dispatch failed:", err))
       .finally(() => clearInterval(typingInterval));

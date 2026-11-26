@@ -39,6 +39,8 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   REFUND_PAID: "Refund paid to customer",
 };
 
+export const metadata = { title: "Order" };
+
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();

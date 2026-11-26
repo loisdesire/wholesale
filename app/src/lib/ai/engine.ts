@@ -1,10 +1,21 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import { tenantDb } from "@/lib/db";
-import { createDraftOrder, OrderStateError } from "@/lib/orders";
+import { prisma } from "@/lib/prisma";
+import { createDraftOrder, updateOrderItemQuantity, OrderStateError } from "@/lib/orders";
 import { searchCatalogue, getCandidateImages, getCatalogueEntriesByIds } from "./catalogue-search";
 import { findVisuallySimilarProducts } from "./visual-search";
 import { formatMoney } from "@/lib/format";
+import {
+  catalogueEntryForModel,
+  describeDrafts,
+  formatMoneyExact,
+  getCustomerOrdersForAI,
+  listOpenDrafts,
+  mergeItems,
+  sameItems,
+  sameProducts,
+} from "./order-context";
 
 export function isAIConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
@@ -29,6 +40,7 @@ const createDraftOrderInput = z.object({
     .array(z.object({ productId: z.string().min(1), quantity: z.number().int().positive() }))
     .min(1),
 });
+const getMyOrdersInput = z.object({}).passthrough();
 const showProductPhotosInput = z.object({
   productIds: z.array(z.string().min(1)).min(1).max(MAX_PHOTOS_PER_REPLY),
 });
@@ -94,15 +106,24 @@ const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_my_orders",
+      description:
+        "Looks up THIS customer's own recent orders (status, items, shipments with carrier and tracking number, and a link to follow the order when one exists). Call it whenever the customer asks where their order is, whether it shipped, what the status is, or mentions an order reference. It only ever returns orders belonging to the customer you are talking to — if the reference they mention is not in the result, say you cannot find it under their number and that a staff member will check.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
 ];
 
-const SYSTEM_PROMPT = `You are the order-assistant for Adaeze Fashion Wholesale, a wholesale fashion/footwear distributor, replying to a customer over WhatsApp or Telegram.
+const systemPrompt = (businessName: string) => `You are the order-assistant for ${businessName}, a wholesale business, replying to a customer over WhatsApp or Telegram.
 
 Rules:
 - Never invent products, variants, prices, or stock levels. Always call search_catalogue before stating a price or availability.
 - Call search_catalogue fresh on every turn where the customer could be asking about products — including a short follow-up like "still nothing?" or "what do you have?" — using the most specific product term mentioned anywhere earlier in the conversation if the latest message doesn't name one. Never rely on what an earlier reply in this conversation (including your own) said was or wasn't available — the catalogue can change between messages, so re-check instead of repeating a past answer.
 - If no specific product, category, or keyword has been named anywhere in the visible conversation, you have nothing to search for yet — don't call search_catalogue with a vague phrase (e.g. "clothes", "nothing", "stock") and don't claim the catalogue search came up empty. Just ask what they're looking for.
-- Each search_catalogue result includes priceTiers (quantity-break wholesale pricing) and moq (minimum order quantity). When quoting a price, use the highest-minQuantity tier the requested quantity qualifies for — not always the base priceCents. If the requested quantity is below moq, say so and state the actual minimum.
+- Each search_catalogue result includes price (the base price per unit, as ready-to-quote text such as "₦3,500"), priceTiers (quantity-break wholesale pricing, also as text) and moq (minimum order quantity). When quoting a price, copy the price text exactly as given, using the highest-minQuantity tier the requested quantity qualifies for — not always the base price. Never convert, round, or re-format an amount, and never do your own arithmetic on prices: quote the per-unit price and the quantity, and state a total only after create_draft_order has returned one. If the requested quantity is below moq, say so and state the actual minimum.
 - If the customer's request is ambiguous (multiple matching variants, unclear quantity, or no confident match), ask a short, specific clarifying question instead of guessing.
 - A customer may send a photo (e.g. asking "Do you have this?", "How much for this?", or sharing a product photo). When an image arrives:
   1. If real visual search results appear right after the photo in this conversation, that is a genuine image-to-image comparison (cosine similarity between the customer's photo and our own catalogue photos) — not a guess. Treat a high match (roughly 90%+) as the same item; a middling one as a possible match worth confirming with the customer; a low one (or no visual search results at all — e.g. none of our photos have a stored visual embedding yet) as no confident visual match.
@@ -111,9 +132,14 @@ Rules:
   4. Only say you don't carry anything like it if you genuinely got zero results (from visual search and/or search_catalogue) for every approach you tried.
 - If the customer asks to see what something looks like, or wants to browse options (e.g. "show me the blue jeans you have") — even without sending you a photo themselves — call show_product_photos with up to ${MAX_PHOTOS_PER_REPLY} product ids (from search_catalogue results earlier in this conversation), most relevant first. You CAN send real photos; never say you can't send an image. Call it at most once per reply — a second call in the same reply is rejected, so include every product you want to show in that one call. If there are more than ${MAX_PHOTOS_PER_REPLY} relevant options, show the top ${MAX_PHOTOS_PER_REPLY} and say there's more — the customer can ask for another batch.
 - Once you have confident matches with exact products and quantities (meeting each product's moq), call create_draft_order to draft the order using the exact productId values search_catalogue returned — it prices and validates the order itself, so you don't need to compute the total. This never confirms or charges anything — say clearly that a staff member will confirm before it's finalized.
+- When the customer has clearly said what they want (the product, the variant such as size or colour, and a quantity) and it is in stock and meets the minimum order, create the draft straight away — do not ask permission to draft. Say what you drafted and that a staff member will confirm. Ask a question only when something is missing, ambiguous, or not available.
+- If the customer mentions a discount or promotion that is not in the price list, do not agree to it or say you will check it; say you can only offer the listed prices, and still draft the order at the listed prices if they want it.
 - If requested stock is short, say exactly how many are available (from search_catalogue) and offer to draft the order for the available quantity, or suggest a close alternative you found via search_catalogue — never an invented one.
 - Keep replies short, natural, and specific — like a knowledgeable staff member texting back, not a formal chatbot. No markdown formatting.
-- Never claim an order is confirmed, paid, or shipped — those states only ever change when a human marks them so.`;
+- Never claim an order is confirmed, paid, or shipped — those states only ever change when a human marks them so. You may report what get_my_orders says an order's status is, in its own words.
+- If the customer asks where their order is, whether it shipped, or about an order reference, call get_my_orders and answer only from its result (status, items, carrier, tracking number, and the status link if present). Never discuss an order that is not in that result.
+- Open draft orders already created in this chat are listed in the conversation context. Never create a draft that already exists. If the customer simply agrees ("yes", "go ahead", "okay"), tell them it is drafted and a staff member will confirm — do not call create_draft_order again.
+- You have no information about delivery areas, delivery times, delivery fees, return or refund policy, discounts beyond the price tiers, or payment details. If asked, do not say yes or no and do not guess: say you will check with the team and they will get back to the customer.`;
 
 export type AIAssistResult = {
   replyText: string;
@@ -146,6 +172,7 @@ export async function runAIAssist(params: {
 
   const recentMessages = [...conversation.messages].reverse();
 
+  const businessName = (await prisma.organization.findUnique({ where: { id: params.organizationId }, select: { name: true } }))?.name ?? "this business";
   const client = new OpenAI();
   const toolCallLog: { name: string; input: unknown }[] = [];
   let draftOrder: AIAssistResult["draftOrder"];
@@ -215,7 +242,7 @@ export async function runAIAssist(params: {
       if (entries.length > 0) {
         transcriptContent.push({
           type: "text",
-          text: `Current price/MOQ/stock for those same matches (no need to call search_catalogue again for these specific products — only for something else): ${JSON.stringify(entries)}`,
+          text: `Current price/MOQ/stock for those same matches (no need to call search_catalogue again for these specific products — only for something else): ${JSON.stringify(entries.map(catalogueEntryForModel))}`,
         });
       }
 
@@ -235,13 +262,17 @@ export async function runAIAssist(params: {
     }
   }
 
+  const openDrafts = await listOpenDrafts(params.organizationId, params.conversationId);
+  const draftNote = describeDrafts(openDrafts);
+  if (draftNote) transcriptContent.push({ type: "text", text: draftNote });
+
   transcriptContent.push({
     type: "text",
     text: `(Conversation so far with ${conversation.customer.name ?? conversation.customer.phone} — respond to the customer's latest message.)`,
   });
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: systemPrompt(businessName) },
     { role: "user", content: transcriptContent },
   ];
 
@@ -292,7 +323,7 @@ export async function runAIAssist(params: {
           continue;
         }
         const matches = await searchCatalogue(params.organizationId, parsed.data.query);
-        messages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(matches) });
+        messages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(matches.map(catalogueEntryForModel)) });
 
         // Skip when real visual search already ran above — re-sending the same catalogue photos
         // here would just double the image payload for no new information.
@@ -321,6 +352,58 @@ export async function runAIAssist(params: {
           continue;
         }
         try {
+          // Never double-draft: the same items already drafted in this chat are reused, and a
+          // quantity-only change to an open draft updates that draft instead of adding another.
+          const requested = mergeItems(parsed.data.items);
+
+          // A hard rule, not left to the model's judgement: never draft more than is in stock.
+          const stockEntries = await getCatalogueEntriesByIds(params.organizationId, [...requested.keys()]);
+          const short = stockEntries.filter((e) => (requested.get(e.productId) ?? 0) > e.stock);
+          if (short.length > 0) {
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: `Not drafted: ${short
+                .map((e) => `only ${e.stock} of ${e.name}${e.variant ? ` (${e.variant})` : ""} available, ${requested.get(e.productId)} requested`)
+                .join("; ")}. Tell the customer exactly how many are available and offer to draft that quantity or suggest an alternative from search_catalogue.`,
+            });
+            continue;
+          }
+
+          const open = await listOpenDrafts(params.organizationId, params.conversationId);
+          const identical = open.find((d) => sameItems(mergeItems(d.items), requested));
+          if (identical) {
+            draftOrder = { id: identical.id, reference: identical.reference, totalCents: identical.totalCents };
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ reference: identical.reference, total: formatMoneyExact(identical.totalCents), note: "This exact draft already exists — nothing new was created. Tell the customer it is drafted and a staff member will confirm." }),
+            });
+            continue;
+          }
+          const amendable = open.find((d) => sameProducts(mergeItems(d.items), requested));
+          if (amendable) {
+            for (const item of amendable.items) {
+              const wanted = requested.get(item.productId);
+              if (wanted !== undefined && wanted !== item.quantity) {
+                await updateOrderItemQuantity({
+                  organizationId: params.organizationId,
+                  orderId: amendable.id,
+                  orderItemId: item.orderItemId,
+                  quantity: wanted,
+                  actorId: params.createdById,
+                });
+              }
+            }
+            const refreshed = (await listOpenDrafts(params.organizationId, params.conversationId)).find((d) => d.id === amendable.id)!;
+            draftOrder = { id: refreshed.id, reference: refreshed.reference, totalCents: refreshed.totalCents };
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ reference: refreshed.reference, total: formatMoneyExact(refreshed.totalCents), note: "The existing draft was updated to the new quantities — no second order was created." }),
+            });
+            continue;
+          }
           const order = await createDraftOrder({
             organizationId: params.organizationId,
             customerId: params.customerId,
@@ -332,12 +415,21 @@ export async function runAIAssist(params: {
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
-            content: JSON.stringify({ reference: order.reference, totalCents: order.totalCents }),
+            content: JSON.stringify({ reference: order.reference, total: formatMoneyExact(order.totalCents) }),
           });
         } catch (err) {
           const message = err instanceof OrderStateError ? err.message : "Could not create the draft order.";
           messages.push({ role: "tool", tool_call_id: toolCall.id, content: message });
         }
+      } else if (name === "get_my_orders") {
+        getMyOrdersInput.safeParse(input);
+        // The customer id comes from the conversation, never from the model's input.
+        const orders = await getCustomerOrdersForAI(params.organizationId, params.customerId);
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: orders.length > 0 ? JSON.stringify(orders) : "This customer has no orders on record.",
+        });
       } else if (name === "show_product_photos") {
         const parsed = showProductPhotosInput.safeParse(input);
         if (!parsed.success) {

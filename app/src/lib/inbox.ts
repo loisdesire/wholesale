@@ -164,8 +164,14 @@ export async function markConversationResolved(params: { conversationId: string;
 export async function dispatchAIAssistReply(params: {
   organizationId: string;
   conversationId: string;
+  /** True when triggered by an incoming message (not by staff pressing the button): honours the owner's auto-reply switch. */
+  auto?: boolean;
 }): Promise<{ replyText: string; sent: boolean; draftOrderReference?: string } | null> {
   if (!isAIConfigured()) return null;
+  if (params.auto) {
+    const setting = await prisma.organization.findUnique({ where: { id: params.organizationId }, select: { aiAutoReply: true } });
+    if (!setting?.aiAutoReply) return null;
+  }
 
   const db = tenantDb(params.organizationId);
   const conversation = await db.conversation.findFirst({

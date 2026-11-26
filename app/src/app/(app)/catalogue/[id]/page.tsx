@@ -21,6 +21,8 @@ const REASON_LABEL: Record<string, string> = {
   MANUAL_ADJUSTMENT: "Manual adjustment",
 };
 
+export const metadata = { title: "Product" };
+
 export default async function ProductDetailPage({
   params,
 }: {

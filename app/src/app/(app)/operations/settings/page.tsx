@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { SlaSettingsForm } from "./settings-form";
 import { CustomerMessagesForm } from "./customer-messages-form";
 
+export const metadata = { title: "Settings" };
+
 export default async function OperationsSettingsPage() {
   const session = await auth();
   const organizationId = session!.user.organizationId;
@@ -25,7 +27,7 @@ export default async function OperationsSettingsPage() {
   }
 
   const { overrides, defaults } = await getSlaSettings(organizationId);
-  const { notifyCustomerOnShip } = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { notifyCustomerOnShip: true } });
+  const { notifyCustomerOnShip, aiAutoReply } = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { notifyCustomerOnShip: true, aiAutoReply: true } });
 
   return (
     <div className="flex flex-col gap-6">
@@ -34,7 +36,7 @@ export default async function OperationsSettingsPage() {
         <h1 className="page-title">Settings</h1>
         <p className="mt-1 text-sm text-text-muted">Customer messages, and how long things may wait before they are flagged.</p>
       </header>
-      <CustomerMessagesForm notifyOnShip={notifyCustomerOnShip} />
+      <CustomerMessagesForm notifyOnShip={notifyCustomerOnShip} aiAutoReply={aiAutoReply} />
       <SlaSettingsForm overrides={overrides} defaults={defaults} />
     </div>
   );

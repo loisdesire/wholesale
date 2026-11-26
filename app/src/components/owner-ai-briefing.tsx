@@ -37,7 +37,7 @@ export function OwnerAIBriefingCard({ briefing }: { briefing: OwnerAIBriefing })
           <ShieldAlert size={16} className="hidden shrink-0 text-status-attention-fg sm:block" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-status-attention-fg">{criticalAlerts[0].title}</p>
-            <p className="text-xs text-status-attention-fg/90">{criticalAlerts[0].detail}</p>
+            <p className="text-xs text-status-attention-fg">{criticalAlerts[0].detail}</p>
           </div>
           <Link href={criticalAlerts[0].actionHref} className="shrink-0 text-sm font-semibold text-status-attention-fg hover:underline">
             {criticalAlerts[0].actionLabel}

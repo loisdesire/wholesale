@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { BRAND_NAME } from "@/lib/brand";
 import { BadgeCheck } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { LoginForm } from "./login-form";
+
+export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({
   searchParams,
@@ -13,7 +16,7 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen w-full bg-paper">
       <div className="flex flex-1 flex-col px-6 py-6 sm:px-10">
-        <Link href="/" aria-label="Adaeze Wholesale home" className="self-start">
+        <Link href="/" aria-label={`${BRAND_NAME} home`} className="self-start">
           <Logo />
         </Link>
         <div className="flex flex-1 items-center justify-center py-10">

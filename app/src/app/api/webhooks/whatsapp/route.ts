@@ -3,7 +3,8 @@ import crypto from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { resolveOrganizationForWhatsApp } from "@/lib/whatsapp-routing";
 import { verifyWebhookSignature, parseWebhookPayload, parseStatusUpdates, fetchMediaBytes, WhatsAppMediaError } from "@/lib/whatsapp";
-import { ingestInboundMessage } from "@/lib/inbox";
+import { ingestInboundMessage, dispatchAIAssistReply } from "@/lib/inbox";
+import { isAIConfigured } from "@/lib/ai/engine";
 import { applyMessageStatus } from "@/lib/message-status";
 
 function safeEqual(a: string, b: string | undefined): boolean {
@@ -86,7 +87,14 @@ export async function POST(req: NextRequest) {
         Sentry.captureMessage(warning, "warning");
       }
     }
-    await ingestInboundMessage(organizationId, message, attachment);
+    const created = await ingestInboundMessage(organizationId, message, attachment);
+    // Same as Telegram: a new customer message gets an AI-drafted reply straight away (unless the
+    // owner switched that off). Runs in the background so Meta gets its instant 200.
+    if (created && isAIConfigured()) {
+      dispatchAIAssistReply({ organizationId, conversationId: created.conversationId, auto: true }).catch((err) =>
+        console.warn("WhatsApp webhook AI dispatch failed:", err)
+      );
+    }
   }
 
   let unroutedStatuses = 0;

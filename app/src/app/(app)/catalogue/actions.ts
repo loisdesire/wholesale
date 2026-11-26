@@ -132,6 +132,15 @@ export async function createProductAction(
   const priceCents = Math.round(priceNaira * 100);
   const costCents = costNaira === "" || costNaira === undefined ? null : Math.round(costNaira * 100);
 
+  // "ANK-1" and "ank-1" are the same SKU to a person scanning or typing one in, so they are the same here.
+  const skuClash = await tenantDb(session.user.organizationId).product.findFirst({
+    where: { organizationId: session.user.organizationId, sku: { equals: sku, mode: "insensitive" } },
+    select: { sku: true },
+  });
+  if (skuClash) {
+    return { error: `SKU "${skuClash.sku}" is already in use (SKUs are not case-sensitive).` };
+  }
+
   let productId: string;
   try {
     const product = await tenantDb(session.user.organizationId).product.create({
@@ -232,6 +241,14 @@ export async function updateProductAction(
   });
   if (!existing) {
     return { error: "Product not found." };
+  }
+
+  const skuClash = await tenantDb(session.user.organizationId).product.findFirst({
+    where: { organizationId: session.user.organizationId, sku: { equals: sku, mode: "insensitive" }, id: { not: productId } },
+    select: { sku: true },
+  });
+  if (skuClash) {
+    return { error: `SKU "${skuClash.sku}" is already in use (SKUs are not case-sensitive).` };
   }
 
   try {

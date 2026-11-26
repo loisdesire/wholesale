@@ -141,6 +141,24 @@ input[type="radio"] {
 ::-webkit-scrollbar-thumb:hover {
   background: rgb(11 16 32 / 0.32);
 }
+/* Keyboard users can jump past the menu: hidden until it receives focus. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 100;
+  border-radius: 0.75rem;
+  background: var(--ink);
+  padding: 0.625rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  transition: top 0.12s;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

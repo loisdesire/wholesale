@@ -17,6 +17,8 @@ const STATUS_FILTERS = [
   { value: "CANCELLED", label: "Cancelled" },
 ] as const;
 
+export const metadata = { title: "Orders" };
+
 export default async function OrdersPage({
   searchParams,
 }: {

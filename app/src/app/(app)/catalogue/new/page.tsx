@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createProductAction } from "../actions";
 import { ProductForm } from "../product-form";
 
+export const metadata = { title: "New product" };
+
 export default function NewProductPage() {
   return (
     <div className="flex flex-col gap-6">

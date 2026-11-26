@@ -1,3 +1,5 @@
+import { BRAND_NAME } from "@/lib/brand";
+
 // The mark: a chat bubble whose content is a tick — a message that became a done thing.
 export function LogoMark({ size = 28, className = "" }: { size?: number; className?: string }) {
   return (
@@ -16,7 +18,7 @@ export function Logo({ tone = "dark" }: { tone?: "dark" | "light" }) {
     <span className="inline-flex items-center gap-2.5">
       <LogoMark />
       <span className={`font-display text-[19px] font-bold tracking-tight ${tone === "light" ? "text-white" : "text-ink"}`}>
-        Adaeze <span className={tone === "light" ? "text-white/55" : "text-text-muted"}>Wholesale</span>
+        {BRAND_NAME}
       </span>
     </span>
   );

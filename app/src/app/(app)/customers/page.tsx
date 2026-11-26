@@ -14,6 +14,8 @@ const FILTERS = [
   { value: "owed", label: "We owe them" },
 ] as const;
 
+export const metadata = { title: "Customers" };
+
 export default async function CustomersPage({
   searchParams,
 }: {

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { NewCustomerForm } from "./new-customer-form";
 
+export const metadata = { title: "New customer" };
+
 export default function NewCustomerPage() {
   return (
     <div className="flex flex-col gap-6">
